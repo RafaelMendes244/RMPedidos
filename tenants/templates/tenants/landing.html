@@ -32,10 +32,6 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
         @keyframes pulse-glow {
             0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.5), 0 0 40px rgba(249, 115, 22, 0.3); }
             50% { box-shadow: 0 0 30px rgba(249, 115, 22, 0.8), 0 0 60px rgba(249, 115, 22, 0.5); }
@@ -47,7 +43,6 @@
         
         .animate-float { animation: float 6s ease-in-out infinite; }
         .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
-        .animate-slideInLeft { animation: slideInLeft 0.6s ease-out forwards; }
         .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
         
         /* Cards com Hover Profissional */
@@ -93,12 +88,37 @@
             50% { transform: scale(1.05); opacity: 0.8; }
         }
         .badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
+        
+        /* Mobile Menu Styles */
+        .hamburger-line {
+            transition: all 0.3s ease;
+        }
+        .hamburger.active .hamburger-line:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .hamburger.active .hamburger-line:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger.active .hamburger-line:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+        .mobile-menu {
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+        }
+        .mobile-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="bg-white text-slate-800">
 
     <!-- Navbar Ultra Profissional -->
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 md:h-20">
                 <!-- Logo -->
@@ -118,31 +138,48 @@
                         Benefícios
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                     </a>
-                    <a href="#funcionalidades" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
-                        Funcionalidades
-                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
-                    </a>
                     <a href="#depoimentos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
                         Depoimentos
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                     </a>
-                    <a href="#precos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
-                        Preços
-                        <span class="absolute -bottom-1 left-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
-                    </a>
                 </div>
 
-                <!-- CTAs -->
-                <div class="flex items-center gap-2 md:gap-4">
-                    <a href="{% url 'custom_login' %}" class="hidden sm:flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 text-sm font-bold text-slate-700 hover:text-orange-600 transition-colors">
+                <!-- CTAs Desktop -->
+                <div class="hidden lg:flex items-center gap-4">
+                    <a href="{% url 'custom_login' %}" class="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-slate-700 hover:text-orange-600 transition-colors">
                         <i class="fas fa-sign-in-alt"></i>
-                        <span class="hidden md:inline">Entrar</span>
+                        <span>Entrar</span>
                     </a>
-                    <a href="{% url 'signup' %}" class="px-4 md:px-6 py-2 md:py-3 accent-gradient text-white text-xs md:text-sm font-bold rounded-xl md:rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2">
-                        <i class="fas fa-rocket text-xs md:text-sm"></i>
+                    <a href="{% url 'signup' %}" class="px-6 py-3 accent-gradient text-white text-sm font-bold rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-rocket text-sm"></i>
                         <span>Começar Grátis</span>
                     </a>
                 </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="hamburger lg:hidden flex flex-col justify-center items-center w-10 h-10 space-y-1.5 p-2">
+                    <span class="hamburger-line w-6 h-0.5 bg-slate-700 rounded"></span>
+                    <span class="hamburger-line w-6 h-0.5 bg-slate-700 rounded"></span>
+                    <span class="hamburger-line w-6 h-0.5 bg-slate-700 rounded"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden bg-white border-t border-slate-100 absolute top-full left-0 right-0 shadow-xl">
+            <div class="max-w-7xl mx-auto px-4 py-6 space-y-4">
+                <a href="#beneficios" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
+                    <i class="fas fa-star text-orange-500 mr-3 w-5"></i>Benefícios
+                </a>
+                <a href="#depoimentos" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
+                    <i class="fas fa-comments text-orange-500 mr-3 w-5"></i>Depoimentos
+                </a>
+                <a href="{% url 'custom_login' %}" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
+                    <i class="fas fa-sign-in-alt text-orange-500 mr-3 w-5"></i>Entrar
+                </a>
+                <a href="{% url 'signup' %}" class="block py-4 accent-gradient text-white text-center font-bold rounded-xl shadow-lg mt-4">
+                    <i class="fas fa-rocket mr-2"></i>Criar Cardápio Grátis
+                </a>
             </div>
         </div>
     </nav>
@@ -158,7 +195,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <!-- Badge de Novidade -->
             <div class="flex justify-center mb-6 md:mb-8 animate-fadeInUp">
-                <div class="inline-flex items-center gap-2 md:gap-3 bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 px-4 md:px-6 py-2 md:py-3 rounded-full badge-pulse">
+                <div class="inline-flex items-center gap-3 bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 px-4 md:px-6 py-2 md:py-3 rounded-full badge-pulse">
                     <span class="relative flex h-2 w-2 md:h-3 md:w-3">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-orange-500"></span>
@@ -215,7 +252,7 @@
                 </a>
                 <button onclick="openDemo()" class="px-6 md:px-10 py-4 md:py-5 glass text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-3 border border-white/20">
                     <i class="fas fa-play-circle text-lg md:text-xl"></i>
-                    Ver Demonstração
+                    <span>Ver Demonstração</span>
                 </button>
             </div>
 
@@ -236,7 +273,7 @@
                         <div class="flex-1 text-center">
                             <div class="inline-flex items-center gap-2 bg-slate-700/50 px-3 md:px-4 py-1 md:py-1.5 rounded-lg">
                                 <i class="fas fa-lock text-[10px] md:text-xs text-green-400"></i>
-                                <span class="text-[10px] md:text-xs text-slate-300 font-mono">rmpedidos.com/sua-loja</span>
+                                <span class="text-[10px] md:text-xs text-slate-300 font-mono">rmpedidos.online/sua-loja</span>
                             </div>
                         </div>
                     </div>
@@ -586,9 +623,9 @@
     <!-- Footer Premium -->
     <footer class="bg-slate-900 text-slate-400 py-12 md:py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-12">
+            <div class="grid md:grid-cols-3 gap-8 md:gap-12 mb-12">
                 <!-- Brand -->
-                <div class="col-span-2 md:col-span-1">
+                <div>
                     <div class="flex items-center gap-3 mb-4">
                         <div class="w-10 h-10 accent-gradient rounded-xl flex items-center justify-center">
                             <i class="fas fa-utensils text-white"></i>
@@ -599,11 +636,8 @@
                         A solução completa para criar seu delivery digital e vender mais, pagando menos.
                     </p>
                     <div class="flex items-center gap-3">
-                        <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
+                        <a href="https://www.instagram.com/websitesrm/" target="_blank" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
                             <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
-                            <i class="fab fa-facebook-f"></i>
                         </a>
                         <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
                             <i class="fab fa-whatsapp"></i>
@@ -611,35 +645,22 @@
                     </div>
                 </div>
 
-                <!-- Links 1 -->
+                <!-- Links -->
                 <div>
-                    <h4 class="font-bold text-white mb-4 text-sm">Produto</h4>
+                    <h4 class="font-bold text-white mb-4 text-sm">Links Rápidos</h4>
                     <ul class="space-y-2.5 text-sm">
                         <li><a href="#beneficios" class="hover:text-orange-400 transition-colors">Benefícios</a></li>
-                        <li><a href="#funcionalidades" class="hover:text-orange-400 transition-colors">Funcionalidades</a></li>
-                        <li><a href="#precos" class="hover:text-orange-400 transition-colors">Preços</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Integrações</a></li>
+                        <li><a href="{% url 'custom_login' %}" class="hover:text-orange-400 transition-colors">Entrar</a></li>
+                        <li><a href="{% url 'signup' %}" class="hover:text-orange-400 transition-colors">Criar Loja Grátis</a></li>
                     </ul>
                 </div>
 
-                <!-- Links 2 -->
-                <div>
-                    <h4 class="font-bold text-white mb-4 text-sm">Empresa</h4>
-                    <ul class="space-y-2.5 text-sm">
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Sobre Nós</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Blog</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Carreiras</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Contato</a></li>
-                    </ul>
-                </div>
-
-                <!-- Links 3 -->
+                <!-- Legal -->
                 <div>
                     <h4 class="font-bold text-white mb-4 text-sm">Legal</h4>
                     <ul class="space-y-2.5 text-sm">
                         <li><a href="{% url 'termos' %}" class="hover:text-orange-400 transition-colors">Termos de Uso</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Privacidade</a></li>
-                        <li><a href="#" class="hover:text-orange-400 transition-colors">Cookies</a></li>
+                        <li><a href="{% url 'privacidade' %}" class="hover:text-orange-400 transition-colors">Política de Privacidade</a></li>
                     </ul>
                 </div>
             </div>
@@ -647,13 +668,30 @@
             <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
                 <p>© 2025 RMPedidos. Todos os direitos reservados.</p>
                 <p class="text-slate-500">
-                    Desenvolvido por <a href="https://rmdev.vercel.app" target="_blank">Rafael Mendes
+                    Desenvolvido por <a href="https://rmdev.vercel.app" target="_blank" class="hover:text-orange-400 transition-colors">Rafael Mendes</a>
                 </p>
             </div>
         </div>
     </footer>
 
     <script>
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            this.classList.toggle('active');
+            mobileMenu.classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking on a link
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                mobileMenuBtn.classList.remove('active');
+                mobileMenu.classList.remove('active');
+            });
+        });
+
         function openDemo() {
             Swal.fire({
                 title: '<strong>Demonstração RMPedidos</strong>',

@@ -37,7 +37,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 # ALLOWED HOSTS PARA SUBDOMINIOS E DOMINIOS
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['.rmpedidos.online', 'localhost', '127.0.0.1']
 
 
 # Application definition
