@@ -572,23 +572,107 @@
         let knownOrders = new Set();
         let categoriesCache = [];
         let isManualToggle = false;
+        let isNotificationActive = false;
+        let notificationInterval = null;
 
-        const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/571/571-preview.mp3"; 
-
+        // Som de notificação profissional (mais alto e impactante)
+        // Som de campainha de restaurante/loja
+        const NOTIFICATION_SOUND = "https://www.orangefreesounds.com/wp-content/uploads/2020/03/Alert-bell-ringtone.mp3";
+        
         let audio = new Audio(NOTIFICATION_SOUND);
         audio.volume = 1.0; // Volume máximo
-
-        // Função inteligente para tocar o som de forma insistente
-        function playAlertSound() {
-            // Toca a primeira vez
-            audio.play().catch(e => console.log("Audio bloqueado (interaja com a página primeiro)"));
-            
-            // Toca de novo após 1.5 segundos (fazendo um efeito DING... DING...)
-            setTimeout(() => {
-                audio.currentTime = 0;
-                audio.play().catch(e => {});
-            }, 1500);
+        
+        // Função para solicitar permissão de notificações
+        async function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                await Notification.requestPermission();
+            }
         }
+        
+        // Função para mostrar notificação do navegador
+        function showBrowserNotification(orderId, customerName) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Novo Pedido!', {
+                    body: `#${orderId} - ${customerName}\nClique para visualizar`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/2331/2331966.png',
+                    tag: `pedido-${orderId}`,
+                    requireInteraction: true // Mantém a notificação até ser clicada
+                });
+            }
+        }
+        
+        // Função profissional para tocar som de alerta
+        function startNotificationLoop(orderId, customerName) {
+            // Para som anterior se estiver tocando
+            stopNotificationLoop();
+            
+            // Mostrar notificação do navegador
+            showBrowserNotification(orderId, customerName);
+            
+            isNotificationActive = true;
+            
+            // Toca o som imediatamente
+            playAlertSound();
+            
+            // Continua tocando a cada 3 segundos até ser reconhecido
+            notificationInterval = setInterval(() => {
+                if (isNotificationActive) {
+                    playAlertSound();
+                    
+                    // Vibra a cada ciclo no mobile
+                    if (navigator.vibrate) {
+                        navigator.vibrate([500, 300, 500, 300, 800]);
+                    }
+                }
+            }, 3000);
+            
+            // Pausa automático após 2 minutos para não incomodar demais
+            setTimeout(() => {
+                if (isNotificationActive) {
+                    stopNotificationLoop();
+                    console.log('Notificação pausada após 2 minutos');
+                }
+            }, 120000);
+        }
+        
+        // Para a notificação (quando o usuário visualiza)
+        function stopNotificationLoop() {
+            isNotificationActive = false;
+            
+            if (notificationInterval) {
+                clearInterval(notificationInterval);
+                notificationInterval = null;
+            }
+            
+            // Para o áudio
+            audio.pause();
+            audio.currentTime = 0;
+        }
+        
+        // Função para tocar o som
+        function playAlertSound() {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log("Audio bloqueado - interaja com a pagina primeiro"));
+        }
+        
+        // Função para testar o som
+        window.testNotificationSound = () => {
+            audio.volume = 1.0;
+            audio.currentTime = 0;
+            audio.play().then(() => {
+                Toastify({ 
+                    text: "Som de notificacao ativo!", 
+                    style: { background: "#10b981" },
+                    duration: 2000
+                }).showToast();
+            }).catch(e => {
+                Toastify({ 
+                    text: "Clique em qualquer lugar primeiro para ativar audio", 
+                    style: { background: "#f59e0b" },
+                    duration: 3000
+                }).showToast();
+            });
+        };
 
         // --- MOBILE MENU ---
         function toggleMobileMenu() {
@@ -924,7 +1008,7 @@
             let html = '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">';
             orders.forEach(order => {
                 if (order.status === 'pendente' && !knownOrders.has(order.id)) {
-                    playAlertSound();
+                    startNotificationLoop(order.id, order.customer_name);
                     knownOrders.add(order.id);
 
                     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -997,6 +1081,9 @@
         }
 
         async function updateStatus(id, status) {
+            // Para o som de notificação imediatamente
+            stopNotificationLoop();
+            
             await fetch(`/${TENANT_SLUG}/api/orders/${id}/update/`, { 
                 method: 'POST', 
                 headers: { 'X-CSRFToken': getCookie('csrftoken') },

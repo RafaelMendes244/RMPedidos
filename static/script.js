@@ -38,13 +38,13 @@ class PixPayload {
 
 // --- VARIÁVEIS GLOBAIS ---
 const CART_KEY = `carrinho_${window.TENANT_SLUG || 'padrao'}`;
-
 const HISTORY_KEY = `historico_${window.TENANT_SLUG || 'padrao'}`;
+const DELIVERY_KEY = `entrega_${window.TENANT_SLUG || 'padrao'}`;
 
 let IS_STORE_OPEN = true;
 
 let cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
-let isDelivery = true;
+let isDelivery = JSON.parse(localStorage.getItem(DELIVERY_KEY)) !== false; // true por padrão
 let valorFreteAtual = 0;
 
 // --- FUNÇÃO DE CÁLCULO DE TAXA DE ENTREGA (CORRIGIDA) ---
@@ -62,11 +62,11 @@ window.calcularTaxaEntrega = (bairroInput) => {
     
     if (taxaEncontrada) {
         valorFreteAtual = parseFloat(taxaEncontrada.fee);
-        Toastify({ text: `🚚 Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: "#ea580c" } }).showToast();
+        Toastify({ text: `Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: "#ea580c" } }).showToast();
     } else {
         // Se não achar o bairro exato, taxa a combinar
         valorFreteAtual = 0;
-        Toastify({ text: `⚠️ Bairro não tabelado. Taxa a combinar.`, style: { background: "#f59e0b" } }).showToast();
+        Toastify({ text: `Bairro nao tabelado. Taxa a combinar.`, style: { background: "#f59e0b" } }).showToast();
     }
     
     updateCartTotal();
@@ -76,6 +76,22 @@ window.calcularTaxaEntrega = (bairroInput) => {
 document.addEventListener('DOMContentLoaded', () => {
     updateCartCounter();
     setupEventListeners();
+    
+    // Inicializa estado dos botoes de entrega/retirada
+    const btnDel = document.getElementById("btn-delivery");
+    const btnPick = document.getElementById("btn-pickup");
+    if (isDelivery && btnDel && btnPick) {
+        btnDel.classList.add("bg-white", "text-orange-600");
+        btnDel.classList.remove("text-gray-500");
+        btnPick.classList.remove("bg-white", "text-orange-600");
+        btnPick.classList.add("text-gray-500");
+    } else if (!isDelivery && btnDel && btnPick) {
+        btnPick.classList.add("bg-white", "text-orange-600");
+        btnPick.classList.remove("text-gray-500");
+        btnDel.classList.remove("bg-white", "text-orange-600");
+        btnDel.classList.add("text-gray-500");
+    }
+    
     // Verificar status da loja
     if (typeof checkRestaurantOpen === 'function') {
         checkRestaurantOpen();
@@ -85,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- FUNÇÃO CENTRAL: FINALIZAR PEDIDO ---
 window.finalizeOrder = async () => {
     if (!IS_STORE_OPEN) {
-        Toastify({ text: "⛔ A loja está fechada no momento.", style: { background: "#ef4444" } }).showToast();
+        Toastify({ text: "A loja esta fechada no momento.", style: { background: "#ef4444" } }).showToast();
         return;
     }
 
@@ -98,17 +114,31 @@ window.finalizeOrder = async () => {
     
     // Calcula totais
     let totalProdutos = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
-    const totalFinal = totalProdutos + (isDelivery ? valorFreteAtual : 0);
+    let totalComFrete = totalProdutos + (isDelivery ? valorFreteAtual : 0);
+    
+    // Aplica desconto do cupom se existir
+    let discountAmount = 0;
+    let totalFinal = totalComFrete;
+    
+    if (appliedCoupon && appliedCoupon.discount_amount) {
+        discountAmount = appliedCoupon.discount_amount;
+        totalFinal = totalComFrete - discountAmount;
+        
+        // Garante que nao fique negativo
+        if (totalFinal < 0) totalFinal = 0;
+    }
     
     // Dados do Pedido
     const methodEl = document.querySelector('input[name="payment-method"]:checked');
-    const method = methodEl ? methodEl.value : "Dinheiro/Cartão";
+    const method = methodEl ? methodEl.value : "Dinheiro/Cartao";
     const obs = document.getElementById("order-notes").value;
 
     const orderData = {
         nome: nome,
         phone: phone,
         total: totalFinal,
+        original_total: totalComFrete,
+        discount_amount: discountAmount,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         method: method,
         obs: obs,
@@ -121,7 +151,7 @@ window.finalizeOrder = async () => {
         } : {}
     };
 
-    // --- DECISÃO DE FLUXO ---
+    // --- DECISAO DE FLUXO ---
     if (method === 'pix' && window.STORE_CONFIG.pixKey) {
         // FLUXO PIX: Mostrar Modal PRIMEIRO, Salvar DEPOIS
         const tempTxid = "PED" + Date.now().toString().slice(-6);
@@ -150,11 +180,12 @@ window.finalizeOrder = async () => {
                 <div class="text-center">
                     <p class="text-xs text-gray-400 font-bold uppercase mb-1">Valor Total</p>
                     <p class="text-2xl font-serif font-bold text-gray-800">R$ ${totalFinal.toFixed(2)}</p>
+                    ${discountAmount > 0 ? `<p class="text-xs text-green-600 font-bold">Desconto: -R$ ${discountAmount.toFixed(2)}</p>` : ''}
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: '✅ Já Paguei / Enviar',
-            cancelButtonText: '❌ Voltar / Cancelar',
+            confirmButtonText: 'Ja Paguei / Enviar',
+            cancelButtonText: 'Voltar / Cancelar',
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#ef4444',
             allowOutsideClick: false,
@@ -174,7 +205,7 @@ window.finalizeOrder = async () => {
         }
 
     } else {
-        // FLUXO CARTÃO/DINHEIRO: Salvar e Enviar direto
+        // FLUXO CARTAO/DINHEIRO: Salvar e Enviar direto
         btnFinalize.innerText = "Processando...";
         btnFinalize.disabled = true;
         processarSalvamento(orderData, btnFinalize, textoOriginal);
@@ -200,23 +231,21 @@ async function processarSalvamento(orderData, btn, txtOriginal) {
                 history.push(result.order_id);
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
             }
-            // Passa as informações do cupom aplicado para o WhatsApp
-            if (appliedCoupon && appliedCoupon.discount_amount > 0) {
-                // Calcula o total final com desconto
-                orderData.final_total = orderData.total - appliedCoupon.discount_amount;
+            
+            // Prepara dados do cupom para o WhatsApp
+            if (orderData.coupon_code && orderData.discount_amount > 0) {
                 orderData.appliedCoupon = {
-                    code: appliedCoupon.code,
-                    discount_amount: appliedCoupon.discount_amount
+                    code: orderData.coupon_code,
+                    discount_amount: orderData.discount_amount
                 };
             } else {
-                orderData.final_total = orderData.total;
                 orderData.appliedCoupon = null;
             }
             
             cart = [];
             saveCart();
             closeCart();
-            Toastify({ text: "Pedido Enviado! 🚀", style: { background: "#10b981" } }).showToast();
+            Toastify({ text: "Pedido Enviado!", style: { background: "#10b981" } }).showToast();
             sendToWhatsApp(orderData);
         } else {
             throw new Error(result.message || "Erro no servidor");
@@ -230,7 +259,7 @@ async function processarSalvamento(orderData, btn, txtOriginal) {
     }
 }
 
-// --- RESTANTE DAS FUNÇÕES (UTITILITÁRIOS) ---
+// --- RESTANTE DAS FUNÇÕES (UTITILITARIOS) ---
 
 window.copiarPix = () => {
     const copyText = document.getElementById("pix-copia-cola");
@@ -243,41 +272,39 @@ window.copiarPix = () => {
 
 function sendToWhatsApp(order) {
     const line = "━━━━━━━━━━━━━━━━━━━━";
-    // Usa o nome da loja ou fallback para o pixName
     const storeName = window.STORE_CONFIG.storeName || window.STORE_CONFIG.pixName || 'Loja';
-    let msg = `🍽️ *PEDIDO #${order.order_id}* | ${storeName}\n`;
+    let msg = `PEDIDO #${order.order_id} | ${storeName}\n`;
     msg += `${line}\n\n`;
-    msg += `👤 *Cliente:* ${order.nome}\n`;
-    msg += `📞 *Tel:* ${order.phone}\n\n`;
+    msg += `Cliente: ${order.nome}\n`;
+    msg += `Tel: ${order.phone}\n\n`;
     
-    msg += `🛒 *ITENS:*\n`;
+    msg += `ITENS:\n`;
     order.items.forEach(i => {
-        msg += `▪️ ${i.qtd}x ${i.name} - R$ ${(i.price * i.qtd).toFixed(2)}\n`;
+        msg += `${i.qtd}x ${i.name} - R$ ${(i.price * i.qtd).toFixed(2)}\n`;
         if(i.options && i.options.length > 0) {
-            msg += `   ╰ ➕ ${i.options.map(o => o.name).join(', ')}\n`;
+            msg += `   + ${i.options.map(o => o.name).join(', ')}\n`;
         }
-        if(i.obs) msg += `   ╰ 📝 ${i.obs}\n`;
+        if(i.obs) msg += `   Obs: ${i.obs}\n`;
     });
     
     if (Object.keys(order.address).length > 0) {
-        msg += `\n📍 *Entrega:* ${order.address.street}, ${order.address.number} - ${order.address.neighborhood}\n`;
-        if (valorFreteAtual > 0) msg += `🚚 Frete: R$ ${valorFreteAtual.toFixed(2)}\n`;
+        msg += `\nEntrega: ${order.address.street}, ${order.address.number} - ${order.address.neighborhood}\n`;
+        if (valorFreteAtual > 0) msg += `Frete: R$ ${valorFreteAtual.toFixed(2)}\n`;
     } else {
-        msg += `\n🏪 *Retirada no Balcão*\n`;
+        msg += `\nRetirada no Balcao\n`;
     }
     
-    // Mostrar informações do cupom se aplicado
+    // Mostrar informacoes do cupom se aplicado
     if (order.appliedCoupon && order.appliedCoupon.discount_amount > 0) {
-        msg += `\n🎫 *Cupom:* ${order.appliedCoupon.code}\n`;
-        msg += `   └ Desconto: -R$ ${order.appliedCoupon.discount_amount.toFixed(2)}\n`;
+        msg += `\nCupom: ${order.appliedCoupon.code}\n`;
+        msg += `   Desconto: -R$ ${order.appliedCoupon.discount_amount.toFixed(2)}\n`;
     }
     
-    // Usa o total com desconto se disponível, caso contrário usa o total normal
-    const totalExibir = order.final_total !== undefined ? order.final_total : order.total;
-    msg += `\n💰 *TOTAL: R$ ${totalExibir.toFixed(2)}*\n`;
-    msg += `💳 Pagamento: ${order.method.toUpperCase()}\n`;
+    // order.total ja vem com o desconto aplicado
+    msg += `\nTOTAL: R$ ${order.total.toFixed(2)}\n`;
+    msg += `Pagamento: ${order.method.toUpperCase()}\n`;
     
-    if (order.obs) msg += `\n⚠️ Obs: ${order.obs}`;
+    if (order.obs) msg += `\nObs: ${order.obs}`;
 
     const phoneStore = window.STORE_CONFIG.phone || "550000000000";
     const url = `https://api.whatsapp.com/send?phone=${phoneStore}&text=${encodeURIComponent(msg)}`;
@@ -291,7 +318,7 @@ window.showProductModal = (id) => {
     const product = window.PRODUCTS_DATA[id];
     if (!product) return;
     
-    // GERA O HTML DAS OPÇÕES
+    // GERA O HTML DAS OPCOES
     let optionsHtml = '';
     
     if (product.opcoes && product.opcoes.length > 0) {
@@ -301,7 +328,6 @@ window.showProductModal = (id) => {
                 const inputType = opt.type === 'radio' ? 'radio' : 'checkbox';
                 const inputName = opt.type === 'radio' ? `opt_${idx}` : `opt_${idx}[]`;
                 
-                // Formata preço (+ R$ 2,00 ou Grátis)
                 const priceText = item.price > 0 ? `+ R$ ${item.price.toFixed(2)}` : '';
                 
                 itemsHtml += `
@@ -322,15 +348,15 @@ window.showProductModal = (id) => {
                 <div class="mb-6">
                     <div class="flex justify-between items-end mb-3">
                         <h4 class="font-bold text-gray-800">${opt.title}</h4>
-                        ${opt.required ? '<span class="text-[10px] bg-gray-800 text-white px-2 py-0.5 rounded">OBRIGATÓRIO</span>' : '<span class="text-[10px] text-gray-400">OPCIONAL</span>'}
+                        ${opt.required ? '<span class="text-[10px] bg-gray-800 text-white px-2 py-0.5 rounded">OBRIGATORIO</span>' : '<span class="text-[10px] text-gray-400">OPCIONAL</span>'}
                     </div>
-                    ${opt.type === 'checkbox' && opt.max > 1 ? `<p class="text-xs text-gray-400 mb-2">Escolha até ${opt.max} opções</p>` : ''}
+                    ${opt.type === 'checkbox' && opt.max > 1 ? `<p class="text-xs text-gray-400 mb-2">Escolha ate ${opt.max} opcoes</p>` : ''}
                     <div class="space-y-1">${itemsHtml}</div>
                 </div>
             `;
         });
     } else { 
-        optionsHtml = '<p class="text-xs text-gray-400 italic mb-4">Sem opções adicionais.</p>'; 
+        optionsHtml = '<p class="text-xs text-gray-400 italic mb-4">Sem opcoes adicionais.</p>'; 
     }
     Swal.fire({
         title: `<span class="font-serif text-2xl text-gray-900 dark:text-white">${product.name}</span>`,
@@ -347,7 +373,7 @@ window.showProductModal = (id) => {
                 <p class="text-sm text-gray-500 mb-6 border-b border-orange-100 pb-4">${product.description || ''}</p>
                 <div class="max-h-[30vh] overflow-y-auto mb-4">${optionsHtml}</div>
                 <div class="mt-4">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Observações</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Observacoes</label>
                     <textarea id="modal-obs" class="w-full bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm resize-none" rows="2" placeholder="Ex: Sem cebola..."></textarea>
                 </div>
                 <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
@@ -356,7 +382,7 @@ window.showProductModal = (id) => {
                 </div>
             </div>
         `,
-        showCloseButton: true, showConfirmButton: true, confirmButtonText: 'ADICIONAR À SACOLA', confirmButtonColor: '#ea580c',
+        showCloseButton: true, showConfirmButton: true, confirmButtonText: 'ADICIONAR A SACOLA', confirmButtonColor: '#ea580c',
         showCancelButton: true, cancelButtonText: 'Voltar',
         customClass: { popup: 'rounded-3xl overflow-hidden shadow-2xl' },
         preConfirm: () => { 
@@ -364,7 +390,6 @@ window.showProductModal = (id) => {
             const selectedOptions = [];
             let extraPrice = 0;
             
-            // Captura todas as opções selecionadas (radio e checkbox)
             const checkedInputs = document.querySelectorAll('.swal2-popup input[type="radio"]:checked, .swal2-popup input[type="checkbox"]:checked');
             checkedInputs.forEach(input => {
                 const [name, price] = input.value.split('::');
@@ -399,7 +424,7 @@ function addToCart(product, obs, options, extraPrice) {
         });
     }
     saveCart();
-    Toastify({ text: "🍽️ Adicionado à sacola", style: { background: "#ea580c" } }).showToast();
+    Toastify({ text: "Adicionado a sacola", style: { background: "#ea580c" } }).showToast();
 }
 
 function saveCart() { 
@@ -426,7 +451,6 @@ window.renderCartItems = () => {
     container.classList.remove("hidden"); emptyMsg.classList.add("hidden"); if(btnNext) btnNext.classList.remove("hidden"); if(cartHeader) cartHeader.classList.remove("hidden");
 
     cart.forEach((item, idx) => {
-        // Renderiza opcionais selecionados
         let optionsHtml = '';
         if (item.options && item.options.length > 0) {
             optionsHtml = `<p class="text-[10px] text-orange-600 truncate">+ ${item.options.map(o => o.name).join(', ')}</p>`;
@@ -468,7 +492,6 @@ window.changeQtd = (i, d) => { if (d === -1 && cart[i].qtd === 1) { removeItem(i
 window.removeItem = (i) => {
     const item = cart[i];
     
-    // Usa o SweetAlert2 para criar um modal bonito e nativo
     Swal.fire({
         title: 'Remover item?',
         text: `Deseja retirar "${item.name}" da sacola?`,
@@ -478,17 +501,13 @@ window.removeItem = (i) => {
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Sim, remover',
         cancelButtonText: 'Cancelar',
-        width: 300 // Tamanho ideal para mobile
+        width: 300
     }).then((result) => {
         if (result.isConfirmed) {
-            // Animação de saída antes de remover (opcional, mas profissional)
             cart.splice(i, 1);
             saveCart();
             
-            // Se o carrinho ficar vazio, fecha o modal ou mostra mensagem
             if (cart.length === 0) {
-                // Opcional: fechar modal se esvaziar
-                // window.closeCart(); 
             }
             
             window.renderCartItems();
@@ -501,12 +520,23 @@ window.removeItem = (i) => {
     });
 };
 
-window.openCart = () => { document.getElementById("cart-modal").classList.remove("hidden"); document.body.classList.add("overflow-hidden"); window.renderCartItems(); document.getElementById("step-1-cart").classList.remove("hidden"); document.getElementById("step-2-address").classList.add("hidden"); document.getElementById("btn-finalize").classList.add("hidden"); document.getElementById("btn-next-step").classList.remove("hidden"); };
+window.openCart = () => { 
+    document.getElementById("cart-modal").classList.remove("hidden"); 
+    document.body.classList.add("overflow-hidden"); 
+    window.renderCartItems(); 
+    document.getElementById("step-1-cart").classList.remove("hidden"); 
+    document.getElementById("step-2-address").classList.add("hidden"); 
+    document.getElementById("btn-finalize").classList.add("hidden"); 
+    document.getElementById("btn-next-step").classList.remove("hidden"); 
+    
+    // Atualiza estado dos botoes de entrega/retirada ao abrir carrinho
+    updateDeliveryButtons();
+};
 window.closeCart = () => { document.getElementById("cart-modal").classList.add("hidden"); document.body.classList.remove("overflow-hidden"); };
 
 window.goToAddress = () => { 
     if (!IS_STORE_OPEN) {
-        Toastify({ text: "⛔ A loja está fechada no momento.", style: { background: "#ef4444" } }).showToast();
+        Toastify({ text: "A loja esta fechada no momento.", style: { background: "#ef4444" } }).showToast();
         return;
     } 
     if (cart.length === 0) 
@@ -520,24 +550,82 @@ window.goToAddress = () => {
 
 window.backToCart = () => { document.getElementById("step-2-address").classList.add("hidden"); document.getElementById("step-1-cart").classList.remove("hidden"); document.getElementById("btn-finalize").classList.add("hidden"); document.getElementById("btn-next-step").classList.remove("hidden"); };
 
+// Função centralizada para atualizar visual dos botões de entrega/retirada
+function updateDeliveryButtons() {
+    const btnDel = document.getElementById("btn-delivery");
+    const btnPick = document.getElementById("btn-pickup");
+    const addrCont = document.getElementById("address-container");
+
+    if (!btnDel || !btnPick) return;
+
+    if (isDelivery) {
+        btnDel.classList.add("bg-white", "text-orange-600");
+        btnDel.classList.remove("text-gray-500");
+        btnPick.classList.remove("bg-white", "text-orange-600");
+        btnPick.classList.add("text-gray-500");
+        if (addrCont) addrCont.classList.remove("hidden");
+    } else {
+        btnPick.classList.add("bg-white", "text-orange-600");
+        btnPick.classList.remove("text-gray-500");
+        btnDel.classList.remove("bg-white", "text-orange-600");
+        btnDel.classList.add("text-gray-500");
+        if (addrCont) addrCont.classList.add("hidden");
+    }
+}
+
 window.toggleDelivery = (val) => {
     isDelivery = val;
-    const btnDel = document.getElementById("btn-delivery"); const btnPick = document.getElementById("btn-pickup"); const addrCont = document.getElementById("address-container");
-    if (val) { btnDel.classList.replace("text-gray-500", "text-orange-600"); btnDel.classList.add("shadow"); btnPick.classList.replace("text-orange-600", "text-gray-500"); btnPick.classList.remove("shadow"); addrCont.classList.remove("hidden"); } 
-    else { btnPick.classList.replace("text-gray-500", "text-orange-600"); btnPick.classList.add("shadow"); btnDel.classList.replace("text-orange-600", "text-gray-500"); btnDel.classList.remove("shadow"); addrCont.classList.add("hidden"); valorFreteAtual = 0; }
+    localStorage.setItem(DELIVERY_KEY, JSON.stringify(val));
+    const btnDel = document.getElementById("btn-delivery");
+    const btnPick = document.getElementById("btn-pickup");
+    const addrCont = document.getElementById("address-container");
+    
+    if (val) {
+        // ENTREGA selecionado
+        btnDel.classList.add("bg-white", "text-orange-600");
+        btnDel.classList.remove("text-gray-500");
+        btnPick.classList.remove("bg-white", "text-orange-600");
+        btnPick.classList.add("text-gray-500");
+        addrCont.classList.remove("hidden");
+    } else {
+        // RETIRADA selecionado
+        btnPick.classList.add("bg-white", "text-orange-600");
+        btnPick.classList.remove("text-gray-500");
+        btnDel.classList.remove("bg-white", "text-orange-600");
+        btnDel.classList.add("text-gray-500");
+        addrCont.classList.add("hidden");
+        valorFreteAtual = 0;
+    }
     updateCartTotal();
 };
 
 function updateCartTotal() {
     let total = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
     if (isDelivery) total += valorFreteAtual;
+    
     const elFinal = document.getElementById("cart-total-final");
     const elPreview = document.getElementById("cart-total-preview");
-    if (elFinal) elFinal.innerText = `R$ ${total.toFixed(2)}`;
-    if (elPreview) elPreview.innerText = `R$ ${total.toFixed(2)}`;
+    const discountEl = document.getElementById("discount-display");
+    const discountAmountEl = document.getElementById("discount-amount");
+    
+    if (appliedCoupon) {
+        const finalWithDiscount = total - appliedCoupon.discount_amount;
+        
+        if (elFinal) elFinal.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
+        if (elPreview) elPreview.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
+        
+        if (discountEl) {
+            discountEl.classList.remove("hidden");
+            discountAmountEl.innerText = `-R$ ${appliedCoupon.discount_amount.toFixed(2)}`;
+        }
+    } else {
+        if (elFinal) elFinal.innerText = `R$ ${total.toFixed(2)}`;
+        if (elPreview) elPreview.innerText = `R$ ${total.toFixed(2)}`;
+        if (discountEl) discountEl.classList.add("hidden");
+    }
 }
 
-window.toggleFavorite = (id) => Toastify({ text: "❤️ Favoritado", style: { background: "#ea580c" } }).showToast();
+window.toggleFavorite = (id) => Toastify({ text: "Favoritado", style: { background: "#ea580c" } }).showToast();
 window.openStoreInfo = () => {
     document.getElementById("store-info-modal").classList.remove("hidden");
     document.body.classList.add("overflow-hidden");
@@ -548,7 +636,7 @@ window.closeStoreInfo = () => {
     document.body.classList.remove("overflow-hidden");
 };
 
-// CONFIGURAÇAO PARA HISTORICO DO CLIENTE
+// CONFIGURACAO PARA HISTORICO DO CLIENTE
 window.openHistory = async () => {
     const modal = document.getElementById("history-modal");
     const content = document.getElementById("history-content");
@@ -585,21 +673,18 @@ window.openHistory = async () => {
         const data = await response.json();
         
         if (data.status === 'success' && data.orders.length > 0) {
-            content.innerHTML = ''; // Limpa loading
+            content.innerHTML = '';
             
             data.orders.forEach(order => {
-                // CORES IDÊNTICAS AO PRINT (Bolinhas e Fundos)
                 let statusClass = "bg-gray-100 text-gray-600";
                 let iconClass = "fa-clock";
                 let statusText = order.status;
 
-                // Mapeamento de Cores para ficar igual ao estilo "App"
                 if(order.status_key === 'pendente') {
                     statusClass = "bg-orange-100 text-orange-600";
                     iconClass = "fa-circle-notch fa-spin";
                 }
                 else if(order.status_key === 'em_preparo') {
-                    // AZULZINHO (Igual da foto)
                     statusClass = "bg-blue-100 text-blue-600";
                     iconClass = "fa-fire"; 
                 }
@@ -616,7 +701,6 @@ window.openHistory = async () => {
                     iconClass = "fa-times-circle";
                 }
 
-                // Ícone de Tipo de Entrega (Igual da foto: cinza com ícone escuro)
                 const typeIcon = order.is_delivery 
                     ? `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
                         <i class="fas fa-motorcycle text-gray-800"></i> Entrega
@@ -625,7 +709,6 @@ window.openHistory = async () => {
                         <i class="fas fa-store text-gray-800"></i> Retirada
                         </div>`;
 
-                // TEMPLATE DO CARD (VISUAL CLEAN)
                 content.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 dark:border-gray-700 relative overflow-hidden">
                         
@@ -658,7 +741,7 @@ window.openHistory = async () => {
         }
     } catch (e) {
         console.error(e);
-        content.innerHTML = `<div class="text-center py-10 text-red-400">Erro de conexão.</div>`;
+        content.innerHTML = `<div class="text-center py-10 text-red-400">Erro de conexao.</div>`;
     }
 };
 
@@ -689,7 +772,6 @@ window.habilitarEnderecoManual = () => {
     document.getElementById("neighborhood").removeAttribute("readonly");
     document.getElementById("address").focus();
     
-    // Adiciona listener para calcular taxa quando digitar o bairro manualmente
     const neighborhoodInput = document.getElementById("neighborhood");
     neighborhoodInput.addEventListener('blur', () => {
         if (neighborhoodInput.value) {
@@ -708,8 +790,7 @@ function setupEventListeners() {
     });
 }
 
-// Verifica se a loja está aberta AGORA
-// Verifica se a loja está aberta AGORA
+// Verifica se a loja esta aberta AGORA
 function checkRestaurantOpen() {
     const statusEl = document.getElementById("status-text");
     const iconEl = document.getElementById("status-icon");
@@ -723,7 +804,7 @@ function checkRestaurantOpen() {
 
     const schedule = window.STORE_CONFIG?.schedule;
     if (!schedule || Object.keys(schedule).length === 0) {
-        setStatusOpen("ABERTO (Sem horário definido)");
+        setStatusOpen("ABERTO (Sem horario definido)");
         updateCheckoutButtons(true);
         return true;
     }
@@ -761,7 +842,7 @@ function checkRestaurantOpen() {
             if (verificarRegra(regraOntem)) {
                 let closeTime = regraOntem.close;
                 if (getMinutes(regraOntem.close) === 0) closeTime = "00:00";
-                setStatusOpen(`ABERTO • Fecha às ${closeTime}`);
+                setStatusOpen(`ABERTO - Fecha as ${closeTime}`);
                 updateCheckoutButtons(true);
                 return true;
             }
@@ -772,7 +853,7 @@ function checkRestaurantOpen() {
     if (verificarRegra(regraHoje)) {
         let closeTime = regraHoje.close;
         if (getMinutes(regraHoje.close) === 0) closeTime = "00:00";
-        setStatusOpen(`ABERTO • Fecha às ${closeTime}`);
+        setStatusOpen(`ABERTO - Fecha as ${closeTime}`);
         updateCheckoutButtons(true);
         return true;
     }
@@ -781,7 +862,7 @@ function checkRestaurantOpen() {
     if (regraHoje && !regraHoje.closed && regraHoje.open) {
         const openMin = getMinutes(regraHoje.open);
         if (horaAtualMin < openMin) {
-            msg = `FECHADO AGORA - ABRE ÀS ${regraHoje.open}`;
+            msg = `FECHADO AGORA - ABRE AS ${regraHoje.open}`;
         }
     }
     setStatusClosed(msg);
@@ -811,7 +892,7 @@ function setStatusOpen(msg) {
 setInterval(checkRestaurantOpen, 60000);
 
 // ========================
-// FUNÇÕES DE CUPOM DE DESCONTO
+// FUNCOES DE CUPOM DE DESCONTO
 // ========================
 
 let appliedCoupon = null;
@@ -824,11 +905,10 @@ window.applyCoupon = async () => {
     
     const code = codeInput.value.trim().toUpperCase();
     if (!code) {
-        showCouponMessage("Digite um código de cupom", "error");
+        showCouponMessage("Digite um codigo de cupom", "error");
         return;
     }
     
-    // Calcula o valor atual dos produtos (sem frete)
     let subtotal = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
     
     try {
@@ -847,24 +927,20 @@ window.applyCoupon = async () => {
         const result = await response.json();
         
         if (result.status === 'success') {
-            // Cupom válido!
             appliedCoupon = {
                 code: result.coupon.code,
                 discount_amount: result.coupon.discount_amount,
                 final_value: result.coupon.final_value
             };
             
-            // Atualiza UI
             codeInput.value = '';
             appliedEl.classList.remove('hidden');
             codeDisplay.innerText = result.coupon.code;
             
             showCouponMessage(`${result.coupon.description || 'Cupom aplicado!'} (-R$ ${result.coupon.discount_amount.toFixed(2)})`, "success");
             
-            // Atualiza o total
             updateCartTotal();
         } else {
-            // Cupom inválido
             appliedCoupon = null;
             appliedEl.classList.add('hidden');
             showCouponMessage(result.message, "error");
@@ -894,62 +970,29 @@ function showCouponMessage(msg, type) {
     }
 }
 
-// Sobrescreve updateCartTotal para considerar desconto do cupom
-const originalUpdateCartTotal = updateCartTotal;
-updateCartTotal = function() {
-    let total = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
-    if (isDelivery) total += valorFreteAtual;
-    
-    const elFinal = document.getElementById("cart-total-final");
-    const elPreview = document.getElementById("cart-total-preview");
-    const discountEl = document.getElementById("discount-display");
-    const discountAmountEl = document.getElementById("discount-amount");
-    
-    if (appliedCoupon) {
-        const finalWithDiscount = total - appliedCoupon.discount_amount;
-        
-        if (elFinal) elFinal.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
-        if (elPreview) elPreview.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
-        
-        if (discountEl) {
-            discountEl.classList.remove('hidden');
-            discountAmountEl.innerText = `-R$ ${appliedCoupon.discount_amount.toFixed(2)}`;
-        }
-    } else {
-        if (elFinal) elFinal.innerText = `R$ ${total.toFixed(2)}`;
-        if (elPreview) elPreview.innerText = `R$ ${total.toFixed(2)}`;
-        if (discountEl) discountEl.classList.add('hidden');
-    }
-};
-
 function updateCheckoutButtons(isOpen) {
-    IS_STORE_OPEN = isOpen; // Atualiza o estado global
+    IS_STORE_OPEN = isOpen;
     
     const btnNext = document.getElementById("btn-next-step");
     const btnFinalize = document.getElementById("btn-finalize");
     
-    // Lista de botões para aplicar a lógica
     const buttons = [btnNext, btnFinalize];
 
     buttons.forEach(btn => {
         if (!btn) return;
 
         if (isOpen) {
-            // Lógica para quando a loja está ABERTA
             btn.disabled = false;
             btn.classList.remove("bg-gray-400", "cursor-not-allowed");
             
-            // Restaura as cores originais baseadas no ID do botão
             if (btn.id === "btn-next-step") {
                 btn.classList.add("bg-orange-600", "hover:bg-orange-700");
                 btn.innerText = "Continuar";
             } else {
                 btn.classList.add("bg-green-600", "hover:bg-green-700");
-                // Mantém o texto original do finalizar se não estivermos alterando
                 if(btn.innerText === "Loja Fechada") btn.innerText = "Finalizar Pedido no WhatsApp";
             }
         } else {
-            // Lógica para quando a loja está FECHADA
             btn.disabled = true;
             btn.classList.remove("bg-orange-600", "hover:bg-orange-700", "bg-green-600", "hover:bg-green-700");
             btn.classList.add("bg-gray-400", "cursor-not-allowed");
@@ -963,7 +1006,7 @@ window.clearCart = () => {
     
     Swal.fire({
         title: 'Esvaziar sacola?',
-        text: "Todos os itens serão removidos.",
+        text: "Todos os itens serao removidos.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -975,7 +1018,7 @@ window.clearCart = () => {
             cart = [];
             saveCart();
             window.renderCartItems();
-            window.closeCart(); // Opcional
+            window.closeCart();
             Toastify({ text: "Sacola limpa!", style: { background: "#ef4444" } }).showToast();
         }
     });

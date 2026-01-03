@@ -528,7 +528,7 @@ def api_customer_history(request, slug):
                     'total': float(order.total_value),
                     'date': timezone.localtime(order.created_at).strftime('%d/%m %H:%M'),
                     'items_summary': ', '.join(items_str),
-                    'is_delivery': True if order.delivery_fee > 0 else False
+                    'is_delivery': True if order.address_street else False
                 })
                 
             return JsonResponse({'status': 'success', 'orders': history_data})
@@ -834,7 +834,7 @@ def signup(request):
             logger.info(f"Nova loja criada: {tenant.name} (slug: {tenant.slug})")
             
             # 4. Criar Categorias de Exemplo
-            Category.objects.create(tenant=tenant, name="Lanches", order=1)
+            Category.objects.create(tenant=tenant, name="Destaques", order=1)
             Category.objects.create(tenant=tenant, name="Bebidas", order=2)
 
             # 5. Logar e Redirecionar
