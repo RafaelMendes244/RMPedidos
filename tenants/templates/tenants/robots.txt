@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admindegeral/
+Disallow: /painel/
+Disallow: /*/painel/
+Disallow: /api/
+Allow: /
+
+Sitemap: https://rmpedidos.online/sitemap.xml

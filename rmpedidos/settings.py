@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'storages',
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
     'tenants',
 ]
 
@@ -213,3 +215,5 @@ LOGIN_REDIRECT_URL = 'home'
 
 # Ao sair, manda pra cá:
 LOGOUT_REDIRECT_URL = 'custom_login'
+
+SITE_ID = 1

@@ -4,8 +4,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RMPedidos | Cardápio Digital Sem Comissões - Aumente suas Vendas em 300%</title>
-    <meta name="description" content="Pare de perder dinheiro com taxas abusivas. Crie seu cardápio digital em 30 segundos e receba pedidos direto no WhatsApp com PIX automático. Sem mensalidade, sem comissão.">
+    
+    <title>RMPedidos | Cardápio Digital Grátis e Sem Comissões</title>
+    <meta name="description" content="Crie seu cardápio digital em 30 segundos. Receba pedidos no WhatsApp com PIX automático. Sistema de delivery completo e sem taxas para restaurantes.">
+    <meta name="keywords" content="cardápio digital, cardapio whatsapp, sistema delivery, pedidos online, rmpedidos, cardapio pix">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://rmpedidos.online/">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://rmpedidos.online/">
+    <meta property="og:title" content="RMPedidos | Pare de pagar taxas em pedidos">
+    <meta property="og:description" content="Automatize seu delivery. Pedidos no WhatsApp + PIX Automático. Comece Grátis hoje!">
+    <meta property="og:image" content="https://rmpedidos.online/static/img/og-social.png"> <meta property="og:locale" content="pt_BR">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="RMPedidos | Cardápio Digital">
+    <meta name="twitter:description" content="Automatize seu delivery sem pagar comissões.">
+    
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "RMPedidos",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "BRL"
+        },
+        "description": "Sistema de cardápio digital para delivery via WhatsApp com pagamentos PIX automatizados."
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -113,6 +144,10 @@
             visibility: visible;
             transform: translateY(0);
         }
+
+        /* ESTILO DOS DEPOIMENTOS */
+        .testimonial-card { transition: transform 0.3s ease; }
+        .testimonial-card:hover { transform: translateY(-5px); }
     </style>
 </head>
 <body class="bg-white text-slate-800">
@@ -561,6 +596,75 @@
                         <div class="text-center p-4 bg-green-500/10 rounded-xl border border-green-500/20">
                             <p class="text-xs text-slate-400 mb-1">Você economiza:</p>
                             <p class="text-xl md:text-2xl font-black text-green-400" id="savings">R$ 3.000</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sessao de Depoimentos -->
+    <section id="depoimentos" class="py-16 md:py-24 bg-slate-50 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-orange-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-blue-100 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16">
+                <span class="text-orange-600 font-bold tracking-wider uppercase text-sm">Depoimentos</span>
+                <h2 class="text-3xl md:text-5xl font-black text-slate-900 mt-2 mb-4">
+                    Quem usa, <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">recomenda</span>
+                </h2>
+                <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+                    Junte-se a centenas de donos de delivery que transformaram a gestão de seus pedidos.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-2xl shadow-lg shadow-slate-200/50 testimonial-card border border-slate-100">
+                    <div class="flex items-center gap-1 text-yellow-400 mb-4 text-sm">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-slate-700 italic mb-6 leading-relaxed">"Eu pagava quase 2 mil reais por mês de comissão para os apps. Com o RMPedidos, economizo tudo isso e ainda tenho o dinheiro na hora via PIX. Mudou minha pizzaria!"</p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-200 rounded-full overflow-hidden">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Carlos" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900">Carlos Eduardo</h4>
+                            <p class="text-xs text-slate-500">Dono da Pizzaria Bella</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-2xl shadow-xl shadow-orange-500/10 testimonial-card border border-orange-100 relative">
+                    <div class="absolute -top-4 right-8 bg-orange-600 text-white text-xs font-bold px-3 py-1 rounded-full">Destaque</div>
+                    <div class="flex items-center gap-1 text-yellow-400 mb-4 text-sm">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-slate-700 italic mb-6 leading-relaxed">"O que eu mais gosto é a simplicidade. Montei meu cardápio em 10 minutos. O cliente clica, pede e já chega tudo pronto no WhatsApp. Sem erro, sem confusão."</p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-200 rounded-full overflow-hidden">
+                            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Ana" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900">Ana Clara</h4>
+                            <p class="text-xs text-slate-500">Doceria da Ana</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-2xl shadow-lg shadow-slate-200/50 testimonial-card border border-slate-100">
+                    <div class="flex items-center gap-1 text-yellow-400 mb-4 text-sm">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-slate-700 italic mb-6 leading-relaxed">"A função de imprimir o pedido direto na cozinha agilizou muito nosso atendimento. E o melhor: o suporte do Rafael é nota 10. Recomendo demais!"</p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-200 rounded-full overflow-hidden">
+                            <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="Roberto" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900">Roberto Santos</h4>
+                            <p class="text-xs text-slate-500">Hamburgueria Brasa</p>
                         </div>
                     </div>
                 </div>
