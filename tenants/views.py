@@ -1283,7 +1283,7 @@ def termos_de_uso(request):
     context = {
         'tenant': {
             'name': 'RM Pedidos',
-            'phone_whatsapp': '(83) 98855-3366',
+            'phone_whatsapp': '(83) 92000-6113',
         }
     }
     return render(request, 'tenants/termos.html', context)
