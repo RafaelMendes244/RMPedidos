@@ -6,14 +6,14 @@ from .models import Tenant, Category, Product, Order, OrderItem, OperatingDay, D
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'domain', 'phone_whatsapp', 'owner', 'is_open')
-    search_fields = ('name', 'slug', 'domain')
+    list_display = ('name', 'slug', 'custom_domain', 'phone_whatsapp', 'owner', 'is_open')
+    search_fields = ('name', 'slug', 'custom_domain')
     list_filter = ('is_open', 'manual_override')
     autocomplete_fields = ['owner']
 
     fieldsets = (
         ('Informações Principais', {
-            'fields': ('name', 'slug', 'domain', 'owner')
+            'fields': ('name', 'slug', 'custom_domain', 'owner')
         }),
         ('Imagens da Loja', {
             'fields': ('logo', 'background_image'),
