@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidade | RMPedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+        .accent-gradient { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%);
+        }
+        html { scroll-behavior: smooth; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16 md:h-20">
+                <a href="/" class="flex items-center gap-2 md:gap-3 group">
+                    <div class="w-10 h-10 md:w-12 md:h-12 accent-gradient rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 transition-all duration-300 group-hover:scale-110">
+                        <i class="fas fa-utensils text-white text-lg md:text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-black text-lg md:text-xl tracking-tight text-slate-900">RMPedidos</span>
+                        <span class="text-[10px] md:text-xs text-orange-600 font-semibold -mt-1">Cardápio Digital</span>
+                    </div>
+                </a>
+                
+                <a href="/" class="px-4 md:px-6 py-2 md:py-3 accent-gradient text-white text-xs md:text-sm font-bold rounded-xl shadow-lg hover:scale-105 transition-all duration-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-16 accent-gradient">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-block mb-4">
+                <div class="px-4 py-2 bg-white/20 backdrop-blur rounded-full">
+                    <span class="text-xs md:text-sm font-bold text-white">
+                        <i class="fas fa-shield-alt mr-2"></i>Atualizado em 31/12/2024
+                    </span>
+                </div>
+            </div>
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 fade-in">
+                Política de Privacidade
+            </h1>
+            <p class="text-lg md:text-xl text-orange-100 max-w-2xl mx-auto fade-in">
+                Sua privacidade é nossa prioridade. Veja como protegemos seus dados.
+            </p>
+        </div>
+    </section>
+
+    <!-- Conteúdo -->
+    <section class="py-16 md:py-24">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-200 p-6 md:p-12 fade-in">
+                
+                <!-- Introdução -->
+                <div class="mb-12">
+                    <div class="flex items-start gap-4 mb-6">
+                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user-shield text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-3">Compromisso com sua Privacidade</h2>
+                            <p class="text-slate-600 leading-relaxed">
+                                A RMPedidos está comprometida em proteger a privacidade e os dados pessoais de nossos usuários. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e compartilhamos informações, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018).
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+                        <p class="text-sm text-blue-900">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Ao utilizar nossa plataforma, você concorda com a coleta e uso de informações conforme descrito nesta política.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Seção 1 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">1</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Dados que Coletamos</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">1.1. Dados Fornecidos por Você (Lojistas):</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Cadastro:</strong> Nome da loja, e-mail, senha, telefone/WhatsApp</li>
+                            <li><strong>Configurações:</strong> Endereço, horários de funcionamento, chave PIX, logo, cores da marca</li>
+                            <li><strong>Produtos:</strong> Nomes, descrições, preços, fotos dos produtos</li>
+                            <li><strong>Cupons:</strong> Códigos promocionais e regras de desconto</li>
+                        </ul>
+
+                        <p class="mt-4"><strong class="text-slate-900">1.2. Dados de Clientes Finais (coletados através de pedidos):</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Nome completo</li>
+                            <li>Telefone para contato</li>
+                            <li>Endereço de entrega (CEP, rua, número, bairro)</li>
+                            <li>Observações sobre o pedido</li>
+                        </ul>
+
+                        <p class="mt-4"><strong class="text-slate-900">1.3. Dados Coletados Automaticamente:</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Informações de Acesso:</strong> Endereço IP, tipo de navegador, sistema operacional, data e hora de acesso</li>
+                            <li><strong>Cookies:</strong> Para melhorar experiência e manter sessão ativa</li>
+                            <li><strong>Logs do Sistema:</strong> Atividades na plataforma para fins de segurança e melhorias</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Seção 2 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">2</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Como Usamos seus Dados</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p>Utilizamos os dados coletados para as seguintes finalidades:</p>
+                        
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="font-semibold text-slate-900 mb-2"><i class="fas fa-check-circle text-green-500 mr-2"></i>Fornecer e Melhorar Serviços:</p>
+                            <ul class="list-disc pl-6 space-y-1 text-sm">
+                                <li>Criar e gerenciar sua conta</li>
+                                <li>Processar e exibir cardápios digitais</li>
+                                <li>Facilitar recebimento e gestão de pedidos</li>
+                                <li>Gerar QR Codes PIX para pagamentos</li>
+                                <li>Enviar notificações sobre novos pedidos</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="font-semibold text-slate-900 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>Análises e Melhorias:</p>
+                            <ul class="list-disc pl-6 space-y-1 text-sm">
+                                <li>Entender como usuários interagem com a plataforma</li>
+                                <li>Identificar e corrigir problemas técnicos</li>
+                                <li>Desenvolver novos recursos e funcionalidades</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="font-semibold text-slate-900 mb-2"><i class="fas fa-envelope text-purple-500 mr-2"></i>Comunicação:</p>
+                            <ul class="list-disc pl-6 space-y-1 text-sm">
+                                <li>Enviar atualizações sobre a plataforma</li>
+                                <li>Responder dúvidas e fornecer suporte técnico</li>
+                                <li>Informar sobre mudanças nos termos ou políticas</li>
+                                <li>Enviar e-mails promocionais (com opção de descadastro)</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="font-semibold text-slate-900 mb-2"><i class="fas fa-shield-alt text-red-500 mr-2"></i>Segurança e Conformidade:</p>
+                            <ul class="list-disc pl-6 space-y-1 text-sm">
+                                <li>Prevenir fraudes e atividades maliciosas</li>
+                                <li>Garantir segurança da plataforma</li>
+                                <li>Cumprir obrigações legais e regulatórias</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 3 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">3</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Compartilhamento de Dados</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">3.1.</strong> Não vendemos seus dados pessoais a terceiros.</p>
+                        <p><strong class="text-slate-900">3.2.</strong> Podemos compartilhar dados nas seguintes situações:</p>
+                        
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Com Você (Lojista):</strong> Dados de clientes finais são compartilhados com você para processar pedidos</li>
+                            <li><strong>Prestadores de Serviço:</strong> Empresas que ajudam a operar a plataforma (hospedagem, e-mail, análises). Esses parceiros têm acesso limitado e são obrigados a manter confidencialidade</li>
+                            <li><strong>Integrações:</strong> WhatsApp (para envio de pedidos), bancos (para geração de PIX)</li>
+                            <li><strong>Obrigações Legais:</strong> Quando exigido por lei, ordem judicial ou autoridades competentes</li>
+                            <li><strong>Proteção de Direitos:</strong> Para proteger direitos, propriedade ou segurança da RMPedidos, usuários ou público</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Seção 4 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">4</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Armazenamento e Segurança</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">4.1. Armazenamento:</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Dados são armazenados em servidores seguros no Brasil ou em data centers certificados</li>
+                            <li>Mantemos seus dados pelo tempo necessário para fornecer serviços ou conforme exigido por lei</li>
+                            <li>Após encerramento de conta, dados podem ser retidos por período adicional para cumprimento de obrigações legais</li>
+                        </ul>
+
+                        <p class="mt-4"><strong class="text-slate-900">4.2. Medidas de Segurança:</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Criptografia SSL/TLS para transmissão de dados</li>
+                            <li>Senhas armazenadas com hash seguro</li>
+                            <li>Controles de acesso rigorosos</li>
+                            <li>Monitoramento constante de atividades suspeitas</li>
+                            <li>Backups regulares para prevenção de perda de dados</li>
+                        </ul>
+
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg mt-4">
+                            <p class="text-sm text-yellow-900">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Importante:</strong> Nenhum método de transmissão pela internet é 100% seguro. Embora nos esforcemos para proteger seus dados, não podemos garantir segurança absoluta.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 5 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">5</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Seus Direitos (LGPD)</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p>Conforme a LGPD, você tem os seguintes direitos sobre seus dados pessoais:</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-eye text-blue-500"></i>Acesso
+                                </h4>
+                                <p class="text-sm">Confirmar se tratamos seus dados e acessá-los</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-edit text-green-500"></i>Correção
+                                </h4>
+                                <p class="text-sm">Corrigir dados incompletos ou desatualizados</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-trash text-red-500"></i>Exclusão
+                                </h4>
+                                <p class="text-sm">Solicitar exclusão de dados desnecessários</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-ban text-orange-500"></i>Oposição
+                                </h4>
+                                <p class="text-sm">Opor-se a tratamento realizado com base em interesse legítimo</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-download text-purple-500"></i>Portabilidade
+                                </h4>
+                                <p class="text-sm">Solicitar portabilidade de dados a outro fornecedor</p>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-times-circle text-slate-500"></i>Revogação
+                                </h4>
+                                <p class="text-sm">Revogar consentimento a qualquer momento</p>
+                            </div>
+                        </div>
+
+                        <p class="mt-4"><strong class="text-slate-900">Como Exercer Seus Direitos:</strong> Entre em contato através dos canais indicados no final desta política.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 6 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">6</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Cookies e Tecnologias Similares</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">6.1.</strong> Utilizamos cookies e tecnologias similares para:</p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Cookies Essenciais:</strong> Necessários para funcionamento da plataforma (login, sessão)</li>
+                            <li><strong>Cookies de Desempenho:</strong> Coletam informações sobre como você usa a plataforma</li>
+                            <li><strong>Cookies de Funcionalidade:</strong> Lembram suas preferências e configurações</li>
+                        </ul>
+                        <p><strong class="text-slate-900">6.2.</strong> Você pode gerenciar cookies através das configurações do seu navegador, mas isso pode afetar funcionalidades da plataforma.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 7 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">7</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Menores de Idade</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p>A plataforma RMPedidos não é destinada a menores de 18 anos. Não coletamos intencionalmente dados de menores sem consentimento dos pais ou responsáveis. Se identificarmos coleta inadvertida, os dados serão excluídos imediatamente.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 8 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">8</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Alterações nesta Política</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">8.1.</strong> Podemos atualizar esta Política de Privacidade periodicamente para refletir mudanças em nossas práticas ou requisitos legais.</p>
+                        <p><strong class="text-slate-900">8.2.</strong> Alterações significativas serão comunicadas por e-mail ou aviso na plataforma.</p>
+                        <p><strong class="text-slate-900">8.3.</strong> Recomendamos revisar esta política regularmente para se manter informado.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 9 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">9</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Encarregado de Dados (DPO)</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p>Designamos um Encarregado de Proteção de Dados (DPO) para atuar como canal de comunicação entre você, a RMPedidos e a Autoridade Nacional de Proteção de Dados (ANPD).</p>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-4">
+                            <p class="text-sm">
+                                <strong class="text-slate-900">Contato do DPO:</strong><br>
+                                <i class="fas fa-envelope text-orange-600 mr-2"></i><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ff9b8f90bf8d928f9a9b969b908cd19c9092d19d8d">[email&#160;protected]</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contato -->
+                <div class="mt-12 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <i class="fas fa-comments text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-slate-900 mb-2">Entre em Contato</h4>
+                            <p class="text-slate-600 mb-4">
+                                Para questões sobre privacidade, exercer seus direitos ou relatar incidentes de segurança:
+                            </p>
+                            <div class="space-y-2 text-sm">
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fas fa-envelope text-blue-600"></i>
+                                    <strong>Email Geral:</strong> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f794989983968398b7859a8792939e939884d994989ad99585">[email&#160;protected]</a>
+                                </p>
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fas fa-shield-alt text-blue-600"></i>
+                                    <strong>Email DPO:</strong> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d6b2a6b996a4bba6b3b2bfb2b9a5f8b5b9bbf8b4a4">[email&#160;protected]</a>
+                                </p>
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fab fa-whatsapp text-blue-600"></i>
+                                    <strong>WhatsApp:</strong> (83) 9999-9999
+                                </p>
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fas fa-map-marker-alt text-blue-600"></i>
+                                    <strong>Endereço:</strong> João Pessoa, Paraíba, BR
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumo Visual -->
+                <div class="mt-12 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl p-6 border border-orange-200">
+                    <h4 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i class="fas fa-lightbulb text-orange-600"></i>
+                        Resumo: Nossa Promessa de Privacidade
+                    </h4>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow">
+                                <i class="fas fa-lock text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-slate-900">Proteção Total</p>
+                                <p class="text-xs text-slate-600">Seus dados com segurança máxima</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow">
+                                <i class="fas fa-ban text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-slate-900">Sem Venda</p>
+                                <p class="text-xs text-slate-600">Nunca vendemos seus dados</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow">
+                                <i class="fas fa-balance-scale text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-slate-900">Transparência</p>
+                                <p class="text-xs text-slate-600">Você controla seus dados</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 accent-gradient rounded-xl flex items-center justify-center">
+                        <i class="fas fa-utensils text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg text-white">RMPedidos</span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-6 text-sm">
+                    <a href="/" class="hover:text-orange-400 transition-colors">Início</a>
+                    <a href="/termos" class="hover:text-orange-400 transition-colors">Termos de Uso</a>
+                    <a href="/privacidade" class="hover:text-orange-400 transition-colors">Privacidade</a>
+                    <a href="#" class="hover:text-orange-400 transition-colors">Contato</a>
+                </div>
+                <p class="text-sm">© 2025 RMPedidos. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

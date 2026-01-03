@@ -1,0 +1,279 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+class Tenant(models.Model):
+    # NOME DA LOJA E SUBDOMINIO
+    name = models.CharField(max_length=100, verbose_name="Nome da Loja")
+    slug = models.SlugField(unique=True, verbose_name="Link da Loja (Slug)", help_text="Ex: brasaburguer (será usado na URL)")
+
+    # DOMINIO PERSONALIZADO
+    custom_domain = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        unique=True, 
+        verbose_name="Domínio Personalizado",
+        help_text="Ex: pizzariadoze.com.br (sem http:// ou www)"
+    )
+
+    # VINCULO DE DONO
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tenants', verbose_name="Dono da Loja", null=True, blank=True)
+    
+    # Customização Visual
+    primary_color = models.CharField(max_length=7, default="#000000", verbose_name="Cor Primária", help_text="Cor Hex. Ex: #FF0000")
+    background_image = models.ImageField(upload_to='tenants_bg/', blank=True, null=True, verbose_name="Imagem de Fundo")
+    logo = models.ImageField(upload_to='tenants_logo/', blank=True, null=True, verbose_name="Logotipo")
+
+    # CONFIGURAÇOES DE PIX, HORARIO E LOCALIZAÇAO
+    pix_key = models.CharField(max_length=100, blank=True, null=True, verbose_name="Chave PIX")
+    pix_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nome Titular PIX")
+    pix_city = models.CharField(max_length=100, blank=True, null=True, verbose_name="Cidade PIX")
+    
+    # CONFIGURAÇÃO DE ENDEREÇO
+    address = models.TextField(blank=True, null=True, verbose_name="Endereço Completo")
+
+    # ABERTO/FECHADO
+    is_open = models.BooleanField(default=True, verbose_name="Loja Aberta?")
+    
+    # Override Manual - Indica que o lojista fechou a loja manualmente
+    # Quando True, a loja NÃO abre automaticamente (mesmo que o horário permita)
+    manual_override = models.BooleanField(default=False, verbose_name="Fechamento Manual?")
+    
+    # Contato
+    phone_whatsapp = models.CharField(max_length=20, verbose_name="WhatsApp", help_text="Apenas números com DDD")
+
+    class Meta:
+        verbose_name = "Loja"
+        verbose_name_plural = "Lojas"
+
+    def __str__(self):
+        return self.name
+
+class Category(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='categories', verbose_name="Loja")
+    name = models.CharField(max_length=100, verbose_name="Nome da Categoria")
+    order = models.IntegerField(default=0, verbose_name="Ordem", help_text="Ordem de exibição no cardápio")
+
+    class Meta:
+        verbose_name = "Categoria"
+        verbose_name_plural = "Categorias"
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return f"{self.name} - {self.tenant.name}"
+
+class Product(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='products', verbose_name="Loja")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', verbose_name="Categoria")
+    name = models.CharField(max_length=200, verbose_name="Nome do Produto")
+    description = models.TextField(blank=True, verbose_name="Descrição")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço")
+
+    original_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Preço Original (De)")
+    badge = models.CharField(max_length=50, blank=True, null=True, verbose_name="Etiqueta (Ex: Mais Vendido)")
+
+    image = models.ImageField(upload_to='products/', blank=True, null=True, verbose_name="Foto do Produto")
+    is_available = models.BooleanField(default=True, verbose_name="Disponível?")
+
+    class Meta:
+        verbose_name = "Produto"
+        verbose_name_plural = "Produtos"
+
+    def __str__(self):
+        return self.name
+    
+# Estrutura de Pedidos
+class Order(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('em_preparo', 'Em Preparo'),
+        ('saiu_entrega', 'Saiu para Entrega'),
+        ('concluido', 'Concluído'),
+        ('cancelado', 'Cancelado'),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
+    customer_name = models.CharField(max_length=100, verbose_name="Nome do Cliente")
+    customer_phone = models.CharField(max_length=20, verbose_name="Telefone")
+    
+    # Endereço (pode ser null se for retirada)
+    address_cep = models.CharField(max_length=10, blank=True, null=True)
+    address_street = models.CharField(max_length=200, blank=True, null=True)
+    address_number = models.CharField(max_length=20, blank=True, null=True)
+    address_neighborhood = models.CharField(max_length=100, blank=True, null=True)
+    
+    payment_method = models.CharField(max_length=50, verbose_name="Forma de Pagamento")
+    total_value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor Total")
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Taxa Entrega")
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Desconto")
+    coupon = models.ForeignKey('Coupon', on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name="Cupom Usado")
+    is_printed = models.BooleanField(default=False, verbose_name="Impresso?")
+    observation = models.TextField(blank=True, null=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data do Pedido")
+
+    class Meta:
+        verbose_name = "Pedido"
+        verbose_name_plural = "Pedidos"
+        ordering = ['-created_at'] # Mais recentes primeiro
+
+    def __str__(self):
+        return f"Pedido #{self.id} - {self.customer_name}"
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product_name = models.CharField(max_length=200) # Salvamos o nome caso o produto seja deletado depois
+    quantity = models.IntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2) # Preço no momento da compra
+    observation = models.CharField(max_length=200, blank=True, null=True)
+    options_text = models.TextField(blank=True, null=True, verbose_name="Opcionais Selecionados") # Ex: "Bacon, Queijo Extra"
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product_name}"
+    
+# CONFIGURAÇAO DE HORARIOS DE FUNCIONAMENTO
+class OperatingDay(models.Model):
+    DAYS = [
+        (0, 'Domingo'), (1, 'Segunda'), (2, 'Terça'), (3, 'Quarta'),
+        (4, 'Quinta'), (5, 'Sexta'), (6, 'Sábado')
+    ]
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='operating_days')
+    day = models.IntegerField(choices=DAYS)
+    open_time = models.TimeField(null=True, blank=True, verbose_name="Abertura")
+    close_time = models.TimeField(null=True, blank=True, verbose_name="Fechamento")
+    is_closed = models.BooleanField(default=False, verbose_name="Fechado neste dia?")
+
+    class Meta:
+        unique_together = ('tenant', 'day') # Garante que só tenha 1 regra por dia
+        ordering = ['day']
+
+    def __str__(self):
+        return f"{self.tenant.name} - {self.get_day_display()}"
+    
+
+# CONFIGURAÇAO DE TAXAS DE ENTREGA
+class DeliveryFee(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='delivery_fees')
+    neighborhood = models.CharField(max_length=100, verbose_name="Bairro")
+    fee = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Taxa de Entrega")
+
+    def __str__(self):
+        return f"{self.neighborhood} - R$ {self.fee}"
+
+    class Meta:
+        # Garante que não haja bairros duplicados na mesma loja
+        unique_together = ('tenant', 'neighborhood')
+
+# CONFIGURAÇAO DE ADICIONAIS
+class ProductOption(models.Model):
+    TYPE_CHOICES = [
+        ('radio', 'Escolha Única (Ex: Ponto da carne)'),
+        ('checkbox', 'Múltipla Escolha (Ex: Adicionais)'),
+    ]
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='options')
+    title = models.CharField(max_length=100, verbose_name="Título do Grupo") # Ex: Adicionais
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='checkbox')
+    required = models.BooleanField(default=False, verbose_name="Obrigatório?")
+    max_quantity = models.IntegerField(default=1, verbose_name="Máximo de itens", help_text="Para múltipla escolha")
+
+    def __str__(self):
+        return f"{self.product.name} - {self.title}"
+
+class OptionItem(models.Model):
+    option = models.ForeignKey(ProductOption, on_delete=models.CASCADE, related_name='items')
+    name = models.CharField(max_length=100, verbose_name="Nome da Opção") # Ex: Bacon
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Preço Adicional")
+
+    def __str__(self):
+        return f"{self.name} (+R${self.price})"
+
+
+# CONFIGURAÇÃO DE CUPONS DE DESCONTO
+class Coupon(models.Model):
+    DISCOUNT_TYPE_CHOICES = [
+        ('percentage', 'Porcentagem (%)'),
+        ('fixed', 'Valor Fixo (R$)'),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='coupons', verbose_name="Loja")
+    code = models.CharField(max_length=20, verbose_name="Código do Cupom", help_text="Ex: PRIMEIRACOMPRA10")
+    description = models.CharField(max_length=200, blank=True, null=True, verbose_name="Descrição", help_text="Ex: 10% off na primeira compra")
+    
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPE_CHOICES, default='percentage', verbose_name="Tipo de Desconto")
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor do Desconto")
+    
+    minimum_order_value = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Valor Mínimo do Pedido", help_text="Pedidos abaixo deste valor não podem usar este cupom")
+    
+    usage_limit = models.IntegerField(default=0, verbose_name="Limite de Uso", help_text="0 = ilimitado")
+    used_count = models.IntegerField(default=0, verbose_name="Vezes Usado")
+    
+    valid_from = models.DateTimeField(null=True, blank=True, verbose_name="Válido a partir de")
+    valid_until = models.DateTimeField(null=True, blank=True, verbose_name="Válido até")
+    
+    is_active = models.BooleanField(default=True, verbose_name="Ativo?")
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+
+    class Meta:
+        unique_together = ('tenant', 'code')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.tenant.name}"
+
+    def is_valid(self):
+        """Verifica se o cupom é válido para uso"""
+        from django.utils import timezone
+        now = timezone.now()
+        
+        # Verifica se está ativo
+        if not self.is_active:
+            return False, "Cupom desativado"
+        
+        # Verifica limite de uso
+        if self.usage_limit > 0 and self.used_count >= self.usage_limit:
+            return False, "Cupom atingiu limite de uso"
+        
+        # Verifica data de início
+        if self.valid_from and now < self.valid_from:
+            return False, "Cupom ainda não está válido"
+        
+        # Verifica data de expiração
+        if self.valid_until and now > self.valid_until:
+            return False, "Cupom expirado"
+        
+        return True, "Cupom válido"
+
+    def apply_discount(self, order_value):
+        """Aplica o desconto ao valor do pedido e retorna o valor final"""
+        from decimal import Decimal
+        
+        # Converte order_value para Decimal para evitar erros de tipo
+        order_value = Decimal(str(order_value))
+        
+        if self.discount_type == 'percentage':
+            discount = order_value * (self.discount_value / Decimal('100'))
+        else:
+            discount = self.discount_value
+        
+        # Garante que o desconto não ultrapasse o valor do pedido
+        discount = min(discount, order_value)
+        final_value = order_value - discount
+        
+        return float(final_value), float(discount)
+
+
+# Registro de uso de cupom
+class CouponUsage(models.Model):
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, related_name='usages', verbose_name="Cupom")
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='coupon_usages', verbose_name="Pedido")
+    used_at = models.DateTimeField(auto_now_add=True, verbose_name="Usado em")
+    discount_applied = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Desconto Aplicado")
+
+    class Meta:
+        verbose_name = "Uso de Cupom"
+        verbose_name_plural = "Usos de Cupom"
+
+    def __str__(self):
+        return f"{self.coupon.code} usado em Pedido #{self.order.id}"

@@ -1,0 +1,1645 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Gestor | {{ tenant.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #fef7ed; }
+        .animate-pulse-fast { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .hidden-section { display: none; }
+        .active-nav { background-color: #fff7ed; color: #c2410c; border-right: 3px solid #ea580c; }
+        
+        /* Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+
+        /* Mobile Menu Overlay */
+        .mobile-overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .mobile-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Mobile Sidebar */
+        .mobile-sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .mobile-sidebar.active {
+            transform: translateX(0);
+        }
+
+        /* Hamburger Animation */
+        .hamburger-line {
+            transition: all 0.3s ease;
+        }
+        .hamburger.active .line-1 {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .hamburger.active .line-2 {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        .hamburger.active .line-3 {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Mobile nav active */
+        @media (max-width: 768px) {
+            .active-nav {
+                background-color: #fff7ed;
+                color: #c2410c;
+                border-right: none;
+                border-left: 3px solid #ea580c;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden text-gray-800">
+
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="mobile-overlay fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden" onclick="toggleMobileMenu()"></div>
+
+    <!-- Mobile Sidebar -->
+    <aside id="mobile-sidebar" class="mobile-sidebar fixed inset-y-0 left-0 w-72 bg-white border-r border-orange-100 flex flex-col z-40 shadow-2xl md:hidden">
+        <div class="p-6 border-b border-orange-100 flex justify-between items-center">
+            <h1 class="font-bold text-xl flex items-center gap-2 text-orange-600">
+                <i class="fas fa-store"></i> {{ tenant.name }}
+            </h1>
+            <button onclick="toggleMobileMenu()" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition">
+                <i class="fas fa-times text-gray-600"></i>
+            </button>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('orders'); toggleMobileMenu();" id="mob-nav-orders" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition active-nav">
+                <div class="relative">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span id="mob-badge-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                </div>
+                Pedidos
+            </button>
+
+            <button onclick="switchTab('history'); toggleMobileMenu();" id="mob-nav-history" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-chart-line text-lg"></i> Relatórios
+            </button>
+
+            <button onclick="switchTab('menu'); toggleMobileMenu();" id="mob-nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-utensils text-lg"></i> Cardápio
+            </button>
+
+            <button onclick="openHoursModal(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-clock text-lg"></i> Horários
+            </button>
+
+            <button onclick="openSettings(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-cog text-lg"></i> Configurações
+            </button>
+
+            <button onclick="switchTab('delivery'); toggleMobileMenu();" id="mob-nav-delivery" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-motorcycle text-lg"></i> Taxas de Entrega
+            </button>
+
+            <button onclick="switchTab('coupons'); toggleMobileMenu();" id="mob-nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-tag text-lg"></i> Cupons
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-orange-100">
+            <a href="{% url 'cardapio_publico' tenant.slug %}" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 border border-orange-200 text-orange-600 rounded-xl font-bold text-xs uppercase hover:bg-orange-50 transition">
+                <i class="fas fa-external-link-alt"></i> Ver Loja
+            </a>
+        </div>
+    </aside>
+
+    <!-- Desktop Sidebar -->
+    <aside class="hidden md:flex w-64 bg-white border-r border-orange-100 flex-col z-20 shadow-sm">
+        <div class="p-6 border-b border-orange-100">
+            <h1 class="font-bold text-xl flex items-center gap-2 text-orange-600">
+                <i class="fas fa-store"></i> {{ tenant.name }}
+            </h1>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('orders')" id="nav-orders" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition active-nav">
+                <div class="relative">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span id="badge-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                </div>
+                Pedidos
+            </button>
+
+            <button onclick="switchTab('history')" id="nav-history" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-chart-line text-lg"></i> Relatórios
+            </button>
+
+            <button onclick="switchTab('menu')" id="nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-utensils text-lg"></i> Cardápio
+            </button>
+
+            <button onclick="openHoursModal()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-clock text-lg"></i> Horários
+            </button>
+
+            <button onclick="openSettings()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-cog text-lg"></i> Configurações
+            </button>
+
+            <button onclick="switchTab('delivery')" id="nav-delivery" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-motorcycle text-lg"></i> Taxas de Entrega
+            </button>
+
+            <button onclick="switchTab('coupons')" id="nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-tag text-lg"></i> Cupons
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-orange-100">
+            <a href="{% url 'cardapio_publico' tenant.slug %}" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 border border-orange-200 text-orange-600 rounded-xl font-bold text-xs uppercase hover:bg-orange-50 transition">
+                <i class="fas fa-external-link-alt"></i> Ver Loja
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full bg-orange-50/30 relative overflow-hidden">
+        
+        <header class="h-16 bg-white border-b border-orange-100 flex items-center justify-between px-4 md:px-8 shadow-sm shrink-0">
+            <!-- Hamburger Menu Button (Mobile) -->
+            <button id="hamburger-btn" onclick="toggleMobileMenu()" class="hamburger md:hidden w-10 h-10 flex flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-gray-100 transition">
+                <span class="hamburger-line line-1 w-6 h-0.5 bg-gray-600 rounded-full"></span>
+                <span class="hamburger-line line-2 w-6 h-0.5 bg-gray-600 rounded-full"></span>
+                <span class="hamburger-line line-3 w-6 h-0.5 bg-gray-600 rounded-full"></span>
+            </button>
+
+            <h2 class="font-bold text-lg md:text-xl text-gray-800 truncate" id="page-title">Pedidos em Tempo Real</h2>
+            
+            <div id="header-actions" class="flex items-center gap-2 md:gap-4">
+                
+                <div class="flex items-center gap-2 md:gap-3 bg-gray-100 rounded-full px-3 md:px-4 py-1.5 border border-gray-200">
+                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-gray-500 hidden sm:block" id="store-status-text">
+                        {% if tenant.is_open %}ABERTA{% else %}FECHADA{% endif %}
+                    </span>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="store-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 {% if tenant.is_open %}right-0 border-green-400{% else %}left-0 border-gray-300{% endif %}" onclick="toggleStoreStatus()" {% if tenant.is_open %}checked{% endif %}/>
+                        <label for="store-toggle" class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 {% if tenant.is_open %}bg-green-400{% else %}bg-gray-300{% endif %}"></label>
+                    </div>
+                </div>
+
+                <div id="status-connected" class="hidden md:flex items-center gap-2">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs font-bold text-green-600 uppercase">Conectado</span>
+                </div>
+                
+                <button id="btn-new-product" onclick="openProductModal()" class="hidden bg-orange-600 text-white px-3 md:px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-orange-700 transition shadow-lg items-center gap-2">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">Novo Produto</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="section-orders" class="flex-1 overflow-y-auto p-4 md:p-6">
+            <div id="orders-container" class="pb-20">
+                <div class="text-center py-20 opacity-50">
+                    <i class="fas fa-circle-notch fa-spin text-3xl text-orange-400"></i>
+                    <p class="mt-2 font-bold text-sm text-gray-400">Carregando pedidos...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-menu" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div id="menu-container" class="space-y-8 pb-20 max-w-5xl mx-auto"></div>
+        </div>
+
+        <div id="section-history" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div class="max-w-5xl mx-auto space-y-6">
+                
+                <!-- Filtros -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-orange-100">
+                    <div class="flex flex-wrap gap-3 items-end">
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data Início</label>
+                            <input type="date" id="filter-date-start" class="w-full p-2 border rounded-lg text-sm bg-gray-50">
+                        </div>
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data Fim</label>
+                            <input type="date" id="filter-date-end" class="w-full p-2 border rounded-lg text-sm bg-gray-50">
+                        </div>
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Pagamento</label>
+                            <select id="filter-payment" class="w-full p-2 border rounded-lg text-sm bg-gray-50">
+                                <option value="">Todos</option>
+                                <option value="pix">PIX</option>
+                                <option value="cartao">Cartão/Dinheiro</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Status</label>
+                            <select id="filter-status" class="w-full p-2 border rounded-lg text-sm bg-gray-50">
+                                <option value="">Todos</option>
+                                <option value="concluido">Concluído</option>
+                                <option value="cancelado">Cancelado</option>
+                                <option value="pendente">Pendente</option>
+                                <option value="em_preparo">Em Preparo</option>
+                            </select>
+                        </div>
+                        <button onclick="applyFilters()" class="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase hover:bg-orange-700 transition">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                        <button onclick="clearFilters()" class="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg font-bold text-xs uppercase hover:bg-gray-300 transition">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cards de Resumo -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Total PIX</p>
+                            <h3 class="text-xl md:text-2xl font-serif font-bold text-green-600 mt-1" id="fin-total-pix">R$ 0,00</h3>
+                        </div>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600 text-lg"><i class="fas fa-qrcode"></i></div>
+                    </div>
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Cartão/Dinheiro</p>
+                            <h3 class="text-xl md:text-2xl font-serif font-bold text-blue-600 mt-1" id="fin-total-card">R$ 0,00</h3>
+                        </div>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-lg"><i class="fas fa-credit-card"></i></div>
+                    </div>
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Total Geral</p>
+                            <h3 class="text-xl md:text-2xl font-serif font-bold text-gray-800 mt-1" id="fin-total">R$ 0,00</h3>
+                        </div>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 text-lg"><i class="fas fa-dollar-sign"></i></div>
+                    </div>
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Qtd. Pedidos</p>
+                            <h3 class="text-xl md:text-2xl font-serif font-bold text-gray-800 mt-1" id="fin-count">0</h3>
+                        </div>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 text-lg"><i class="fas fa-shopping-bag"></i></div>
+                    </div>
+                </div>
+
+                <!-- Tabela com Botão Exportar -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 bg-gray-50 flex flex-wrap justify-between items-center gap-2">
+                        <h3 class="font-bold text-gray-700">Histórico de Pedidos</h3>
+                        <div class="flex gap-2">
+                            <button onclick="exportToPDF()" class="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-xs uppercase hover:bg-red-700 transition flex items-center gap-2">
+                                <i class="fas fa-file-pdf"></i> Exportar PDF
+                            </button>
+                            <button onclick="fetchFinancials()" class="text-xs text-orange-600 font-bold hover:underline px-3 py-2"><i class="fas fa-sync"></i> Atualizar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th class="px-4 md:px-6 py-3">ID</th>
+                                    <th class="px-4 md:px-6 py-3">Cliente</th>
+                                    <th class="px-4 md:px-6 py-3 hidden sm:table-cell">Data</th>
+                                    <th class="px-4 md:px-6 py-3">Pagamento</th>
+                                    <th class="px-4 md:px-6 py-3">Status</th>
+                                    <th class="px-4 md:px-6 py-3 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body" class="divide-y divide-gray-100">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-delivery" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-orange-100 p-4 md:p-6">
+                <h3 class="font-bold text-xl mb-4 text-gray-800">Gerenciar Taxas por Bairro</h3>
+                
+                <div class="flex flex-col sm:flex-row gap-3 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <input type="text" id="del-neighborhood" placeholder="Nome do Bairro (Ex: Centro)" class="flex-1 p-3 border rounded-lg text-sm outline-none focus:border-orange-500">
+                    <input type="number" step="0.01" id="del-fee" placeholder="Valor (R$)" class="w-full sm:w-32 p-3 border rounded-lg text-sm outline-none focus:border-orange-500">
+                    <button onclick="saveDeliveryFee()" class="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-700 transition">
+                        Adicionar
+                    </button>
+                </div>
+
+                <div class="overflow-hidden rounded-xl border border-gray-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-500 uppercase font-bold text-xs">
+                            <tr>
+                                <th class="px-4 md:px-6 py-3">Bairro</th>
+                                <th class="px-4 md:px-6 py-3">Taxa</th>
+                                <th class="px-4 md:px-6 py-3 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delivery-fees-list" class="divide-y divide-gray-100">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de Cupons -->
+        <div id="section-coupons" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-orange-100 p-4 md:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-xl text-gray-800">Cupons de Desconto</h3>
+                        <button onclick="openCouponModal()" class="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Novo Cupom
+                        </button>
+                    </div>
+                    
+                    <div id="coupons-list" class="space-y-3">
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-tag text-4xl mb-2 text-gray-300"></i>
+                            <p>Nenhum cupom cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-cog text-orange-600"></i> Configurações</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h4 class="text-xs font-bold text-orange-600 uppercase mb-3 border-b border-orange-200 pb-2">PIX</h4>
+                    <div class="space-y-3">
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Chave PIX</label><input id="conf-pix-key" value="{{ tenant.pix_key|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Titular</label><input id="conf-pix-name" value="{{ tenant.pix_name|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Cidade</label><input id="conf-pix-city" value="{{ tenant.pix_city|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Endereço</label><textarea style="resize: none;" id="conf-address" rows="2" class="w-full p-2 border rounded-lg text-sm">{{ tenant.address|default:'' }}</textarea></div>
+            </div>
+            <div class="p-6 border-t bg-gray-50"><button onclick="saveSettings()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold uppercase text-xs hover:bg-orange-700 transition">Salvar</button></div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800" id="modal-product-title">Novo Produto</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <form id="product-form" class="space-y-4">
+                    <input type="hidden" id="prod-id" name="id">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Categoria</label>
+                        <div class="flex gap-2">
+                            <select id="prod-category" name="category" class="flex-1 p-2 border rounded-lg text-sm bg-white focus:border-orange-500 outline-none"></select>
+                            <button type="button" onclick="toggleNewCategoryInput()" class="bg-orange-100 text-orange-600 px-3 rounded-lg text-xs font-bold hover:bg-orange-200 transition"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <input type="text" id="new-category-input" placeholder="Nova categoria..." class="hidden w-full mt-2 p-2 border rounded-lg text-sm bg-orange-50 outline-none">
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="col-span-2"><label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Nome</label><input type="text" id="prod-name" name="name" required class="w-full p-2 border rounded-lg text-sm outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Badge</label><input type="text" id="prod-badge" name="badge" placeholder="Promo" class="w-full p-2 border rounded-lg text-sm outline-none"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">De (R$)</label><input type="text" id="prod-original-price" name="original_price" class="w-full p-2 border rounded-lg text-sm outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Por (R$)</label><input type="text" id="prod-price" name="price" required class="w-full p-2 border rounded-lg text-sm font-bold outline-none"></div>
+                    </div>
+                    <div><label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Descrição</label><textarea style="resize: none;" id="prod-desc" name="description" rows="3" class="w-full p-2 border rounded-lg text-sm outline-none resize-none"></textarea></div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Foto</label>
+                        <div id="image-preview-container" class="mb-2 hidden">
+                            <div class="relative inline-block">
+                                <img id="image-preview" src="" class="w-20 h-20 object-cover rounded-lg border border-orange-200">
+                                <button type="button" onclick="clearProductImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 shadow-md transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1">Clique no X para remover a foto</p>
+                        </div>
+                        <input type="file" id="prod-image" name="image" accept="image/*" class="w-full text-xs text-gray-500" onchange="previewProductImage(this)">
+                        <input type="hidden" id="prod-image-clear" name="clear_image" value="false">
+                    </div>
+                    <div class="border-t border-gray-100 pt-4 mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Adicionais e Opções</label>
+                            <button type="button" onclick="addOptionGroup()" class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold hover:bg-orange-200">+ Grupo</button>
+                        </div>
+                        <div id="options-container" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                            </div>
+                    </div>
+                </form>
+            </div>
+            <div class="p-6 border-t bg-gray-50 flex justify-end gap-3">
+                <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-gray-500 text-xs font-bold uppercase hover:text-gray-700">Cancelar</button>
+                <button onclick="saveProduct()" class="px-6 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold uppercase hover:bg-orange-700 shadow-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hours Modal -->
+    <div id="hours-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-clock text-orange-600"></i> Horário de Funcionamento</h3>
+                <button onclick="closeHoursModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar" id="days-container">
+                </div>
+
+            <div class="p-6 border-t bg-gray-50">
+                <button onclick="saveHours()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold uppercase text-xs hover:bg-orange-700 transition shadow-lg">
+                    Salvar Horários
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coupon Modal -->
+    <div id="coupon-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800" id="modal-coupon-title">Novo Cupom</h3>
+                <button onclick="closeCouponModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <form id="coupon-form" class="space-y-4">
+                    <input type="hidden" id="coupon-id" name="id">
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Código do Cupom</label>
+                            <input type="text" id="coupon-code-input" name="code" required class="w-full p-2 border rounded-lg text-sm outline-none font-bold uppercase" onkeyup="this.value = this.value.toUpperCase()" placeholder="Ex: PRIMEIRA10">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Descrição (opcional)</label>
+                            <input type="text" id="coupon-desc" name="description" class="w-full p-2 border rounded-lg text-sm outline-none" placeholder="Ex: 10% off na primeira compra">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo de Desconto</label>
+                            <select id="coupon-discount-type" name="discount_type" class="w-full p-2 border rounded-lg text-sm outline-none" onchange="updateDiscountLabel()">
+                                <option value="percentage">Porcentagem (%)</option>
+                                <option value="fixed">Valor Fixo (R$)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1" id="discount-label">Valor do Desconto</label>
+                            <input type="number" step="0.01" id="coupon-discount-value" name="discount_value" required class="w-full p-2 border rounded-lg text-sm outline-none" placeholder="Ex: 10">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Valor Mínimo (R$)</label>
+                            <input type="number" step="0.01" id="coupon-min-value" name="minimum_order_value" class="w-full p-2 border rounded-lg text-sm outline-none" placeholder="0 para sem mínimo" value="0">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Limite de Uso</label>
+                            <input type="number" id="coupon-usage-limit" name="usage_limit" class="w-full p-2 border rounded-lg text-sm outline-none" placeholder="0 = ilimitado" value="0">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Válido a partir de</label>
+                            <input type="datetime-local" id="coupon-valid-from" name="valid_from" class="w-full p-2 border rounded-lg text-sm outline-none">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Válido até</label>
+                            <input type="datetime-local" id="coupon-valid-until" name="valid_until" class="w-full p-2 border rounded-lg text-sm outline-none">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="coupon-active" name="is_active" checked class="w-4 h-4 accent-orange-600">
+                                <span class="text-sm font-bold text-gray-700">Cupom ativo</span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="p-6 border-t bg-gray-50 flex justify-end gap-3">
+                <button type="button" onclick="closeCouponModal()" class="px-4 py-2 text-gray-500 text-xs font-bold uppercase hover:text-gray-700">Cancelar</button>
+                <button onclick="saveCoupon()" class="px-6 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold uppercase hover:bg-orange-700 shadow-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    
+    <script>
+        const TENANT_SLUG = "{{ tenant.slug }}";
+        const API_ORDERS = `/${TENANT_SLUG}/api/orders/`;
+        const API_PRODUCTS = `/${TENANT_SLUG}/api/products/`;
+        const API_FINANCIALS = `/${TENANT_SLUG}/api/financials/`;
+        const API_STORE_TOGGLE = `/${TENANT_SLUG}/api/store/toggle/`;
+        const API_STORE_SYNC = `/${TENANT_SLUG}/api/store/sync/`;
+        
+        const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+        let knownOrders = new Set();
+        let audio = new Audio(NOTIFICATION_SOUND);
+        let categoriesCache = [];
+        let isManualToggle = false;
+
+        // --- MOBILE MENU ---
+        function toggleMobileMenu() {
+            const overlay = document.getElementById('mobile-overlay');
+            const sidebar = document.getElementById('mobile-sidebar');
+            const hamburger = document.getElementById('hamburger-btn');
+            
+            overlay.classList.toggle('active');
+            sidebar.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchOrders();
+            setInterval(fetchOrders, 5000);
+            syncStoreStatus();
+            setInterval(syncStoreStatus, 30000);
+        });
+
+        // --- SINCRONIZAR STATUS COM HORÁRIOS ---
+        async function syncStoreStatus() {
+            if (isManualToggle) return;
+            
+            try {
+                const response = await fetch(API_STORE_SYNC, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const checkbox = document.getElementById('store-toggle');
+                    const label = document.getElementById('store-status-text');
+                    
+                    if (checkbox.checked !== data.is_open) {
+                        console.log(`Sincronizando status: ${data.reason} - Aberto: ${data.is_open}`);
+                        checkbox.checked = data.is_open;
+                        updateStoreVisual(data.is_open, label, checkbox);
+                        
+                        if (!data.is_open && data.reason === 'horario_funcionamento') {
+                            Toastify({ 
+                                text: `Loja fechada automaticamente: ${data.reason}`, 
+                                style: { background: "#ef4444" },
+                                duration: 5000
+                            }).showToast();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao sincronizar status:', e);
+            }
+        }
+
+        // --- TOGGLE LOJA ---
+        async function toggleStoreStatus() {
+            isManualToggle = true;
+            const checkbox = document.getElementById('store-toggle');
+            const label = document.getElementById('store-status-text');
+            const isOpen = checkbox.checked;
+            
+            updateStoreVisual(isOpen, label, checkbox);
+
+            try {
+                await fetch(API_STORE_TOGGLE, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ is_open: isOpen })
+                });
+                Toastify({ 
+                    text: isOpen ? "Loja Aberta!" : "Loja Fechada! (Não abrirá automaticamente)", 
+                    style: { background: isOpen ? "#10b981" : "#ef4444" },
+                    duration: isOpen ? 3000 : 5000
+                }).showToast();
+                
+                setTimeout(() => { isManualToggle = false; }, 120000);
+            } catch (e) {
+                console.error(e);
+                Toastify({ text: "Erro ao atualizar status", style: { background: "#ef4444" } }).showToast();
+            }
+        }
+
+        function updateStoreVisual(isOpen, label, checkbox) {
+            if(label) label.innerText = isOpen ? "ABERTA" : "FECHADA";
+            const labelEl = checkbox.nextElementSibling;
+            if(isOpen) {
+                checkbox.classList.replace('left-0', 'right-0');
+                checkbox.classList.replace('border-gray-300', 'border-green-400');
+                labelEl.classList.replace('bg-gray-300', 'bg-green-400');
+            } else {
+                checkbox.classList.replace('right-0', 'left-0');
+                checkbox.classList.replace('border-green-400', 'border-gray-300');
+                labelEl.classList.replace('bg-green-400', 'bg-gray-300');
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // --- SISTEMA DE ABAS ---
+        function switchTab(tab) {
+            // Desktop nav
+            document.querySelectorAll('aside nav button').forEach(b => b.classList.remove('active-nav'));
+            // Mobile nav
+            document.querySelectorAll('#mobile-sidebar nav button').forEach(b => b.classList.remove('active-nav'));
+            
+            ['orders', 'menu', 'history', 'delivery', 'coupons'].forEach(s => {
+                const el = document.getElementById(`section-${s}`);
+                if(el) el.classList.add('hidden-section');
+            });
+            
+            document.getElementById('status-connected').classList.add('hidden');
+            document.getElementById('btn-new-product').classList.add('hidden');
+            document.getElementById('header-actions').classList.remove('hidden');
+
+            if (tab === 'orders') {
+                document.getElementById('nav-orders')?.classList.add('active-nav');
+                document.getElementById('mob-nav-orders')?.classList.add('active-nav');
+                document.getElementById('section-orders').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Pedidos em Tempo Real";
+                document.getElementById('status-connected').classList.remove('hidden');
+            } else if (tab === 'menu') {
+                document.getElementById('nav-menu')?.classList.add('active-nav');
+                document.getElementById('mob-nav-menu')?.classList.add('active-nav');
+                document.getElementById('section-menu').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Gerenciar Cardápio";
+                document.getElementById('btn-new-product').classList.remove('hidden');
+                document.getElementById('btn-new-product').classList.add('flex');
+                fetchProducts(); 
+            } else if (tab === 'history') {
+                document.getElementById('nav-history')?.classList.add('active-nav');
+                document.getElementById('mob-nav-history')?.classList.add('active-nav');
+                document.getElementById('section-history').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Resumo e Histórico";
+                fetchFinancials();
+            } else if (tab === 'delivery') {
+                document.getElementById('nav-delivery')?.classList.add('active-nav');
+                document.getElementById('mob-nav-delivery')?.classList.add('active-nav');
+                document.getElementById('section-delivery').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Configurar Entregas";
+                fetchDeliveryFees();
+            } else if (tab === 'coupons') {
+                document.getElementById('nav-coupons')?.classList.add('active-nav');
+                document.getElementById('mob-nav-coupons')?.classList.add('active-nav');
+                document.getElementById('section-coupons').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Cupons de Desconto";
+                fetchCoupons();
+            }
+        }
+
+        // --- FINANCEIRO E HISTÓRICO ---
+        let allOrdersHistory = [];
+        let filteredOrders = [];
+
+        async function fetchFinancials() {
+            try {
+                const response = await fetch(API_FINANCIALS);
+                const data = await response.json();
+                
+                allOrdersHistory = data.history || [];
+                applyFilters();
+            } catch (e) { console.error(e); }
+        }
+
+        function applyFilters() {
+            const dateStart = document.getElementById('filter-date-start').value;
+            const dateEnd = document.getElementById('filter-date-end').value;
+            const paymentFilter = document.getElementById('filter-payment').value;
+            const statusFilter = document.getElementById('filter-status').value;
+
+            filteredOrders = allOrdersHistory.filter(order => {
+                // Filtro de data
+                if (dateStart && order.date < dateStart) return false;
+                if (dateEnd && order.date > dateEnd) return false;
+                
+                // Filtro de pagamento
+                if (paymentFilter) {
+                    const isPix = order.payment && order.payment.toLowerCase().includes('pix');
+                    if (paymentFilter === 'pix' && !isPix) return false;
+                    if (paymentFilter === 'cartao' && isPix) return false;
+                }
+                
+                // Filtro de status
+                if (statusFilter && order.status !== statusFilter) return false;
+                
+                return true;
+            });
+
+            renderFinancials();
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-date-start').value = '';
+            document.getElementById('filter-date-end').value = '';
+            document.getElementById('filter-payment').value = '';
+            document.getElementById('filter-status').value = '';
+            applyFilters();
+        }
+
+        function renderFinancials() {
+            let totalPix = 0, totalCard = 0, totalGeral = 0, count = 0;
+
+            filteredOrders.forEach(order => {
+                if (order.status !== 'cancelado') {
+                    const isPix = order.payment && order.payment.toLowerCase().includes('pix');
+                    if (isPix) totalPix += order.total;
+                    else totalCard += order.total;
+                    totalGeral += order.total;
+                }
+                count++;
+            });
+
+            document.getElementById('fin-total-pix').innerText = `R$ ${totalPix.toFixed(2)}`;
+            document.getElementById('fin-total-card').innerText = `R$ ${totalCard.toFixed(2)}`;
+            document.getElementById('fin-total').innerText = `R$ ${totalGeral.toFixed(2)}`;
+            document.getElementById('fin-count').innerText = count;
+
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
+
+            filteredOrders.forEach(order => {
+                const statusColors = {
+                    'concluido': 'text-green-600 bg-green-50',
+                    'cancelado': 'text-red-600 bg-red-50',
+                    'pendente': 'text-yellow-600 bg-yellow-50',
+                    'em_preparo': 'text-blue-600 bg-blue-50'
+                };
+                const statusColor = statusColors[order.status] || 'text-gray-600';
+                const isPix = order.payment && order.payment.toLowerCase().includes('pix');
+                const paymentBadge = isPix 
+                    ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold">PIX</span>'
+                    : '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">CARTÃO</span>';
+
+                tbody.innerHTML += `
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        <td class="px-4 md:px-6 py-4 font-bold">#${order.id}</td>
+                        <td class="px-4 md:px-6 py-4">${escapeHtml(order.customer)}</td> <td class="px-4 md:px-6 py-4 text-gray-500 hidden sm:table-cell">${order.date_display || order.date}</td>
+                        <td class="px-4 md:px-6 py-4">${paymentBadge}</td>
+                        <td class="px-4 md:px-6 py-4"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusColor}">${order.status.replace('_', ' ')}</span></td>
+                        <td class="px-4 md:px-6 py-4 text-right font-bold">R$ ${order.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Título
+            doc.setFontSize(18);
+            doc.text('{{ tenant.name }} - Relatório de Vendas', 14, 22);
+            
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30);
+
+            // Resumo
+            const totalPix = document.getElementById('fin-total-pix').innerText;
+            const totalCard = document.getElementById('fin-total-card').innerText;
+            const totalGeral = document.getElementById('fin-total').innerText;
+            const qtdPedidos = document.getElementById('fin-count').innerText;
+
+            doc.setFontSize(12);
+            doc.text('Resumo:', 14, 42);
+            doc.setFontSize(10);
+            doc.text(`Total PIX: ${totalPix}`, 14, 50);
+            doc.text(`Total Cartão/Dinheiro: ${totalCard}`, 14, 56);
+            doc.text(`Total Geral: ${totalGeral}`, 14, 62);
+            doc.text(`Quantidade de Pedidos: ${qtdPedidos}`, 14, 68);
+
+            // Tabela
+            const tableData = filteredOrders.map(order => {
+                const isPix = order.payment && order.payment.toLowerCase().includes('pix');
+                return [
+                    `#${order.id}`,
+                    order.customer,
+                    order.date_display || order.date,
+                    isPix ? 'PIX' : 'Cartão',
+                    order.status.replace('_', ' ').toUpperCase(),
+                    `R$ ${order.total.toFixed(2)}`
+                ];
+            });
+
+            doc.autoTable({
+                startY: 76,
+                head: [['ID', 'Cliente', 'Data', 'Pagamento', 'Status', 'Total']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [234, 88, 12] },
+                styles: { fontSize: 8 }
+            });
+
+            doc.save(`relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
+            Toastify({ text: "PDF exportado!", style: { background: "#10b981" } }).showToast();
+        }
+
+        // --- PEDIDOS ---
+        async function fetchOrders() {
+            try {
+                const response = await fetch(API_ORDERS);
+                const data = await response.json();
+                renderOrders(data.orders);
+            } catch (error) { console.error("Erro orders:", error); }
+        }
+
+        function renderOrders(orders) {
+            const container = document.getElementById('orders-container');
+            const badge = document.getElementById('badge-count');
+            const mobBadge = document.getElementById('mob-badge-count');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 opacity-40"><i class="fas fa-inbox text-6xl mb-4 text-gray-300"></i><p>Nenhum pedido ativo</p></div>`;
+                if(badge) badge.classList.add('hidden');
+                if(mobBadge) mobBadge.classList.add('hidden');
+                return;
+            }
+
+            const pendingCount = orders.filter(o => o.status === 'pendente').length;
+            if(badge) { badge.innerText = pendingCount; badge.classList.toggle('hidden', pendingCount === 0); }
+            if(mobBadge) { mobBadge.innerText = pendingCount; mobBadge.classList.toggle('hidden', pendingCount === 0); }
+
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">';
+            orders.forEach(order => {
+                if (order.status === 'pendente' && !knownOrders.has(order.id)) {
+                    audio.play().catch(e => {});
+                    knownOrders.add(order.id);
+                }
+                let statusColor = order.status === 'pendente' ? 'bg-yellow-100 text-yellow-700 animate-pulse' : 
+                                    order.status === 'em_preparo' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
+
+                const safeName = escapeHtml(order.customer_name);
+                const safeObs = escapeHtml(order.observation || '');
+                const safeAddress = escapeHtml(order.address);
+                const safePayment = escapeHtml(order.payment_method || '');
+
+                const itemsHtml = order.items.map(i => {
+                    const safeItemName = escapeHtml(i.name);
+                    const safeItemObs = i.obs ? `<p class="text-[10px] text-orange-600 bg-orange-50 p-1 rounded">Obs: ${escapeHtml(i.obs)}</p>` : '';
+                    const safeOptions = i.options ? `<p class="text-[10px] text-blue-600 bg-blue-50 p-1 rounded mb-1">+ ${escapeHtml(i.options)}</p>` : '';
+                    
+                    return `<div class="flex justify-between">
+                                <span><b>${i.quantity}x</b> ${safeItemName}</span>
+                                <span class="text-gray-500">R$ ${(i.price * i.quantity).toFixed(2)}</span>
+                            </div>
+                            ${safeOptions}
+                            ${safeItemObs}`;
+                }).join('');
+
+                html += `
+                <div class="bg-white rounded-2xl p-4 md:p-5 border shadow-sm flex flex-col hover:shadow-lg transition ${order.status === 'pendente' ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-200'}">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-base md:text-lg">#${order.id} - ${safeName}</h3>
+                            <p class="text-xs text-gray-500">${order.created_at}</p>
+                        </div>
+                        <span class="px-2 md:px-3 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor}">${order.status.replace('_', ' ')}</span>
+                    </div>
+                    <div class="flex-1 bg-gray-50 rounded-xl p-3 mb-4 space-y-2 text-sm border border-gray-100">
+                        ${itemsHtml}
+                    </div>
+                    <div class="text-xs text-gray-500 mb-4 space-y-1">
+                        <p><i class="fas fa-map-marker-alt w-4"></i> ${safeAddress}</p>
+                        <p><i class="fas fa-wallet w-4"></i> ${safePayment}</p>
+                        ${safeObs ? `<p class="text-orange-600 font-bold"><i class="fas fa-comment w-4"></i> "${safeObs}"</p>` : ''}
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t mt-auto">
+                        <span class="text-lg md:text-xl font-bold">R$ ${order.total_value.toFixed(2)}</span>
+                        <div class="flex gap-2">${getActionButtons(order)}</div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html + '</div>';
+        }
+
+        function getActionButtons(order) {
+
+            const orderJson = JSON.stringify(order).replace(/"/g, '&quot;');
+
+            if (order.status === 'pendente') {
+                return `<button onclick="confirmCancel(${order.id})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><i class="fas fa-times"></i></button><button onclick="updateStatus(${order.id}, 'em_preparo')" class="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-600 flex items-center gap-2"><i class="fas fa-fire"></i> <span class="hidden sm:inline">Aceitar</span></button>`;
+            } else if (order.status === 'em_preparo') {
+                const printBtnClass = order.is_printed 
+                    ? "bg-yellow-100 text-yellow-700 border border-yellow-300" 
+                    : "bg-blue-100 text-blue-700 border border-blue-200";
+                const printBtnText = order.is_printed ? '<i class="fas fa-redo"></i> <span class="hidden sm:inline">Reimprimir</span>' : '<i class="fas fa-print"></i> <span class="hidden sm:inline">Imprimir</span>';
+                return `<button onclick="printOrderSafe(${orderJson})" class="px-3 py-2 ${printBtnClass} rounded-lg font-bold text-xs uppercase transition flex items-center gap-2">${printBtnText}</button><button onclick="updateStatus(${order.id}, 'concluido')" class="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-700 flex items-center gap-2"><i class="fas fa-check"></i> <span class="hidden sm:inline">Concluir</span></button>`;
+            }
+            return `<span class="text-gray-400 text-xs font-bold">Arquivado</span>`;
+        }
+
+        function confirmCancel(orderId) {
+            Swal.fire({ title: 'Recusar?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Sim' }).then((r) => { if(r.isConfirmed) updateStatus(orderId, 'cancelado'); })
+        }
+
+        async function updateStatus(id, status) {
+            await fetch(`/${TENANT_SLUG}/api/orders/${id}/update/`, { 
+                method: 'POST', 
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ status }) 
+            });
+            fetchOrders();
+        }
+
+        // Função Wrapper para imprimir com segurança
+        function printOrderSafe(order) {
+            // Reconstrói os dados que a função original esperava
+            const itemsStr = order.items.map(i => `${i.quantity}x ${i.name}${i.options ? ' ['+i.options+']' : ''}`).join('|');
+            
+            printOrder(
+                order.id, 
+                order.customer_name, 
+                itemsStr, 
+                order.total_value, 
+                order.observation || '', 
+                order.address, 
+                order.payment_method
+            );
+        }
+
+        async function printOrder(id, name, itemsStr, total, obs, address, payment) {
+            await fetch(`/${TENANT_SLUG}/api/orders/${id}/printed/`, { 
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            fetchOrders();
+            
+            // Formato otimizado para impressora térmica 80mm (48 caracteres)
+            const line = '================================================';
+            const line2 = '------------------------------------------------';
+            const now = new Date().toLocaleString('pt-BR');
+            const items = itemsStr.split('|').map(item => `  ${item}`).join('\n');
+            
+            const receiptText = `
+${line}
+             ** PEDIDO #${id} **
+${line}
+
+CLIENTE: ${name}
+DATA: ${now}
+PAGAMENTO: ${payment || 'Não informado'}
+
+${line2}
+            ITENS
+${line2}
+${items}
+${line2}
+${obs ? `\nOBS: ${obs}\n${line2}` : ''}
+
+        TOTAL: R$ ${parseFloat(total).toFixed(2)}
+
+${line2}
+            ENTREGA
+${line2}
+${address}
+
+${line}
+        Obrigado pela preferência!
+${line}
+`;
+            
+            // Janela otimizada para impressora térmica 80mm
+            const win = window.open('', 'print_' + id, 'width=350,height=600');
+            win.document.write(`
+                <html>
+                <head>
+                    <title>Pedido #${id}</title>
+                    <style>
+                        @page { 
+                            size: 80mm auto; 
+                            margin: 0; 
+                        }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            font-size: 12px; 
+                            line-height: 1.3;
+                            width: 80mm; 
+                            margin: 0 auto; 
+                            padding: 5mm;
+                        }
+                        pre { 
+                            white-space: pre-wrap; 
+                            word-wrap: break-word; 
+                            margin: 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <pre>${receiptText}</pre>
+                    <script>window.onload=function(){window.print();}<\/script>
+                </body>
+                </html>
+            `);
+            win.document.close();
+        }
+
+        // --- CRUD PRODUTOS ---
+        async function fetchProducts() {
+            try {
+                const response = await fetch(API_PRODUCTS);
+                const data = await response.json();
+                categoriesCache = data.categories; 
+                renderMenu(data.categories);
+            } catch (error) { console.error("Erro produtos:", error); }
+        }
+
+        function renderMenu(categories) {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            if (categories.length === 0) { container.innerHTML = `<div class="text-center py-20 text-gray-400">Nenhum produto</div>`; return; }
+            categories.forEach(cat => {
+                let html = `<div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-orange-100 mb-4"><h3 class="font-bold text-xl mb-4">${cat.name}</h3><div class="space-y-3">`;
+                cat.products.forEach(prod => {
+                    const opacity = prod.is_available ? 'opacity-100' : 'opacity-50 grayscale';
+                    let imageHtml = '';
+                    if (prod.image) {
+                        // Se tem imagem, cria a tag IMG
+                        imageHtml = `<img src="${prod.image}" class="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover flex-shrink-0 border border-gray-200">`;
+                    } else {
+                        // Se não tem, mostra o ícone (Garfo e Faca)
+                        imageHtml = `<div class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0"><i class="fas fa-utensils text-orange-300 text-lg"></i></div>`;
+                    }
+                    html += `
+                    <div class="flex items-center gap-3 md:gap-4 p-3 border rounded-xl ${opacity}">
+                        ${imageHtml} 
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm truncate">${prod.name}</h4>
+                            <p class="text-orange-600 font-bold text-sm">R$ ${prod.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex gap-1 md:gap-2 shrink-0">
+                            <button onclick="toggleProduct(${prod.id})" class="p-2 bg-gray-100 rounded-lg text-xs"><i class="fas ${prod.is_available ? 'fa-pause' : 'fa-play'}"></i></button>
+                            <button onclick='editProduct(${JSON.stringify(prod).replace(/'/g, "&#39;")}, ${cat.id})' class="p-2 bg-blue-50 text-blue-600 rounded-lg text-xs"><i class="fas fa-pen"></i></button>
+                            <button onclick="deleteProduct(${prod.id})" class="p-2 bg-red-50 text-red-500 rounded-lg text-xs"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function openProductModal(product = null, catId = null) {
+            const modal = document.getElementById('product-modal');
+            const title = document.getElementById('modal-product-title');
+            const form = document.getElementById('product-form');
+            const select = document.getElementById('prod-category');
+            select.innerHTML = '';
+            if (categoriesCache) categoriesCache.forEach(c => select.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+            
+            document.getElementById('new-category-input').classList.add('hidden');
+            select.disabled = false;
+            
+            // Reset image controls
+            document.getElementById('prod-image').value = '';
+            document.getElementById('prod-image-clear').value = 'false';
+            document.getElementById('image-preview-container').classList.add('hidden');
+            document.getElementById('image-preview').src = '';
+            
+            if (product) {
+                title.innerText = "Editar Produto";
+                document.getElementById('prod-id').value = product.id;
+                document.getElementById('prod-name').value = product.name;
+                document.getElementById('prod-price').value = product.price.toFixed(2).replace('.', ',');
+                document.getElementById('prod-original-price').value = product.original_price ? product.original_price.toFixed(2).replace('.', ',') : '';
+                document.getElementById('prod-badge').value = product.badge || '';
+                document.getElementById('prod-desc').value = product.description;
+                currentOptions = JSON.parse(JSON.stringify(product.options || []));
+                if (catId) select.value = catId;
+                
+                // Show current image if exists
+                if (product.image) {
+                    document.getElementById('image-preview').src = product.image;
+                    document.getElementById('image-preview-container').classList.remove('hidden');
+                }
+            } else {
+                title.innerText = "Novo Produto";
+                currentOptions = [];
+                form.reset();
+                document.getElementById('prod-id').value = "";
+            }
+            modal.classList.remove('hidden');
+        }
+        function closeProductModal() { document.getElementById('product-modal').classList.add('hidden'); }
+        
+        // Preview da imagem quando seleciona arquivo
+        function previewProductImage(input) {
+            const container = document.getElementById('image-preview-container');
+            const preview = document.getElementById('image-preview');
+            const clearField = document.getElementById('prod-image-clear');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    container.classList.remove('hidden');
+                    clearField.value = 'false'; // Reset clear flag when new image is selected
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        // Limpar imagem do produto
+        function clearProductImage() {
+            const input = document.getElementById('prod-image');
+            const container = document.getElementById('image-preview-container');
+            const preview = document.getElementById('image-preview');
+            const clearField = document.getElementById('prod-image-clear');
+            
+            input.value = ''; // Limpar input file
+            preview.src = '';
+            container.classList.add('hidden');
+            clearField.value = 'true'; // Marcar para excluir no servidor
+        }
+        
+        function toggleNewCategoryInput() {
+            const sel = document.getElementById('prod-category'); const inp = document.getElementById('new-category-input');
+            if(inp.classList.contains('hidden')) { inp.classList.remove('hidden'); sel.disabled = true; sel.name=""; inp.name="category"; inp.focus(); }
+            else { inp.classList.add('hidden'); sel.disabled = false; sel.name="category"; inp.name="ignore"; inp.value=""; }
+        }
+        window.editProduct = (p, c) => openProductModal(p, c);
+        
+        async function saveProduct() {
+            const formData = new FormData(document.getElementById('product-form'));
+            formData.append('options_json', JSON.stringify(currentOptions));
+            await fetch(`${API_PRODUCTS}save/`, { 
+                method: 'POST', 
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData 
+            });
+            closeProductModal(); fetchProducts(); Toastify({text: "Salvo!", style: {background: "#10b981"}}).showToast();
+        }
+        async function deleteProduct(id) {
+            if(confirm("Excluir?")) { 
+                await fetch(`${API_PRODUCTS}${id}/delete/`, { 
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                }); 
+                fetchProducts(); 
+            }
+        }
+        async function toggleProduct(id) { 
+            await fetch(`${API_PRODUCTS}${id}/toggle/`, { 
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            }); 
+            fetchProducts(); 
+        }
+
+        // Settings
+        function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+        async function saveSettings() {
+            const data = {
+                pix_key: document.getElementById('conf-pix-key').value,
+                pix_name: document.getElementById('conf-pix-name').value,
+                pix_city: document.getElementById('conf-pix-city').value,
+                address: document.getElementById('conf-address').value,
+            };
+            await fetch(`/${TENANT_SLUG}/api/settings/`, { 
+                method: 'POST', 
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify(data) 
+            });
+            closeSettings(); Toastify({text: "Salvo!", style: {background: "#10b981"}}).showToast();
+        }
+
+        // HORARIO DE FUNCIONAMENTO
+        const SCHEDULE_DATA = JSON.parse('{{ schedule_json|safe }}');
+        const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+        function openHoursModal() {
+            const container = document.getElementById('days-container');
+            container.innerHTML = '';
+            
+            DIAS_SEMANA.forEach((dia, index) => {
+                const saved = SCHEDULE_DATA[index] || { open: '18:00', close: '23:00', closed: false };
+                
+                const html = `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0 gap-3">
+                    <div class="w-24 font-bold text-gray-700 text-sm">${dia}</div>
+                    
+                    <div class="flex items-center gap-2 ${saved.closed ? 'opacity-50 pointer-events-none' : ''}" id="inputs-${index}">
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] text-gray-400 uppercase">Abre</span>
+                            <input type="time" id="open-${index}" value="${saved.open}" class="border rounded-lg p-1 text-xs bg-gray-50 text-center font-bold w-20">
+                        </div>
+                        <span class="text-gray-400">-</span>
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] text-gray-400 uppercase">Fecha</span>
+                            <input type="time" id="close-${index}" value="${saved.close}" class="border rounded-lg p-1 text-xs bg-gray-50 text-center font-bold w-20">
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="closed-${index}" onchange="toggleDay(${index})" ${saved.closed ? 'checked' : ''} class="w-4 h-4 accent-red-500">
+                        <span class="text-xs font-bold text-red-500">Fechado</span>
+                    </label>
+                </div>`;
+                container.innerHTML += html;
+            });
+            
+            document.getElementById('hours-modal').classList.remove('hidden');
+        }
+
+        function closeHoursModal() { document.getElementById('hours-modal').classList.add('hidden'); }
+
+        function toggleDay(index) {
+            const isClosed = document.getElementById(`closed-${index}`).checked;
+            const inputs = document.getElementById(`inputs-${index}`);
+            if(isClosed) inputs.classList.add('opacity-50', 'pointer-events-none');
+            else inputs.classList.remove('opacity-50', 'pointer-events-none');
+        }
+
+        async function saveHours() {
+            const payload = [];
+            DIAS_SEMANA.forEach((_, index) => {
+                payload.push({
+                    day: index,
+                    open: document.getElementById(`open-${index}`).value,
+                    close: document.getElementById(`close-${index}`).value,
+                    closed: document.getElementById(`closed-${index}`).checked
+                });
+            });
+
+            Toastify({ text: "Salvando...", style: { background: "#fb923c" } }).showToast();
+            
+            try {
+                await fetch(`/${TENANT_SLUG}/api/hours/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify(payload)
+                });
+                Toastify({ text: "Horários atualizados!", style: { background: "#10b981" } }).showToast();
+                setTimeout(() => location.reload(), 1000);
+            } catch(e) {
+                Toastify({ text: "Erro ao salvar", style: { background: "#ef4444" } }).showToast();
+            }
+        }
+
+        // TAXAS DE ENTREGA
+        async function fetchDeliveryFees() {
+            try {
+                const res = await fetch(`/${TENANT_SLUG}/api/delivery-fees/`);
+                const data = await res.json();
+                const tbody = document.getElementById('delivery-fees-list');
+                tbody.innerHTML = '';
+                
+                data.fees.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 bg-white">
+                            <td class="px-4 md:px-6 py-4 font-medium text-gray-800">${item.neighborhood}</td>
+                            <td class="px-4 md:px-6 py-4 text-green-600 font-bold">R$ ${parseFloat(item.fee).toFixed(2)}</td>
+                            <td class="px-4 md:px-6 py-4 text-right">
+                                <button onclick="deleteDeliveryFee(${item.id})" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function saveDeliveryFee() {
+            const neighborhood = document.getElementById('del-neighborhood').value;
+            const fee = document.getElementById('del-fee').value;
+            
+            if(!neighborhood || !fee) return Toastify({text: "Preencha bairro e valor", style: {background: "#ef4444"}}).showToast();
+
+            await fetch(`/${TENANT_SLUG}/api/delivery-fees/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ neighborhood, fee })
+            });
+            
+            document.getElementById('del-neighborhood').value = '';
+            document.getElementById('del-fee').value = '';
+            fetchDeliveryFees();
+            Toastify({text: "Taxa salva!", style: {background: "#10b981"}}).showToast();
+        }
+
+        async function deleteDeliveryFee(id) {
+            if(confirm("Excluir esta taxa?")) {
+                await fetch(`/${TENANT_SLUG}/api/delivery-fees/${id}/delete/`, { 
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
+                fetchDeliveryFees();
+            }
+        }
+
+        let currentOptions = [];
+
+        function renderOptions() {
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            currentOptions.forEach((opt, idx) => {
+                let itemsHtml = '';
+                opt.items.forEach((item, iIdx) => {
+                    itemsHtml += `
+                        <div class="flex gap-2 mb-1">
+                            <input type="text" placeholder="Nome (Ex: Bacon)" value="${item.name}" onchange="updateOptionItem(${idx}, ${iIdx}, 'name', this.value)" class="flex-1 p-1 border rounded text-xs">
+                            <input type="number" placeholder="R$" value="${item.price}" onchange="updateOptionItem(${idx}, ${iIdx}, 'price', this.value)" class="w-16 p-1 border rounded text-xs">
+                            <button type="button" onclick="removeOptionItem(${idx}, ${iIdx})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
+                        <button type="button" onclick="removeOptionGroup(${idx})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button>
+                        
+                        <div class="grid grid-cols-2 gap-2 mb-2 pr-6">
+                            <input type="text" value="${opt.title}" onchange="updateOptionGroup(${idx}, 'title', this.value)" class="p-1 border rounded text-xs font-bold w-full" placeholder="Título (Ex: Adicionais)">
+                            <select onchange="updateOptionGroup(${idx}, 'type', this.value)" class="p-1 border rounded text-xs w-full">
+                                <option value="checkbox" ${opt.type === 'checkbox' ? 'selected' : ''}>Múltipla Escolha</option>
+                                <option value="radio" ${opt.type === 'radio' ? 'selected' : ''}>Escolha Única</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-4 mb-2">
+                            <label class="flex items-center gap-1 text-[10px]"><input type="checkbox" ${opt.required ? 'checked' : ''} onchange="updateOptionGroup(${idx}, 'required', this.checked)"> Obrigatório</label>
+                            ${opt.type === 'checkbox' ? `<label class="flex items-center gap-1 text-[10px]">Máx: <input type="number" value="${opt.max}" onchange="updateOptionGroup(${idx}, 'max', this.value)" class="w-10 p-0.5 border rounded text-center"></label>` : ''}
+                        </div>
+                        
+                        <div class="pl-2 border-l-2 border-gray-200">
+                            ${itemsHtml}
+                            <button type="button" onclick="addOptionItem(${idx})" class="text-[10px] text-blue-500 font-bold mt-1">+ Adicionar Opção</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addOptionGroup() {
+            currentOptions.push({ title: 'Novos Adicionais', type: 'checkbox', required: false, max: 10, items: [] });
+            renderOptions();
+        }
+        function removeOptionGroup(idx) {
+            if(confirm('Remover este grupo?')) { currentOptions.splice(idx, 1); renderOptions(); }
+        }
+        function updateOptionGroup(idx, field, val) {
+            currentOptions[idx][field] = val;
+            if(field === 'type') renderOptions(); // Re-render para mostrar/esconder o campo Máx
+        }
+        function addOptionItem(idx) {
+            currentOptions[idx].items.push({ name: '', price: 0 });
+            renderOptions();
+        }
+        function removeOptionItem(idx, iIdx) {
+            currentOptions[idx].items.splice(iIdx, 1);
+            renderOptions();
+        }
+        function updateOptionItem(idx, iIdx, field, val) {
+            currentOptions[idx].items[iIdx][field] = field === 'price' ? parseFloat(val) : val;
+        }
+
+        // ========================
+        // FUNÇÕES DE CUPONS
+        // ========================
+
+        const API_COUPONS = `/${TENANT_SLUG}/api/coupons/`;
+
+        async function fetchCoupons() {
+            try {
+                const response = await fetch(API_COUPONS);
+                const data = await response.json();
+                renderCoupons(data.coupons || []);
+            } catch (error) {
+                console.error("Erro ao carregar cupons:", error);
+            }
+        }
+
+        function renderCoupons(coupons) {
+            const container = document.getElementById('coupons-list');
+            
+            if (coupons.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-tag text-4xl mb-2 text-gray-300"></i>
+                        <p>Nenhum cupom cadastrado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            coupons.forEach(coupon => {
+                const discountText = coupon.discount_type === 'percentage' 
+                    ? `${coupon.discount_value}%` 
+                    : `R$ ${parseFloat(coupon.discount_value).toFixed(2)}`;
+                
+                const usageText = coupon.usage_limit > 0 
+                    ? `${coupon.used_count}/${coupon.usage_limit}` 
+                    : `${coupon.used_count} (ilimitado)`;
+                
+                const statusClass = coupon.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+                const statusText = coupon.is_active ? 'Ativo' : 'Inativo';
+
+                container.innerHTML += `
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-lg font-bold text-sm">${coupon.code}</span>
+                                    <span class="text-xs font-bold ${statusClass} px-2 py-1 rounded-full">${statusText}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-2">${coupon.description || 'Sem descrição'}</p>
+                                <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                                    <span><i class="fas fa-percent mr-1"></i>${discountText}</span>
+                                    <span><i class="fas fa-shopping-cart mr-1"></i>Mín: R$ ${parseFloat(coupon.minimum_order_value).toFixed(2)}</span>
+                                    <span><i class="fas fa-users mr-1"></i>Usos: ${usageText}</span>
+                                    ${coupon.valid_until ? `<span><i class="fas fa-calendar mr-1"></i>Até: ${new Date(coupon.valid_until).toLocaleDateString('pt-BR')}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button onclick="editCoupon(${JSON.stringify(coupon).replace(/"/g, '&quot;')})" class="p-2 bg-blue-50 text-blue-600 rounded-lg text-xs hover:bg-blue-100 transition">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button onclick="deleteCoupon(${coupon.id})" class="p-2 bg-red-50 text-red-500 rounded-lg text-xs hover:bg-red-100 transition">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openCouponModal(coupon = null) {
+            const modal = document.getElementById('coupon-modal');
+            const title = document.getElementById('modal-coupon-title');
+            const form = document.getElementById('coupon-form');
+            
+            form.reset();
+            
+            if (coupon) {
+                title.innerText = "Editar Cupom";
+                document.getElementById('coupon-id').value = coupon.id;
+                document.getElementById('coupon-code-input').value = coupon.code;
+                document.getElementById('coupon-desc').value = coupon.description || '';
+                document.getElementById('coupon-discount-type').value = coupon.discount_type;
+                document.getElementById('coupon-discount-value').value = coupon.discount_value;
+                document.getElementById('coupon-min-value').value = coupon.minimum_order_value;
+                document.getElementById('coupon-usage-limit').value = coupon.usage_limit;
+                document.getElementById('coupon-active').checked = coupon.is_active;
+                
+                // Formata datas para input datetime-local
+                if (coupon.valid_from) {
+                    document.getElementById('coupon-valid-from').value = new Date(coupon.valid_from).toISOString().slice(0, 16);
+                }
+                if (coupon.valid_until) {
+                    document.getElementById('coupon-valid-until').value = new Date(coupon.valid_until).toISOString().slice(0, 16);
+                }
+            } else {
+                title.innerText = "Novo Cupom";
+                document.getElementById('coupon-id').value = '';
+                document.getElementById('coupon-active').checked = true;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeCouponModal() {
+            document.getElementById('coupon-modal').classList.add('hidden');
+        }
+
+        window.editCoupon = function(coupon) {
+            openCouponModal(coupon);
+        };
+
+        async function saveCoupon() {
+            const form = document.getElementById('coupon-form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Converte valores numéricos e booleanos
+            data.discount_value = parseFloat(data.discount_value);
+            data.minimum_order_value = parseFloat(data.minimum_order_value) || 0;
+            data.usage_limit = parseInt(data.usage_limit) || 0;
+            data.is_active = document.getElementById('coupon-active').checked; // Pega direto do checkbox
+            
+            // Tratamento de datas (se vazio, envia null)
+            data.valid_from = data.valid_from ? new Date(data.valid_from).toISOString() : null;
+            data.valid_until = data.valid_until ? new Date(data.valid_until).toISOString() : null;
+            
+            // LÓGICA DE DECISÃO (CRIAR ou EDITAR)
+            const id = document.getElementById('coupon-id').value; // Pega o ID do hidden input
+            let url = API_COUPONS;
+            let method = 'POST';
+
+            if (id) {
+                // Se tem ID, muda para a URL de detalhes e método PUT
+                url = `${API_COUPONS}${id}/`; 
+                method = 'PUT';
+            }
+            
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    closeCouponModal();
+                    fetchCoupons();
+                    Toastify({ text: id ? "Cupom atualizado!" : "Cupom criado!", style: { background: "#10b981" } }).showToast();
+                } else {
+                    Toastify({ text: result.message || "Erro ao salvar cupom", style: { background: "#ef4444" } }).showToast();
+                }
+            } catch (error) {
+                console.error("Erro ao salvar cupom:", error);
+                Toastify({ text: "Erro de conexão", style: { background: "#ef4444" } }).showToast();
+            }
+        }
+
+        async function deleteCoupon(id) {
+            if (!confirm("Tem certeza que deseja excluir este cupom?")) return;
+            
+            try {
+                const response = await fetch(`${API_COUPONS}${id}/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    fetchCoupons();
+                    Toastify({ text: "Cupom excluído!", style: { background: "#10b981" } }).showToast();
+                } else {
+                    Toastify({ text: "Erro ao excluir cupom", style: { background: "#ef4444" } }).showToast();
+                }
+            } catch (error) {
+                console.error("Erro ao excluir cupom:", error);
+                Toastify({ text: "Erro ao excluir cupom", style: { background: "#ef4444" } }).showToast();
+            }
+        }
+
+        function updateDiscountLabel() {
+            const type = document.getElementById('coupon-discount-type').value;
+            const label = document.getElementById('discount-label');
+            if (type === 'percentage') {
+                label.innerText = "Valor do Desconto (%)";
+            } else {
+                label.innerText = "Valor do Desconto (R$)";
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,728 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMPedidos | Cardápio Digital Sem Comissões - Aumente suas Vendas em 300%</title>
+    <meta name="description" content="Pare de perder dinheiro com taxas abusivas. Crie seu cardápio digital em 30 segundos e receba pedidos direto no WhatsApp com PIX automático. Sem mensalidade, sem comissão.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* Gradientes e Backgrounds */
+        .hero-gradient { 
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            position: relative;
+        }
+        .accent-gradient { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%);
+        }
+        
+        /* Animações Profissionais */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.5), 0 0 40px rgba(249, 115, 22, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(249, 115, 22, 0.8), 0 0 60px rgba(249, 115, 22, 0.5); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
+        .animate-slideInLeft { animation: slideInLeft 0.6s ease-out forwards; }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        
+        /* Cards com Hover Profissional */
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .card-hover:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Pattern Background */
+        .mesh-pattern {
+            background-image: 
+                radial-gradient(at 40% 20%, rgba(249, 115, 22, 0.15) 0px, transparent 50%),
+                radial-gradient(at 80% 0%, rgba(234, 88, 12, 0.15) 0px, transparent 50%),
+                radial-gradient(at 0% 50%, rgba(249, 115, 22, 0.1) 0px, transparent 50%);
+        }
+        
+        /* Shimmer Effect */
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        /* Scroll Smooth */
+        html { scroll-behavior: smooth; }
+        
+        /* Counter Animation */
+        .counter { font-variant-numeric: tabular-nums; }
+        
+        /* Badge Pulsar */
+        @keyframes badge-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-white text-slate-800">
+
+    <!-- Navbar Ultra Profissional -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16 md:h-20">
+                <!-- Logo -->
+                <a href="{% url 'home' %}" class="flex items-center gap-2 md:gap-3 group">
+                    <div class="w-10 h-10 md:w-12 md:h-12 accent-gradient rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                        <i class="fas fa-utensils text-white text-lg md:text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-black text-lg md:text-xl tracking-tight text-slate-900">RMPedidos</span>
+                        <span class="text-[10px] md:text-xs text-orange-600 font-semibold -mt-1">Cardápio Digital</span>
+                    </div>
+                </a>
+                
+                <!-- Menu Desktop -->
+                <div class="hidden lg:flex items-center gap-8">
+                    <a href="#beneficios" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
+                        Benefícios
+                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
+                    </a>
+                    <a href="#funcionalidades" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
+                        Funcionalidades
+                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
+                    </a>
+                    <a href="#depoimentos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
+                        Depoimentos
+                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
+                    </a>
+                    <a href="#precos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
+                        Preços
+                        <span class="absolute -bottom-1 left-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
+                    </a>
+                </div>
+
+                <!-- CTAs -->
+                <div class="flex items-center gap-2 md:gap-4">
+                    <a href="{% url 'custom_login' %}" class="hidden sm:flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 text-sm font-bold text-slate-700 hover:text-orange-600 transition-colors">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span class="hidden md:inline">Entrar</span>
+                    </a>
+                    <a href="{% url 'signup' %}" class="px-4 md:px-6 py-2 md:py-3 accent-gradient text-white text-xs md:text-sm font-bold rounded-xl md:rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-rocket text-xs md:text-sm"></i>
+                        <span>Começar Grátis</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section Ultra Premium -->
+    <section class="hero-gradient pt-24 md:pt-32 pb-16 md:pb-24 relative overflow-hidden">
+        <div class="mesh-pattern absolute inset-0"></div>
+        
+        <!-- Elementos Decorativos Flutuantes -->
+        <div class="absolute top-20 left-10 w-64 h-64 md:w-96 md:h-96 bg-orange-500/20 rounded-full blur-3xl animate-float"></div>
+        <div class="absolute bottom-10 right-10 w-72 h-72 md:w-[500px] md:h-[500px] bg-yellow-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 1s;"></div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <!-- Badge de Novidade -->
+            <div class="flex justify-center mb-6 md:mb-8 animate-fadeInUp">
+                <div class="inline-flex items-center gap-2 md:gap-3 bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 px-4 md:px-6 py-2 md:py-3 rounded-full badge-pulse">
+                    <span class="relative flex h-2 w-2 md:h-3 md:w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-orange-500"></span>
+                    </span>
+                    <span class="text-xs md:text-sm font-bold text-orange-100">
+                        <i class="fas fa-fire mr-1 md:mr-2"></i>Mais de 2.500 restaurantes já usam
+                    </span>
+                </div>
+            </div>
+
+            <!-- Headline Principal -->
+            <div class="text-center mb-8 md:mb-12">
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-4 md:mb-6 tracking-tight animate-fadeInUp px-4">
+                    Pare de Perder
+                    <span class="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-yellow-400 mt-2">
+                        30% em Comissões
+                    </span>
+                </h1>
+                
+                <p class="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-300 max-w-4xl mx-auto leading-relaxed mb-6 md:mb-8 animate-fadeInUp px-4" style="animation-delay: 0.2s;">
+                    Crie seu <strong class="text-white font-bold">cardápio digital profissional</strong> em menos de 30 segundos. Receba pedidos direto no WhatsApp com <strong class="text-orange-400">PIX automático</strong> e sem pagar <strong class="text-white">nenhuma taxa por pedido</strong>.
+                </p>
+
+                <!-- Prova Social Compacta -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-8 text-slate-300 mb-8 md:mb-12 animate-fadeInUp px-4" style="animation-delay: 0.3s;">
+                    <div class="flex items-center gap-3">
+                        <div class="flex -space-x-2">
+                            <img src="https://i.pravatar.cc/40?img=68" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-slate-700" alt="Cliente">
+                            <img src="https://i.pravatar.cc/40?img=45" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-slate-700" alt="Cliente">
+                            <img src="https://i.pravatar.cc/40?img=33" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-slate-700" alt="Cliente">
+                            <img src="https://i.pravatar.cc/40?img=22" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-slate-700" alt="Cliente">
+                        </div>
+                        <div class="text-left">
+                            <div class="text-xs md:text-sm font-bold text-white">+2.500 lojistas</div>
+                            <div class="text-[10px] md:text-xs text-slate-400">economizando milhares</div>
+                        </div>
+                    </div>
+                    <div class="hidden sm:block w-px h-10 bg-slate-700"></div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex text-yellow-400 text-sm md:text-base">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="text-xs md:text-sm"><strong class="text-white">4.9/5</strong> avaliação</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTAs Hero -->
+            <div class="flex flex-col sm:flex-row justify-center gap-3 md:gap-4 mb-12 md:mb-20 animate-fadeInUp px-4" style="animation-delay: 0.4s;">
+                <a href="{% url 'signup' %}" class="group px-6 md:px-10 py-4 md:py-5 accent-gradient text-white rounded-xl md:rounded-2xl font-black text-base md:text-lg shadow-2xl shadow-orange-500/40 hover:shadow-orange-500/60 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3 pulse-glow">
+                    <i class="fas fa-rocket text-lg md:text-xl"></i>
+                    <span>Criar Cardápio Grátis</span>
+                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                <button onclick="openDemo()" class="px-6 md:px-10 py-4 md:py-5 glass text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-3 border border-white/20">
+                    <i class="fas fa-play-circle text-lg md:text-xl"></i>
+                    Ver Demonstração
+                </button>
+            </div>
+
+            <!-- Preview do Dashboard -->
+            <div class="max-w-6xl mx-auto relative animate-fadeInUp px-4" style="animation-delay: 0.5s;">
+                <!-- Brilho de fundo -->
+                <div class="absolute -inset-4 md:-inset-8 accent-gradient rounded-2xl md:rounded-3xl blur-3xl opacity-20"></div>
+                
+                <!-- Container do preview -->
+                <div class="relative bg-slate-900/50 backdrop-blur-xl rounded-xl md:rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+                    <!-- Browser Header -->
+                    <div class="bg-slate-800/80 px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 border-b border-slate-700/50">
+                        <div class="flex gap-1.5 md:gap-2">
+                            <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500"></div>
+                            <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <div class="inline-flex items-center gap-2 bg-slate-700/50 px-3 md:px-4 py-1 md:py-1.5 rounded-lg">
+                                <i class="fas fa-lock text-[10px] md:text-xs text-green-400"></i>
+                                <span class="text-[10px] md:text-xs text-slate-300 font-mono">rmpedidos.com/sua-loja</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Screenshot -->
+                    <div class="p-3 md:p-6 bg-gradient-to-br from-slate-900 to-slate-800">
+                        <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=90" alt="Dashboard RMPedidos" class="w-full rounded-lg md:rounded-xl shadow-2xl">
+                    </div>
+                </div>
+
+                <!-- Floating Elements -->
+                <div class="hidden lg:block absolute -left-8 top-1/4 bg-white p-4 rounded-xl shadow-xl animate-float">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-green-600"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Pedido Recebido!</div>
+                            <div class="text-xs text-slate-500">R$ 89,90</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="hidden lg:block absolute -right-8 top-1/3 bg-white p-4 rounded-xl shadow-xl animate-float" style="animation-delay: 0.5s;">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-fire text-orange-600"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">+300% vendas</div>
+                            <div class="text-xs text-slate-500">este mês</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção de Números/Estatísticas -->
+    <section class="py-12 md:py-20 bg-white border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                <div class="text-center">
+                    <div class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600 mb-2 counter">2.500+</div>
+                    <div class="text-xs md:text-sm font-semibold text-slate-600">Restaurantes Ativos</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600 mb-2 counter">300%</div>
+                    <div class="text-xs md:text-sm font-semibold text-slate-600">Aumento em Vendas</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600 mb-2 counter">R$ 0</div>
+                    <div class="text-xs md:text-sm font-semibold text-slate-600">Taxa por Pedido</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-2 counter">30 seg</div>
+                    <div class="text-xs md:text-sm font-semibold text-slate-600">Para Criar Loja</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefícios Premium -->
+    <section id="beneficios" class="py-16 md:py-24 bg-gradient-to-b from-white to-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header da Seção -->
+            <div class="text-center mb-12 md:mb-20">
+                <div class="inline-block mb-4">
+                    <span class="px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-xs md:text-sm font-bold uppercase tracking-wider">
+                        Por que RMPedidos?
+                    </span>
+                </div>
+                <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 mb-4 md:mb-6">
+                    Tudo que você precisa para
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">
+                        vender mais
+                    </span>
+                </h2>
+                <p class="text-base md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                    Ferramentas profissionais que grandes restaurantes usam, agora disponíveis para o seu negócio
+                </p>
+            </div>
+
+            <!-- Grid de Benefícios -->
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                <!-- Benefício 1 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-green-500/30">
+                        <i class="fab fa-whatsapp text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">Pedidos Direto no WhatsApp</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        Cliente escolhe, paga e o pedido chega completo no seu WhatsApp. Sem aplicativo extra, sem complicação.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-green-600 font-bold">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Integração instantânea</span>
+                    </div>
+                </div>
+
+                <!-- Benefício 2 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-qrcode text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">PIX Automático</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        QR Code gerado na hora. Cliente paga, você recebe em segundos. Dinheiro direto na sua conta, sem intermediários.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-blue-600 font-bold">
+                        <i class="fas fa-bolt"></i>
+                        <span>Pagamento instantâneo</span>
+                    </div>
+                </div>
+
+                <!-- Benefício 3 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-purple-500/30">
+                        <i class="fas fa-bell text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">Painel em Tempo Real</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        Notificação sonora a cada pedido novo. Aceite, prepare e finalize tudo em um painel profissional.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-purple-600 font-bold">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Gestão completa</span>
+                    </div>
+                </div>
+
+                <!-- Benefício 4 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-orange-500/30">
+                        <i class="fas fa-palette text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">Cardápio 100% Personalizável</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        Sua logo, suas cores, suas fotos. Cardápio com a identidade da sua marca em poucos cliques.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-orange-600 font-bold">
+                        <i class="fas fa-paint-brush"></i>
+                        <span>Design profissional</span>
+                    </div>
+                </div>
+
+                <!-- Benefício 5 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-red-500/30">
+                        <i class="fas fa-chart-bar text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">Relatórios Inteligentes</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        Veja suas vendas em tempo real, produtos mais vendidos e métricas que importam para crescer.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-red-600 font-bold">
+                        <i class="fas fa-rocket"></i>
+                        <span>Decisões baseadas em dados</span>
+                    </div>
+                </div>
+
+                <!-- Benefício 6 -->
+                <div class="group bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 card-hover">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-teal-500/30">
+                        <i class="fas fa-print text-2xl md:text-3xl text-white"></i>
+                    </div>
+                    <h3 class="text-lg md:text-xl font-black text-slate-900 mb-3">Impressão Térmica</h3>
+                    <p class="text-sm md:text-base text-slate-600 leading-relaxed mb-4">
+                        Imprima pedidos automaticamente. Perfeito para cozinhas movimentadas que precisam de agilidade.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs md:text-sm text-teal-600 font-bold">
+                        <i class="fas fa-cog"></i>
+                        <span>Automação total</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparação: Antes vs Depois -->
+    <section class="py-16 md:py-24 bg-slate-900 text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 md:mb-16">
+                <h2 class="text-3xl sm:text-4xl md:text-5xl font-black mb-4 md:mb-6">
+                    Veja a diferença na prática
+                </h2>
+                <p class="text-base md:text-xl text-slate-400 max-w-2xl mx-auto">
+                    Compare quanto você está perdendo com apps de delivery tradicionais
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto">
+                <!-- Antes (Apps Tradicionais) -->
+                <div class="bg-slate-800/50 backdrop-blur border border-red-500/30 rounded-2xl md:rounded-3xl p-6 md:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-times text-lg md:text-xl text-red-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-red-400">Apps Tradicionais</h3>
+                            <p class="text-xs md:text-sm text-slate-400">Você perde dinheiro todo dia</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-3 md:space-y-4">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-times-circle text-red-400 mt-0.5 flex-shrink-0"></i>
+                            <span class="text-sm md:text-base text-slate-300"><strong class="text-white">30% de comissão</strong> em cada pedido</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-times-circle text-red-400 mt-0.5 flex-shrink-0"></i>
+                            <span class="text-sm md:text-base text-slate-300">Dinheiro demora <strong class="text-white">dias</strong> para cair</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-times-circle text-red-400 mt-0.5 flex-shrink-0"></i>
+                            <span class="text-sm md:text-base text-slate-300">Cliente não é <strong class="text-white">seu</strong></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-times-circle text-red-400 mt-0.5 flex-shrink-0"></i>
+                            <span class="text-sm md:text-base text-slate-300">Taxas ocultas e surpresas</span>
+                        </li>
+                    </ul>
+                    <div class="mt-6 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                        <p class="text-xs md:text-sm text-red-300 text-center">
+                            Em R$ 10.000 de vendas, você paga <strong class="text-white text-base md:text-lg">R$ 3.000</strong> de comissão 😱
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Depois (RMPedidos) -->
+                <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl md:rounded-3xl p-6 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-40 h-40 bg-yellow-400/20 rounded-full blur-3xl"></div>
+                    <div class="relative">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                                <i class="fas fa-check text-lg md:text-xl text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg md:text-xl font-bold text-white">Com RMPedidos</h3>
+                                <p class="text-xs md:text-sm text-orange-100">Você fica com tudo</p>
+                            </div>
+                        </div>
+                        <ul class="space-y-3 md:space-y-4">
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-white mt-0.5 flex-shrink-0"></i>
+                                <span class="text-sm md:text-base text-white/90"><strong class="font-bold">R$ 0,00 de comissão</strong> por pedido</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-white mt-0.5 flex-shrink-0"></i>
+                                <span class="text-sm md:text-base text-white/90">Dinheiro <strong class="font-bold">na hora</strong> via PIX</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-white mt-0.5 flex-shrink-0"></i>
+                                <span class="text-sm md:text-base text-white/90">Cliente é <strong class="font-bold">100% seu</strong></span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-white mt-0.5 flex-shrink-0"></i>
+                                <span class="text-sm md:text-base text-white/90">Total transparência</span>
+                            </li>
+                        </ul>
+                        <div class="mt-6 p-4 bg-white/20 backdrop-blur rounded-xl border border-white/30">
+                            <p class="text-xs md:text-sm text-white text-center">
+                                Em R$ 10.000 de vendas, você paga <strong class="text-lg md:text-xl font-black">R$ 0,00</strong> de comissão 🎉
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculadora de Economia -->
+            <div class="mt-12 md:mt-16 max-w-2xl mx-auto bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl md:rounded-3xl p-6 md:p-8">
+                <h3 class="text-xl md:text-2xl font-bold text-center mb-6">
+                    <i class="fas fa-calculator text-orange-400 mr-2"></i>
+                    Quanto você economizaria?
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-300 mb-2">Vendas mensais:</label>
+                        <input type="number" id="monthlyRevenue" value="10000" min="0" step="1000"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-bold focus:border-orange-500 focus:outline-none"
+                            oninput="calculateSavings()">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <div class="text-center p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                            <p class="text-xs text-slate-400 mb-1">Apps cobram:</p>
+                            <p class="text-xl md:text-2xl font-black text-red-400" id="appCost">R$ 3.000</p>
+                        </div>
+                        <div class="text-center p-4 bg-green-500/10 rounded-xl border border-green-500/20">
+                            <p class="text-xs text-slate-400 mb-1">Você economiza:</p>
+                            <p class="text-xl md:text-2xl font-black text-green-400" id="savings">R$ 3.000</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Final Poderoso -->
+    <section class="py-16 md:py-24 accent-gradient relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-0 left-0 w-64 h-64 md:w-96 md:h-96 bg-white rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-yellow-300 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <div class="mb-6">
+                <div class="inline-block px-4 py-2 bg-white/20 backdrop-blur rounded-full">
+                    <p class="text-xs md:text-sm font-bold text-white">
+                        <i class="fas fa-clock mr-2"></i>Oferta por tempo limitado
+                    </p>
+                </div>
+            </div>
+            
+            <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-6 leading-tight">
+                Pronto para triplicar
+                <br class="hidden sm:block">
+                seus pedidos?
+            </h2>
+            <p class="text-lg md:text-xl lg:text-2xl text-orange-100 mb-8 md:mb-12 leading-relaxed max-w-2xl mx-auto">
+                Junte-se a <strong class="text-white">mais de 2.500 lojistas</strong> que já economizam milhares e vendem mais com o RMPedidos
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+                <a href="{% url 'signup' %}" class="group px-8 md:px-12 py-4 md:py-5 bg-white text-orange-600 rounded-xl md:rounded-2xl font-black text-base md:text-xl shadow-2xl hover:shadow-white/30 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
+                    <i class="fas fa-rocket text-xl md:text-2xl"></i>
+                    <span>Criar Minha Loja Grátis</span>
+                    <i class="fas fa-arrow-right group-hover:translate-x-2 transition-transform"></i>
+                </a>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 text-orange-100 text-sm">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-white"></i>
+                    <span>Sem cartão de crédito</span>
+                </div>
+                <div class="hidden sm:block w-px h-4 bg-orange-300/30"></div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-white"></i>
+                    <span>Configuração em 30 segundos</span>
+                </div>
+                <div class="hidden sm:block w-px h-4 bg-orange-300/30"></div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-white"></i>
+                    <span>Suporte brasileiro</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Premium -->
+    <footer class="bg-slate-900 text-slate-400 py-12 md:py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-12">
+                <!-- Brand -->
+                <div class="col-span-2 md:col-span-1">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 accent-gradient rounded-xl flex items-center justify-center">
+                            <i class="fas fa-utensils text-white"></i>
+                        </div>
+                        <span class="font-bold text-xl text-white">RMPedidos</span>
+                    </div>
+                    <p class="text-sm leading-relaxed mb-4">
+                        A solução completa para criar seu delivery digital e vender mais, pagando menos.
+                    </p>
+                    <div class="flex items-center gap-3">
+                        <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors text-sm">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Links 1 -->
+                <div>
+                    <h4 class="font-bold text-white mb-4 text-sm">Produto</h4>
+                    <ul class="space-y-2.5 text-sm">
+                        <li><a href="#beneficios" class="hover:text-orange-400 transition-colors">Benefícios</a></li>
+                        <li><a href="#funcionalidades" class="hover:text-orange-400 transition-colors">Funcionalidades</a></li>
+                        <li><a href="#precos" class="hover:text-orange-400 transition-colors">Preços</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Integrações</a></li>
+                    </ul>
+                </div>
+
+                <!-- Links 2 -->
+                <div>
+                    <h4 class="font-bold text-white mb-4 text-sm">Empresa</h4>
+                    <ul class="space-y-2.5 text-sm">
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Sobre Nós</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Blog</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Carreiras</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Contato</a></li>
+                    </ul>
+                </div>
+
+                <!-- Links 3 -->
+                <div>
+                    <h4 class="font-bold text-white mb-4 text-sm">Legal</h4>
+                    <ul class="space-y-2.5 text-sm">
+                        <li><a href="{% url 'termos' %}" class="hover:text-orange-400 transition-colors">Termos de Uso</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Privacidade</a></li>
+                        <li><a href="#" class="hover:text-orange-400 transition-colors">Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
+                <p>© 2025 RMPedidos. Todos os direitos reservados.</p>
+                <p class="text-slate-500">
+                    Desenvolvido por <a href="https://rmdev.vercel.app" target="_blank">Rafael Mendes
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function openDemo() {
+            Swal.fire({
+                title: '<strong>Demonstração RMPedidos</strong>',
+                html: `
+                    <div class="text-left space-y-3 p-4">
+                        <p class="text-slate-600">Em breve você poderá ver uma demonstração completa do sistema!</p>
+                        <div class="bg-orange-50 p-3 rounded-lg">
+                            <p class="text-sm text-orange-800"><i class="fas fa-info-circle mr-2"></i>Enquanto isso, crie sua loja grátis e comece a vender hoje mesmo!</p>
+                        </div>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonColor: '#ea580c',
+                confirmButtonText: '<i class="fas fa-rocket mr-2"></i>Criar Minha Loja',
+                cancelButtonText: 'Fechar',
+                showCancelButton: true,
+                customClass: {
+                    confirmButton: 'font-bold',
+                    cancelButton: 'font-bold'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "{% url 'signup' %}";
+                }
+            });
+        }
+
+        // Calculadora de economia
+        function calculateSavings() {
+            const revenue = parseFloat(document.getElementById('monthlyRevenue').value) || 0;
+            const appCost = revenue * 0.30;
+            const savings = appCost;
+            
+            document.getElementById('appCost').textContent = 'R$ ' + appCost.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+            document.getElementById('savings').textContent = 'R$ ' + savings.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Animação ao scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card-hover').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

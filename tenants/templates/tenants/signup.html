@@ -1,0 +1,491 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Minha Loja Grátis em 30 Segundos | RMPedidos</title>
+    <meta name="description" content="Configure seu cardápio digital profissional em menos de 1 minuto. Sem cartão de crédito, sem complicação.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Gradientes */
+        .gradient-bg { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%);
+        }
+        
+        /* Input Focus Premium */
+        .input-group {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .input-group:focus-within {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.15);
+        }
+        .input-group:focus-within .input-icon {
+            color: #ea580c;
+            transform: scale(1.1);
+        }
+        .input-field:focus {
+            outline: none;
+        }
+        
+        /* Animações */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(2deg); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(0.9); opacity: 1; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-fadeInUp { animation: fadeInUp 0.6s ease-out forwards; }
+        .animate-slideInRight { animation: slideInRight 0.6s ease-out forwards; }
+        .pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Pattern */
+        .mesh-pattern {
+            background-image: 
+                radial-gradient(at 40% 20%, rgba(249, 115, 22, 0.2) 0px, transparent 50%),
+                radial-gradient(at 80% 0%, rgba(234, 88, 12, 0.2) 0px, transparent 50%);
+        }
+        
+        /* Checkbox Custom */
+        .custom-checkbox:checked {
+            background-color: #ea580c;
+            border-color: #ea580c;
+        }
+        
+        /* Button Hover */
+        .btn-primary {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(249, 115, 22, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        /* Progress Steps */
+        .step-item {
+            opacity: 0.4;
+            transition: all 0.3s ease;
+        }
+        .step-item.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <!-- Container Principal -->
+    <div class="min-h-screen flex flex-col lg:flex-row">
+        
+        <!-- Lado Esquerdo - Branding (Desktop) -->
+        <div class="hidden lg:flex lg:w-1/2 gradient-bg relative overflow-hidden">
+            <div class="mesh-pattern absolute inset-0"></div>
+            
+            <!-- Elementos Decorativos -->
+            <div class="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-float"></div>
+            <div class="absolute bottom-20 right-20 w-96 h-96 bg-yellow-300/10 rounded-full blur-3xl animate-float" style="animation-delay: 1s;"></div>
+            
+            <!-- Conteúdo -->
+            <div class="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white w-full">
+                
+                <!-- Logo + Status -->
+                <div class="flex items-center gap-4 mb-12 animate-fadeInUp">
+                    <div class="w-16 h-16 bg-white/15 backdrop-blur-lg rounded-2xl flex items-center justify-center shadow-2xl">
+                        <i class="fas fa-utensils text-3xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-3xl tracking-tight">RMPedidos</span>
+                        <div class="flex items-center gap-2 text-orange-100 text-sm mt-1">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+                            </span>
+                            <span class="font-semibold">2.573 lojistas online agora</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Headline -->
+                <h1 class="text-5xl xl:text-6xl font-black leading-tight mb-6 animate-fadeInUp" style="animation-delay: 0.1s;">
+                    Crie seu delivery
+                    <span class="block text-yellow-300">em 30 segundos</span>
+                </h1>
+                
+                <p class="text-xl text-orange-100 mb-12 leading-relaxed max-w-lg animate-fadeInUp" style="animation-delay: 0.2s;">
+                    Sem cartão de crédito. Sem complicação. Comece a vender hoje mesmo e diga adeus às comissões abusivas.
+                </p>
+
+                <!-- Benefícios Rápidos -->
+                <div class="space-y-5 mb-12">
+                    <div class="flex items-center gap-4 glass rounded-2xl p-5 animate-slideInRight" style="animation-delay: 0.3s;">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-bolt text-yellow-300 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white text-lg">Configuração instantânea</p>
+                            <p class="text-orange-100 text-sm">Seu cardápio no ar em menos de 1 minuto</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 glass rounded-2xl p-5 animate-slideInRight" style="animation-delay: 0.4s;">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-hand-holding-usd text-green-300 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white text-lg">R$ 0,00 de comissão</p>
+                            <p class="text-orange-100 text-sm">100% do lucro fica com você</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 glass rounded-2xl p-5 animate-slideInRight" style="animation-delay: 0.5s;">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fab fa-whatsapp text-green-300 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white text-lg">Pedidos no WhatsApp</p>
+                            <p class="text-orange-100 text-sm">Integração automática e PIX instantâneo</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Depoimento -->
+                <div class="glass rounded-2xl p-6 border border-white/20 animate-fadeInUp" style="animation-delay: 0.6s;">
+                    <div class="flex items-start gap-4">
+                        <img src="https://i.pravatar.cc/100?img=68" alt="Carlos" class="w-14 h-14 rounded-full border-3 border-white/30 flex-shrink-0">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <p class="font-bold text-white">Carlos Mendes</p>
+                                <div class="flex text-yellow-300 text-xs">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            <p class="text-orange-100 text-sm italic leading-relaxed">
+                                "Economizei R$ 4.200 no primeiro mês. O melhor sistema que já usei!"
+                            </p>
+                            <p class="text-orange-200 text-xs mt-2 font-semibold">
+                                <i class="fas fa-store mr-1"></i>Brasa Burguer - São Paulo
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trust Badges -->
+                <div class="flex items-center gap-6 mt-12 text-sm text-orange-100 animate-fadeInUp" style="animation-delay: 0.7s;">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-shield-alt text-green-300"></i>
+                        <span>Dados Seguros</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-bolt text-yellow-300"></i>
+                        <span>Setup Rápido</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-headset text-blue-300"></i>
+                        <span>Suporte BR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lado Direito - Formulário -->
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 bg-white lg:bg-slate-50">
+            <div class="w-full max-w-md">
+                
+                <!-- Logo Mobile -->
+                <div class="lg:hidden flex items-center justify-center gap-3 mb-8">
+                    <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-utensils text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-2xl text-slate-900">RMPedidos</span>
+                        <p class="text-xs text-slate-500 font-semibold">Cardápio Digital</p>
+                    </div>
+                </div>
+
+                <!-- Header -->
+                <div class="text-center mb-8 lg:mb-10">
+                    <div class="inline-flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl lg:rounded-3xl mb-4 lg:mb-6 mx-auto pulse-ring">
+                        <i class="fas fa-rocket text-3xl lg:text-4xl text-orange-600"></i>
+                    </div>
+                    <h2 class="text-2xl lg:text-3xl xl:text-4xl font-black text-slate-900 mb-2 lg:mb-3">
+                        Crie sua Loja Grátis
+                    </h2>
+                    <p class="text-sm lg:text-base text-slate-600 leading-relaxed px-4">
+                        Preencha os dados abaixo e comece a vender em <strong class="text-orange-600">menos de 1 minuto</strong>
+                    </p>
+                </div>
+
+                <!-- Progress Steps (Mobile) -->
+                <div class="lg:hidden flex justify-center gap-2 mb-8">
+                    <div class="h-1 w-12 bg-orange-600 rounded-full step-item active"></div>
+                    <div class="h-1 w-12 bg-slate-200 rounded-full step-item"></div>
+                    <div class="h-1 w-12 bg-slate-200 rounded-full step-item"></div>
+                </div>
+
+                <!-- Alerta de Erro -->
+                {% if error %}
+                <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-xl animate-fadeInUp">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-circle text-red-500 text-xl mt-0.5"></i>
+                        <div>
+                            <p class="text-red-800 font-bold text-sm mb-1">Ops! Algo deu errado</p>
+                            <p class="text-red-600 text-xs">{{ error }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Formulário -->
+                <form method="POST" class="space-y-5 lg:space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Nome da Loja -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
+                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
+                            <i class="fas fa-store text-orange-600"></i>
+                            Nome da sua Loja
+                        </label>
+                        <div class="input-group relative bg-white border-2 border-slate-200 rounded-xl lg:rounded-2xl overflow-hidden">
+                            <div class="absolute left-4 top-1/2 -translate-y-1/2 input-icon transition-all">
+                                <i class="fas fa-store text-slate-400"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                name="store_name" 
+                                required 
+                                class="input-field w-full pl-12 pr-4 py-4 lg:py-5 bg-transparent text-slate-900 placeholder-slate-400 font-medium"
+                                placeholder="Ex: Brasa Burguer"
+                                autocomplete="organization">
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                            <i class="fas fa-link text-orange-500"></i>
+                            <span>Sua URL: <span class="font-mono font-bold text-orange-600">rmpedidos.com/nomedaloja</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
+                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
+                            <i class="fas fa-envelope text-orange-600"></i>
+                            Seu melhor Email
+                        </label>
+                        <div class="input-group relative bg-white border-2 border-slate-200 rounded-xl lg:rounded-2xl overflow-hidden">
+                            <div class="absolute left-4 top-1/2 -translate-y-1/2 input-icon transition-all">
+                                <i class="fas fa-envelope text-slate-400"></i>
+                            </div>
+                            <input 
+                                type="email" 
+                                name="email" 
+                                required 
+                                class="input-field w-full pl-12 pr-4 py-4 lg:py-5 bg-transparent text-slate-900 placeholder-slate-400 font-medium"
+                                placeholder="seu@email.com"
+                                autocomplete="email">
+                        </div>
+                    </div>
+
+                    <!-- Senha -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
+                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
+                            <i class="fas fa-lock text-orange-600"></i>
+                            Crie uma Senha Segura
+                        </label>
+                        <div class="input-group relative bg-white border-2 border-slate-200 rounded-xl lg:rounded-2xl overflow-hidden">
+                            <div class="absolute left-4 top-1/2 -translate-y-1/2 input-icon transition-all">
+                                <i class="fas fa-lock text-slate-400"></i>
+                            </div>
+                            <input 
+                                type="password" 
+                                name="password" 
+                                required 
+                                id="passwordInput"
+                                minlength="6"
+                                class="input-field w-full pl-12 pr-12 py-4 lg:py-5 bg-transparent text-slate-900 placeholder-slate-400 font-medium"
+                                placeholder="Mínimo 6 caracteres"
+                                autocomplete="new-password">
+                            <button 
+                                type="button" 
+                                onclick="togglePassword()" 
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                            Use letras, números e caracteres especiais
+                        </div>
+                    </div>
+
+                    <!-- Termos -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input 
+                                type="checkbox" 
+                                id="terms" 
+                                required 
+                                class="custom-checkbox mt-1 w-5 h-5 text-orange-600 border-2 border-slate-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all cursor-pointer">
+                            <span class="text-sm text-slate-600 leading-relaxed group-hover:text-slate-900 transition-colors">
+                                Concordo com os 
+                                <a href="{% url 'termos' %}" target="_blank" class="text-orange-600 font-bold hover:underline">Termos de Uso</a> 
+                                e 
+                                <a href="{% url 'privacidade' %}" target="_blank" class="text-orange-600 font-bold hover:underline">Política de Privacidade</a>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Botão Submit -->
+                    <button 
+                        type="submit" 
+                        class="btn-primary w-full gradient-bg text-white font-black py-4 lg:py-5 rounded-xl lg:rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center gap-3 text-base lg:text-lg animate-fadeInUp"
+                        style="animation-delay: 0.5s;">
+                        <i class="fas fa-rocket text-xl"></i>
+                        <span>Criar Minha Loja Agora</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+
+                    <!-- Trust Elements -->
+                    <div class="flex items-center justify-center gap-4 text-xs text-slate-500 pt-2 animate-fadeInUp" style="animation-delay: 0.6s;">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-shield-check text-green-500"></i>
+                            <span>Dados Protegidos</span>
+                        </div>
+                        <div class="w-px h-4 bg-slate-300"></div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-credit-card text-blue-500"></i>
+                            <span>Sem Cartão</span>
+                        </div>
+                        <div class="w-px h-4 bg-slate-300"></div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-clock text-orange-500"></i>
+                            <span>30 Segundos</span>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Já tem conta -->
+                <div class="mt-8 text-center animate-fadeInUp" style="animation-delay: 0.7s;">
+                    <p class="text-sm text-slate-600">
+                        Já tem uma conta? 
+                        <a href="{% url 'custom_login' %}" class="text-orange-600 font-bold hover:text-orange-700 hover:underline transition-colors">
+                            Faça Login
+                            <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Social Proof Final -->
+                <div class="mt-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 animate-fadeInUp" style="animation-delay: 0.8s;">
+                    <div class="flex items-center justify-center gap-3">
+                        <div class="flex -space-x-2">
+                            <img src="https://i.pravatar.cc/32?img=1" class="w-8 h-8 rounded-full border-2 border-white" alt="User">
+                            <img src="https://i.pravatar.cc/32?img=2" class="w-8 h-8 rounded-full border-2 border-white" alt="User">
+                            <img src="https://i.pravatar.cc/32?img=3" class="w-8 h-8 rounded-full border-2 border-white" alt="User">
+                        </div>
+                        <p class="text-xs text-slate-700">
+                            <strong class="text-green-700 font-bold">+2.500 lojistas</strong> já estão vendendo mais
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Password
+        function togglePassword() {
+            const input = document.getElementById('passwordInput');
+            const icon = document.getElementById('eyeIcon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Form Validation Feedback
+        const form = document.querySelector('form');
+        const inputs = form.querySelectorAll('input[required]');
+        
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.parentElement.classList.add('border-red-300');
+                    this.parentElement.classList.remove('border-slate-200');
+                } else {
+                    this.parentElement.classList.remove('border-red-300');
+                    this.parentElement.classList.add('border-green-300');
+                }
+            });
+            
+            input.addEventListener('input', function() {
+                if (this.value.trim() !== '') {
+                    this.parentElement.classList.remove('border-red-300');
+                    this.parentElement.classList.add('border-slate-200');
+                }
+            });
+        });
+
+        // Submit Button Animation
+        form.addEventListener('submit', function(e) {
+            const button = form.querySelector('button[type="submit"]');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin text-xl"></i><span>Criando sua loja...</span>';
+            button.disabled = true;
+        });
+
+        // Auto-generate store slug preview
+        const storeNameInput = document.querySelector('input[name="store_name"]');
+        if (storeNameInput) {
+            storeNameInput.addEventListener('input', function() {
+                const slug = this.value
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                    
+                const preview = this.parentElement.nextElementSibling.querySelector('.font-mono');
+                if (preview && slug) {
+                    preview.textContent = `rmpedidos.com/${slug}`;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

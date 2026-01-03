@@ -1,0 +1,463 @@
+/* =========================================
+   DARK MODE SYSTEM - PRATA & BRILHO
+   Sistema completo e organizado
+   ========================================= */
+
+/* ==========================================
+   BASE - CORPO E BACKGROUND
+   ========================================== */
+body.dark-mode {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+/* ==========================================
+   BACKGROUNDS - Fundos de elementos
+   ========================================== */
+body.dark-mode .bg-white {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode .bg-slate-50 {
+    background-color: #0f172a !important;
+}
+
+body.dark-mode .bg-slate-100 {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode .bg-slate-200 {
+    background-color: #334155 !important;
+}
+
+/* Fundos com opacidade */
+body.dark-mode .bg-slate-50\/50 {
+    background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+body.dark-mode .bg-slate-800\/50 {
+    background-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* ==========================================
+   TEXTOS - Todas as variações
+   ========================================== */
+body.dark-mode .text-slate-900 {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode .text-slate-800 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .text-slate-700 {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .text-slate-600 {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .text-slate-400 {
+    color: #64748b !important;
+}
+
+body.dark-mode .text-slate-300 {
+    color: #cbd5e1 !important;
+}
+
+/* ==========================================
+   BORDAS
+   ========================================== */
+body.dark-mode .border-slate-100,
+body.dark-mode .border-slate-200 {
+    border-color: #334155 !important;
+}
+
+body.dark-mode .border-slate-300 {
+    border-color: #475569 !important;
+}
+
+body.dark-mode .border-slate-700 {
+    border-color: #334155 !important;
+}
+
+body.dark-mode .border-slate-800 {
+    border-color: #1e293b !important;
+}
+
+/* ==========================================
+   INPUTS E FORMULÁRIOS
+   ========================================== */
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Inputs readonly (CEP, endereço) */
+body.dark-mode input[readonly] {
+    background-color: #0f172a !important;
+    color: #94a3b8 !important;
+}
+
+/* ==========================================
+   BOTÕES
+   ========================================== */
+body.dark-mode .bg-slate-900 {
+    background-color: #7c3aed !important;
+}
+
+body.dark-mode .hover\:bg-slate-800:hover {
+    background-color: #6d28d9 !important;
+}
+
+body.dark-mode .hover\:bg-slate-50:hover {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode .hover\:bg-slate-200:hover {
+    background-color: #334155 !important;
+}
+
+/* ==========================================
+   CARDS DE PRODUTO
+   ========================================== */
+body.dark-mode .group {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode .hover\:bg-slate-50:hover {
+    background-color: #334155 !important;
+}
+
+/* ==========================================
+   MODAL DO CARRINHO
+   ========================================== */
+body.dark-mode #cart-items>div {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode #cart-items h4 {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode #empty-cart-msg .text-slate-600 {
+    color: #94a3b8 !important;
+}
+
+/* ==========================================
+   ELEMENTOS ROXOS (Purple)
+   ========================================== */
+body.dark-mode .bg-purple-50 {
+    background-color: rgba(124, 58, 237, 0.1) !important;
+}
+
+body.dark-mode .text-purple-600 {
+    color: #a78bfa !important;
+}
+
+body.dark-mode .text-purple-700 {
+    color: #a78bfa !important;
+}
+
+body.dark-mode .border-purple-100 {
+    border-color: rgba(124, 58, 237, 0.3) !important;
+}
+
+/* ==========================================
+   SWEETALERT2 (Modais de Produto)
+   ========================================== */
+body.dark-mode .swal2-popup {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #334155 !important;
+}
+
+body.dark-mode .swal2-title {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode .swal2-html-container {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .swal2-styled.swal2-cancel {
+    background-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .swal2-image {
+    background-color: #0f172a !important;
+}
+
+/* Opções do produto no modal */
+body.dark-mode #swal-options-container input[type="radio"]+div,
+body.dark-mode #swal-options-container input[type="checkbox"]+div {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode #swal-options-container input:checked+div {
+    background-color: #7c3aed !important;
+    color: white !important;
+    border-color: #7c3aed !important;
+}
+
+body.dark-mode #modal-live-price {
+    color: #f1f5f9 !important;
+    background-color: #0f172a !important;
+}
+
+/* Textarea de observações no modal */
+body.dark-mode #modal-obs {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* ==========================================
+   MODAL DE INFO DA LOJA
+   ========================================== */
+body.dark-mode #store-info-modal .bg-slate-50 {
+    background-color: rgba(30, 41, 59, 0.3) !important;
+}
+
+body.dark-mode #store-info-modal .text-slate-700 {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode #store-info-modal .border-gray-100 {
+    border-color: #334155 !important;
+}
+
+body.dark-mode #store-info-modal .text-gray-500 {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode #store-info-modal .text-gray-800 {
+    color: #e2e8f0 !important;
+}
+
+/* ==========================================
+   ADMIN - PAINEL GESTOR
+   ========================================== */
+body.dark-mode .dark\:bg-slate-900 {
+    background-color: #0f172a !important;
+}
+
+body.dark-mode .dark\:bg-slate-800 {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode .dark\:bg-slate-950 {
+    background-color: #020617 !important;
+}
+
+body.dark-mode .dark\:bg-slate-950\/50 {
+    background-color: rgba(2, 6, 23, 0.5) !important;
+}
+
+body.dark-mode .dark\:text-white {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .dark\:text-slate-400 {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .dark\:text-slate-300 {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .dark\:border-slate-800 {
+    border-color: #1e293b !important;
+}
+
+body.dark-mode .dark\:border-slate-700 {
+    border-color: #334155 !important;
+}
+
+/* Botões do admin no dark mode */
+body.dark-mode .dark\:bg-white {
+    background-color: #e2e8f0 !important;
+}
+
+body.dark-mode .dark\:text-slate-900 {
+    color: #0f172a !important;
+}
+
+/* Correção: Cards de produtos no Admin */
+body.dark-mode #products-list h4 {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode #products-list .text-slate-900 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode #products-list .text-slate-800 {
+    color: #e2e8f0 !important;
+}
+
+/* Correção: Contador de categoria */
+body.dark-mode #products-list .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+/* Correção: Botões dos cards */
+body.dark-mode #products-list button.dark\:bg-slate-800 {
+    background-color: #334155 !important;
+}
+
+body.dark-mode #products-list button.dark\:hover\:bg-slate-700:hover {
+    background-color: #475569 !important;
+}
+
+/* ==========================================
+   SKELETON LOADING
+   ========================================== */
+body.dark-mode #skeleton-loading .bg-slate-200 {
+    background-color: #334155 !important;
+}
+
+/* ==========================================
+   SCROLLBAR CUSTOMIZADA
+   ========================================== */
+body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569 !important;
+}
+
+body.dark-mode .custom-scroll::-webkit-scrollbar-thumb {
+    background: #475569 !important;
+}
+
+/* ==========================================
+   AJUSTES ESPECÍFICOS DE CONTRASTE
+   ========================================== */
+body.dark-mode .opacity-60 {
+    opacity: 0.8 !important;
+}
+
+body.dark-mode .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ==========================================
+   FILTROS DE CATEGORIA
+   ========================================== */
+body.dark-mode #category-filters button:not(.bg-slate-900) {
+    background-color: #1e293b !important;
+    color: #94a3b8 !important;
+    border-color: #fff !important;
+}
+
+body.dark-mode #category-filters button:not(.bg-slate-900):hover {
+    background-color: #334155 !important;
+    color: #a78bfa !important;
+}
+
+/* ==========================================
+   BADGES E TAGS
+   ========================================== */
+body.dark-mode .bg-purple-50 {
+    background-color: rgba(124, 58, 237, 0.15) !important;
+}
+
+/* ==========================================
+   FOOTER DO CARRINHO
+   ========================================== */
+body.dark-mode #footer-cart {
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    border-color: #334155 !important;
+}
+
+/* ==========================================
+   PAGAMENTO - Radio Buttons
+   ========================================== */
+body.dark-mode input[type="radio"]+div {
+    background-color: #1e293b !important;
+}
+
+body.dark-mode input[type="radio"]:checked+div {
+    background-color: rgba(34, 197, 94, 0.1) !important;
+}
+
+body.dark-mode .peer-checked\:bg-green-50\/50 {
+    background-color: rgba(34, 197, 94, 0.1) !important;
+}
+
+body.dark-mode .peer-checked\:bg-purple-50\/50 {
+    background-color: rgba(124, 58, 237, 0.1) !important;
+}
+
+/* ==========================================
+   ÍCONES E ELEMENTOS DECORATIVOS
+   ========================================== */
+body.dark-mode .text-green-600 {
+    color: #4ade80 !important;
+}
+
+body.dark-mode .bg-green-100 {
+    background-color: rgba(34, 197, 94, 0.2) !important;
+}
+
+body.dark-mode .bg-purple-100 {
+    background-color: rgba(124, 58, 237, 0.2) !important;
+}
+
+/* ==========================================
+   TOASTIFY (Notificações)
+   ========================================== */
+body.dark-mode .toastify {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ==========================================
+   FIX FINAL: BOTÃO FECHAR MODAL INFO (X)
+   ========================================== */
+
+body.dark-mode .swal2-close {
+    color: #ffffff !important;
+    /* Branco no Dark Mode */
+}
+
+body.dark-mode .swal2-close:hover {
+    color: #f43f5e !important;
+    /* Mantém o Rose no Hover */
+}
+
+/* Garante fundo escuro e ícone branco no dark mode */
+body.dark-mode #store-info-modal button.absolute {
+    background-color: rgba(30, 41, 59, 0.9) !important;
+    /* Slate 800 com transparência */
+    color: #ffffff !important;
+    /* Ícone Branco */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Garante o Hover Rose no dark mode */
+body.dark-mode #store-info-modal button.absolute:hover {
+    color: #f43f5e !important;
+    /* Rose 500 */
+    background-color: rgba(30, 41, 59, 1) !important;
+}

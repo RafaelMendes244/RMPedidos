@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termos de Uso | RMPedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+        .accent-gradient { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%);
+        }
+        html { scroll-behavior: smooth; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16 md:h-20">
+                <a href="/" class="flex items-center gap-2 md:gap-3 group">
+                    <div class="w-10 h-10 md:w-12 md:h-12 accent-gradient rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 transition-all duration-300 group-hover:scale-110">
+                        <i class="fas fa-utensils text-white text-lg md:text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-black text-lg md:text-xl tracking-tight text-slate-900">RMPedidos</span>
+                        <span class="text-[10px] md:text-xs text-orange-600 font-semibold -mt-1">Cardápio Digital</span>
+                    </div>
+                </a>
+                
+                <a href="/" class="px-4 md:px-6 py-2 md:py-3 accent-gradient text-white text-xs md:text-sm font-bold rounded-xl shadow-lg hover:scale-105 transition-all duration-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-16 accent-gradient">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-block mb-4">
+                <div class="px-4 py-2 bg-white/20 backdrop-blur rounded-full">
+                    <span class="text-xs md:text-sm font-bold text-white">
+                        <i class="fas fa-file-contract mr-2"></i>Atualizado em 31/12/2024
+                    </span>
+                </div>
+            </div>
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 fade-in">
+                Termos de Uso
+            </h1>
+            <p class="text-lg md:text-xl text-orange-100 max-w-2xl mx-auto fade-in">
+                Leia atentamente os termos que regem o uso da plataforma RMPedidos
+            </p>
+        </div>
+    </section>
+
+    <!-- Conteúdo -->
+    <section class="py-16 md:py-24">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-200 p-6 md:p-12 fade-in">
+                
+                <!-- Introdução -->
+                <div class="mb-12">
+                    <div class="flex items-start gap-4 mb-6">
+                        <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-handshake text-orange-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-3">Bem-vindo ao RMPedidos</h2>
+                            <p class="text-slate-600 leading-relaxed">
+                                Estes Termos de Uso estabelecem as condições gerais aplicáveis à utilização da plataforma RMPedidos, um serviço de cardápio digital e gestão de pedidos online.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
+                        <p class="text-sm text-orange-900">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Ao utilizar nossos serviços, você concorda integralmente com estes termos. Caso não concorde, pedimos que não utilize a plataforma.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Seção 1 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">1</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Definições</h3>
+                    </div>
+                    <div class="pl-13 space-y-3 text-slate-600">
+                        <p><strong class="text-slate-900">Plataforma:</strong> Sistema RMPedidos acessível via web e mobile.</p>
+                        <p><strong class="text-slate-900">Lojista/Usuário:</strong> Pessoa física ou jurídica que cria e gerencia cardápio digital na plataforma.</p>
+                        <p><strong class="text-slate-900">Cliente Final:</strong> Consumidor que realiza pedidos através do cardápio criado pelo Lojista.</p>
+                        <p><strong class="text-slate-900">Serviços:</strong> Todas as funcionalidades oferecidas pela plataforma, incluindo criação de cardápio, gestão de pedidos, integração com WhatsApp e PIX.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 2 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">2</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Cadastro e Conta</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">2.1.</strong> Para utilizar os serviços, é necessário criar uma conta fornecendo informações verdadeiras, completas e atualizadas.</p>
+                        <p><strong class="text-slate-900">2.2.</strong> Você é responsável por manter a confidencialidade de suas credenciais de acesso e por todas as atividades realizadas em sua conta.</p>
+                        <p><strong class="text-slate-900">2.3.</strong> É proibido compartilhar sua conta com terceiros ou permitir acesso não autorizado.</p>
+                        <p><strong class="text-slate-900">2.4.</strong> Você deve ter no mínimo 18 anos ou ser legalmente capaz para aceitar estes termos.</p>
+                        <p><strong class="text-slate-900">2.5.</strong> Reservamo-nos o direito de recusar, suspender ou cancelar contas que violem estes termos.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 3 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">3</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Uso da Plataforma</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">3.1. Uso Permitido:</strong> A plataforma destina-se exclusivamente ao gerenciamento de cardápios digitais e pedidos para estabelecimentos comerciais legítimos.</p>
+                        <p><strong class="text-slate-900">3.2. Uso Proibido:</strong> É expressamente proibido:</p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Utilizar a plataforma para atividades ilegais ou fraudulentas</li>
+                            <li>Publicar conteúdo ofensivo, difamatório ou que viole direitos de terceiros</li>
+                            <li>Fazer engenharia reversa, descompilar ou tentar acessar código-fonte</li>
+                            <li>Utilizar bots, scrapers ou ferramentas automatizadas não autorizadas</li>
+                            <li>Sobrecarregar ou interferir no funcionamento da plataforma</li>
+                            <li>Vender produtos proibidos por lei ou que exijam licenças especiais sem as devidas autorizações</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Seção 4 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">4</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Propriedade Intelectual</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">4.1.</strong> Todos os direitos sobre a plataforma RMPedidos, incluindo código, design, marca e conteúdo, pertencem exclusivamente aos seus proprietários.</p>
+                        <p><strong class="text-slate-900">4.2.</strong> Você mantém todos os direitos sobre o conteúdo que criar ou enviar (fotos, descrições de produtos, logos).</p>
+                        <p><strong class="text-slate-900">4.3.</strong> Ao enviar conteúdo, você concede ao RMPedidos licença não exclusiva para usar, exibir e armazenar esse conteúdo na plataforma.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 5 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">5</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Pagamentos e Transações</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">5.1.</strong> O RMPedidos facilita a integração com sistemas de pagamento (PIX), mas não processa ou mantém valores de transações.</p>
+                        <p><strong class="text-slate-900">5.2.</strong> Você é responsável por configurar corretamente suas informações de pagamento (chave PIX).</p>
+                        <p><strong class="text-slate-900">5.3.</strong> Todas as transações financeiras ocorrem diretamente entre você e seus clientes.</p>
+                        <p><strong class="text-slate-900">5.4.</strong> O RMPedidos não cobra comissão sobre vendas, mas pode oferecer planos pagos com funcionalidades adicionais.</p>
+                        <p><strong class="text-slate-900">5.5.</strong> Você é responsável por cumprir todas as obrigações fiscais e legais relacionadas às suas vendas.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 6 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">6</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Responsabilidades</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">6.1. Responsabilidade do Lojista:</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Garantir a qualidade, segurança e legalidade dos produtos oferecidos</li>
+                            <li>Manter informações precisas sobre produtos, preços e disponibilidade</li>
+                            <li>Cumprir prazos de entrega e atender pedidos conforme acordado</li>
+                            <li>Resolver disputas e problemas com clientes finais</li>
+                            <li>Cumprir legislação sanitária, tributária e comercial aplicável</li>
+                        </ul>
+                        <p><strong class="text-slate-900">6.2. Responsabilidade do RMPedidos:</strong></p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Manter a plataforma funcionando com disponibilidade razoável</li>
+                            <li>Proteger dados conforme Política de Privacidade</li>
+                            <li>Fornecer suporte técnico aos usuários</li>
+                        </ul>
+                        <p><strong class="text-slate-900">6.3.</strong> O RMPedidos não se responsabiliza por:</p>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li>Qualidade, segurança ou legalidade de produtos vendidos</li>
+                            <li>Disputas entre lojistas e clientes finais</li>
+                            <li>Problemas causados por falhas de conexão, terceiros (WhatsApp, bancos) ou força maior</li>
+                            <li>Perdas financeiras decorrentes do uso ou impossibilidade de uso da plataforma</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Seção 7 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">7</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Privacidade e Proteção de Dados</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">7.1.</strong> O tratamento de dados pessoais é regido por nossa Política de Privacidade, em conformidade com a LGPD (Lei 13.709/2018).</p>
+                        <p><strong class="text-slate-900">7.2.</strong> Você é responsável por obter consentimento dos clientes finais para coleta e uso de seus dados.</p>
+                        <p><strong class="text-slate-900">7.3.</strong> Mantenha seguros os dados de clientes que acessar através da plataforma.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 8 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">8</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Modificações e Suspensão</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">8.1.</strong> Reservamo-nos o direito de modificar, suspender ou descontinuar qualquer aspecto da plataforma a qualquer momento.</p>
+                        <p><strong class="text-slate-900">8.2.</strong> Estes termos podem ser atualizados periodicamente. Usuários serão notificados sobre mudanças significativas.</p>
+                        <p><strong class="text-slate-900">8.3.</strong> O uso continuado após modificações constitui aceitação dos novos termos.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 9 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">9</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Rescisão</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">9.1.</strong> Você pode cancelar sua conta a qualquer momento através do painel de controle.</p>
+                        <p><strong class="text-slate-900">9.2.</strong> Podemos suspender ou encerrar sua conta imediatamente em caso de violação destes termos.</p>
+                        <p><strong class="text-slate-900">9.3.</strong> Após o cancelamento, seus dados serão tratados conforme Política de Privacidade.</p>
+                    </div>
+                </div>
+
+                <!-- Seção 10 -->
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <span class="font-black text-orange-600">10</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900">Disposições Gerais</h3>
+                    </div>
+                    <div class="pl-13 space-y-4 text-slate-600">
+                        <p><strong class="text-slate-900">10.1. Lei Aplicável:</strong> Estes termos são regidos pelas leis brasileiras.</p>
+                        <p><strong class="text-slate-900">10.2. Foro:</strong> Fica eleito o foro da comarca da sede da empresa para dirimir quaisquer controvérsias.</p>
+                        <p><strong class="text-slate-900">10.3. Independência:</strong> Se qualquer disposição for considerada inválida, as demais permanecerão em vigor.</p>
+                        <p><strong class="text-slate-900">10.4. Comunicações:</strong> Avisos oficiais serão enviados por e-mail ou através da plataforma.</p>
+                    </div>
+                </div>
+
+                <!-- Contato -->
+                <div class="mt-12 p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl border border-orange-200">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <i class="fas fa-headset text-orange-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-slate-900 mb-2">Dúvidas sobre os Termos?</h4>
+                            <p class="text-slate-600 mb-4">
+                                Nossa equipe está disponível para esclarecer qualquer questão sobre estes termos de uso.
+                            </p>
+                            <div class="space-y-2 text-sm">
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fas fa-envelope text-orange-600"></i>
+                                    <strong>Email:</strong> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97f4f8f9e3f6e3f8d7e5fae7f2f3fef3f8e4b9f4f8fab9f5e5">[email&#160;protected]</a>
+                                </p>
+                                <p class="flex items-center gap-2 text-slate-700">
+                                    <i class="fab fa-whatsapp text-orange-600"></i>
+                                    <strong>WhatsApp:</strong> (83) 9999-9999
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 accent-gradient rounded-xl flex items-center justify-center">
+                        <i class="fas fa-utensils text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg text-white">RMPedidos</span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-6 text-sm">
+                    <a href="/" class="hover:text-orange-400 transition-colors">Início</a>
+                    <a href="/termos" class="hover:text-orange-400 transition-colors">Termos de Uso</a>
+                    <a href="/privacidade" class="hover:text-orange-400 transition-colors">Privacidade</a>
+                    <a href="#" class="hover:text-orange-400 transition-colors">Contato</a>
+                </div>
+                <p class="text-sm">© 2025 RMPedidos. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

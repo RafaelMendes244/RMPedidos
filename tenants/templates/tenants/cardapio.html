@@ -1,0 +1,515 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>{{ tenant.name }} | Cardápio Digital</title>
+
+    {% if tenant.logo %}
+        <link rel="icon" type="image/png" href="{{ tenant.logo.url }}">
+        <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}">
+        <link rel="apple-touch-icon" href="{{ tenant.logo.url }}">
+    {% endif %}
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="{% static 'dark-mode.css' %}">
+    <meta name="description" content="Cardápio digital de {{ tenant.name }}. Peça pelo WhatsApp com entrega rápida.">
+    <meta name="theme-color" content="{{ tenant.primary_color }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: {{ tenant.primary_color }};
+            --accent: {{ tenant.primary_color }};
+        }
+        .text-primary { color: var(--primary); }
+        .bg-primary { background-color: var(--primary); }
+        .border-primary { border-color: var(--primary); }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fef7ed;
+            color: #451a03;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, h4, .font-serif { font-family: 'Playfair Display', serif; }
+        
+        /* Scrollbars */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 10px; }
+
+        .animate-fadeIn { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .swal2-close { color: #451a03 !important; outline: none !important; box-shadow: none !important; transition: color 0.3s ease !important; }
+        .swal2-close:hover { color: var(--primary) !important; background: transparent !important; }
+    </style>
+</head>
+
+<body class="pb-32 antialiased selection:bg-orange-500 selection:text-white">
+    <header id="main-header" class="relative w-full h-[500px] md:h-[600px] flex flex-col items-center justify-center text-center text-white overflow-hidden shadow-2xl">
+        <div id="header-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-[3000ms] transform hover:scale-105"
+            style="background-image: url('{% if tenant.background_image %}{{ tenant.background_image.url }}{% else %}https://blog.connectplug.com.br/wp-content/uploads/2024/06/4016-1-e1718285827136.jpg{% endif %}');">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+        <div class="absolute inset-0 opacity-40 mix-blend-multiply" style="background-color: {{ tenant.primary_color }};"></div>
+
+        <div class="relative z-10 px-6 w-full max-w-4xl mx-auto flex flex-col items-center animate-fadeIn">
+            {% if tenant.logo %}
+                <img src="{{ tenant.logo.url }}" class="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white/20 shadow-xl mb-6 object-cover">
+            {% endif %}
+
+            <h1 class="text-5xl md:text-7xl font-serif font-medium tracking-wider drop-shadow-xl text-white uppercase mb-4">
+                {{ tenant.name }}
+            </h1>
+
+            <p class="text-sm md:text-lg font-light opacity-90 mb-8 max-w-lg leading-relaxed text-orange-100 font-sans">
+                Faça seu pedido online. Entrega rápida e segura.
+            </p>
+
+            <div id="status-loja-container" class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs font-bold shadow-lg mb-8 transition hover:bg-black/50">
+                <i id="status-icon" class="fas fa-circle text-[8px] animate-pulse text-green-400"></i>
+                <span id="status-text" class="tracking-widest uppercase">LOJA ONLINE</span>
+            </div>
+
+            <a href="#menu-items" class="px-8 py-3 bg-white text-gray-900 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-gray-100 transition shadow-lg">
+                Ver Cardápio
+            </a>
+        </div>
+    </header>
+
+    {% if not tenant.is_open or not store_is_open %}
+    <div class="max-w-6xl mx-auto px-4 -mt-8 relative z-20">
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-center gap-3 text-red-700">
+            <i class="fas fa-clock text-red-500"></i>
+            <div class="flex-1">
+                <p class="font-bold text-sm">
+                    {% if not tenant.is_open %}
+                        Loja Temporariamente Fechada
+                    {% else %}
+                        Fora do Horário de Funcionamento
+                    {% endif %}
+                </p>
+                <p class="text-xs text-red-600">
+                    {% if not tenant.is_open %}
+                        No momento não estamos aceitando pedidos.
+                    {% elif store_closed_message %}
+                        {{ store_closed_message }}
+                    {% else %}
+                        {% if day_today and not day_today.is_closed and day_today.open_time %}
+                            Hoje: {{ day_today.open_time|date:"H:i" }} às {{ day_today.close_time|date:"H:i" }}
+                        {% else %}
+                            Consulte os horários de funcionamento.
+                        {% endif %}
+                    {% endif %}
+                </p>
+            </div>
+            <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg font-bold transition">
+                Atualizar
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="max-w-6xl mx-auto px-4 -mt-8 relative z-20 grid grid-cols-2 gap-4 max-w-sm sm:max-w-md">
+        <button onclick="openStoreInfo()" class="bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition border border-orange-100 dark:border-gray-700">
+            <i class="fas fa-store" style="color: {{ tenant.primary_color }}"></i> Info & Local
+        </button>
+        <button onclick="openHistory()" class="text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition" style="background-color: {{ tenant.primary_color }}">
+            <i class="fas fa-history"></i> Meus Pedidos
+        </button>
+    </div>
+
+    <nav class="sticky top-0 z-40 bg-[#fef7ed]/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-orange-100 dark:border-gray-800 py-4 mb-8 shadow-sm transition-all duration-300" id="category-nav">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between mb-4 md:hidden">
+                <h2 class="font-serif text-xl text-gray-800 dark:text-white italic">Cardápio</h2>
+                <span class="text-xs font-bold text-orange-600 animate-pulse">
+                    {% if tenant.is_open %}ABERTO{% else %}FECHADO{% endif %}
+                </span>
+            </div>
+
+            <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1" id="category-filters">
+                <a href="#" class="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex-shrink-0 bg-gray-900 text-white shadow-lg transform hover:scale-105 active:scale-95 dark:bg-white dark:text-gray-900">
+                    <i class="fas fa-th-large mr-1"></i> Todos
+                </a>
+                
+                {% for category in categories %}
+                <a href="#cat-{{ category.id }}" class="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 border flex-shrink-0 bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-600 hover:shadow-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                    {{ category.name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 min-h-[400px]" id="menu-items">
+        
+        {% for category in categories %}
+            <div id="cat-{{ category.id }}" class="flex items-center gap-4 mt-8 mb-6 w-full animate-fadeIn pt-4">
+                <span class="h-px w-8" style="background-color: {{ tenant.primary_color }}"></span>
+                <h2 class="text-3xl font-serif text-gray-800 dark:text-white capitalize italic tracking-wide">
+                    {{ category.name }}
+                </h2>
+                <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {% for product in category.products.all %}
+                <div class="group relative bg-white dark:bg-gray-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(234,88,12,0.15)] transition-all duration-300 border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full hover:-translate-y-1">
+    
+                    <div class="relative aspect-[4/3] overflow-hidden bg-gray-100 cursor-pointer" onclick="showProductModal('{{ product.id }}')">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+                        {% else %}
+                            <div class="h-full w-full flex items-center justify-center bg-orange-50">
+                                <i class="fas fa-utensils text-4xl text-orange-200"></i>
+                            </div>
+                        {% endif %}
+
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                        {% if product.badge %}
+                        <span class="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg z-20 shadow-lg uppercase tracking-wider backdrop-blur-sm bg-opacity-90">
+                            {{ product.badge }}
+                        </span>
+                        {% endif %}
+
+                        <button onclick="event.stopPropagation(); toggleFavorite('{{ product.id }}')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur flex items-center justify-center text-gray-400 hover:text-red-500 transition shadow-sm z-20 active:scale-90">
+                            <i class="far fa-heart text-sm"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-5 flex flex-col flex-1 justify-between">
+                        <div class="cursor-pointer" onclick="showProductModal('{{ product.id }}')">
+                            <div class="flex justify-between items-start gap-2 mb-2">
+                                <h3 class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-orange-600 transition-colors">
+                                    {{ product.name }}
+                                </h3>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-4">
+                                {{ product.description|default:"Toque para ver detalhes e ingredientes." }}
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-end justify-between mt-auto pt-4 border-t border-gray-50 dark:border-gray-700">
+                            <div class="flex flex-col">
+                                {% if product.original_price %}
+                                    <span class="text-[10px] text-gray-400 line-through mb-0.5">R$ {{ product.original_price }}</span>
+                                {% endif %}
+                                <span class="text-lg font-bold text-gray-900 dark:text-white font-serif tracking-tight">
+                                    R$ {{ product.price }}
+                                </span>
+                            </div>
+                            
+                            <button 
+                                onclick="showProductModal('{{ product.id }}')"
+                                class="relative overflow-hidden bg-orange-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-orange-700 transition shadow-lg shadow-orange-600/20 active:scale-95 group/btn"
+                                style="background-color: {{ tenant.primary_color }}">
+                                <span class="relative z-10 flex items-center gap-2">
+                                    Adicionar <i class="fas fa-plus"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        {% if not categories %}
+        <div class="text-center py-20 opacity-50 flex flex-col items-center">
+            <i class="fas fa-utensils text-4xl mb-4 text-gray-300"></i>
+            <p class="text-xl font-serif text-gray-500">Nenhum prato disponível no momento.</p>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <footer id="footer-cart" onclick="openCart()" class="fixed bottom-6 left-4 right-4 max-w-md mx-auto bg-orange-600/95 backdrop-blur-md text-white p-3 pr-5 rounded-full shadow-2xl cursor-pointer hidden flex items-center justify-between z-40 border border-orange-500 ring-1 ring-white/10" style="background-color: {{ tenant.primary_color }}">
+        <div class="flex items-center gap-4">
+            <div class="relative bg-white/10 w-12 h-12 rounded-full flex items-center justify-center border border-white/10">
+                <i class="fas fa-shopping-bag text-lg text-white"></i>
+                <span id="cart-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md border border-white transition-transform scale-0">0</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[9px] text-white/80 uppercase font-bold tracking-widest">Total Estimado</span>
+                <span id="cart-total-preview" class="font-serif text-lg text-white font-medium leading-none">R$ 0,00</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] font-bold bg-white text-orange-600 px-4 py-2 rounded-full shadow-lg uppercase tracking-widest" style="color: {{ tenant.primary_color }}">
+            Ver Sacola <i class="fas fa-arrow-right ml-1"></i>
+        </div>
+    </footer>
+
+    <div id="cart-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeCart()"></div>
+        <div class="absolute inset-y-0 right-0 w-full max-w-[450px] bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col h-[100dvh]">
+            
+            <div class="p-6 flex justify-between items-center border-b dark:border-gray-800">
+                <h2 class="text-xl font-serif dark:text-white">Sua Sacola</h2>
+                <button onclick="closeCart()" class="dark:text-white"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="flex-1 p-5 overflow-y-auto" id="cart-content-area">
+                
+                <div id="step-1-cart">
+                    <div id="cart-header" class="hidden flex justify-between items-end mb-4 px-1 border-b border-gray-100 dark:border-gray-800 pb-2">
+                        <h3 class="font-bold text-gray-500 text-xs uppercase tracking-widest">Seus Itens</h3>
+                        <button onclick="clearCart()" class="text-[10px] text-red-500 font-bold hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition uppercase flex items-center gap-1">
+                            <i class="fas fa-trash-alt"></i> Esvaziar
+                        </button>
+                    </div>
+
+                    <div id="cart-items" class="space-y-4"></div>
+
+                    <div id="empty-cart-msg" class="hidden text-center py-24 flex flex-col items-center opacity-60">
+                        <div class="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-300">
+                            <i class="fas fa-utensils text-3xl"></i>
+                        </div>
+                        <p class="font-serif text-xl text-gray-600 dark:text-gray-400 italic mb-2">Sua sacola está vazia.</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Adicione nossos pratos deliciosos.</p>
+                        <button onclick="closeCart()" class="mt-8 px-8 py-3 bg-orange-600 text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-orange-700 transition">Ver Cardápio</button>
+                    </div>
+                </div>
+
+                <div id="step-2-address" class="hidden space-y-4 animate-fadeIn">
+                    <button onclick="backToCart()" class="text-xs text-gray-500 font-bold mb-2"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    
+                    <div class="space-y-3">
+                        <input type="text" id="client-name" placeholder="Seu Nome" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
+                        <input type="tel" id="client-phone" placeholder="Seu WhatsApp" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
+                        
+                        <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                            <button id="btn-delivery" onclick="toggleDelivery(true)" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white shadow text-orange-600">ENTREGA</button>
+                            <button id="btn-pickup" onclick="toggleDelivery(false)" class="flex-1 py-2 text-xs font-bold rounded-lg text-gray-500">RETIRADA</button>
+                        </div>
+
+                        <div id="address-container" class="space-y-2">
+                            <input type="tel" id="cep" placeholder="CEP" onblur="buscarCep()" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
+                            <input type="text" id="address" placeholder="Rua" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white">
+                            <div class="flex gap-2">
+                                <input type="text" id="number" placeholder="Nº" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
+                                <input type="text" id="neighborhood" placeholder="Bairro" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white">
+                            </div>
+                            <p onclick="habilitarEnderecoManual()" class="text-[10px] text-orange-600 font-bold cursor-pointer text-right">Digitar endereço manualmente</p>
+                        </div>
+
+                        <!-- Cupom de Desconto -->
+                        <div class="bg-orange-50 dark:bg-gray-800 p-3 rounded-xl border border-orange-200 dark:border-gray-700">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-tag text-orange-500"></i>
+                                <span class="text-xs font-bold uppercase text-orange-600 dark:text-orange-400">Cupom de Desconto</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="coupon-code" placeholder="Código do cupom" class="flex-1 p-2 border rounded-lg text-sm bg-white dark:bg-gray-900 dark:text-white uppercase" onkeyup="this.value = this.value.toUpperCase()">
+                                <button onclick="applyCoupon()" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+                                    Aplicar
+                                </button>
+                            </div>
+                            <div id="coupon-message" class="text-xs mt-2 hidden"></div>
+                            <div id="coupon-applied" class="hidden mt-2 flex items-center justify-between bg-green-100 dark:bg-green-900 p-2 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <span class="text-xs font-bold text-green-700 dark:text-green-400" id="coupon-applied-code"></span>
+                                </div>
+                                <button onclick="removeCoupon()" class="text-xs text-red-500 hover:text-red-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <p class="text-xs font-bold uppercase text-gray-400">Pagamento</p>
+                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800">
+                                <input type="radio" name="payment-method" value="pix" class="accent-orange-600" checked>
+                                <span class="text-sm font-bold dark:text-white">PIX</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800">
+                                <input type="radio" name="payment-method" value="cartao" class="accent-orange-600">
+                                <span class="text-sm font-bold dark:text-white">Cartão / Dinheiro</span>
+                            </label>
+                        </div>
+                        
+                        <textarea id="order-notes" placeholder="Observações..." class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
+                <div id="discount-display" class="hidden flex justify-between items-end mb-1">
+                    <span class="text-xs font-bold text-green-600">Desconto aplicado</span>
+                    <span id="discount-amount" class="text-sm font-bold text-green-600">-R$ 0,00</span>
+                </div>
+                <div class="flex justify-between items-end mb-4">
+                    <span class="text-xs font-bold text-gray-400">Total</span>
+                    <span id="cart-total-final" class="text-2xl font-serif font-bold dark:text-white">R$ 0,00</span>
+                </div>
+                
+                <button id="btn-next-step" onclick="goToAddress()" 
+                    class="w-full py-3 text-white font-bold rounded-xl transition shadow-lg 
+                    {% if not tenant.is_open or not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-orange-600 hover:bg-orange-700{% endif %}" 
+                    {% if not tenant.is_open or not store_is_open %}disabled{% endif %}>
+                    {% if not tenant.is_open or not store_is_open %}Loja Fechada{% else %}Continuar{% endif %}
+                </button>
+
+                <button id="btn-finalize" onclick="finalizeOrder()" 
+                    class="hidden w-full py-3 text-white font-bold rounded-xl transition shadow-lg 
+                    {% if not tenant.is_open or not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-green-600 hover:bg-green-700{% endif %}" 
+                    {% if not tenant.is_open or not store_is_open %}disabled{% endif %}>
+                    {% if not tenant.is_open or not store_is_open %}Loja Fechada{% else %}Finalizar Pedido no WhatsApp{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity" onclick="closeHistory()"></div>
+        
+        <div class="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center pointer-events-none">
+            
+            <div class="bg-white dark:bg-gray-900 w-full md:w-[400px] h-[85vh] md:h-auto md:max-h-[600px] md:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto transform transition-transform duration-300 translate-y-0 animate-fadeIn">
+                
+                <div class="p-6 flex justify-between items-center border-b border-gray-100 dark:border-gray-800 shrink-0">
+                    <h2 class="text-xl font-serif font-bold text-gray-800 dark:text-white">Meus Pedidos</h2>
+                    <button onclick="closeHistory()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-red-500 transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4 space-y-4" id="history-content">
+                    <div class="text-center py-20 opacity-50 flex flex-col items-center">
+                        <i class="fas fa-spinner fa-spin text-2xl text-orange-500"></i>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <div id="store-info-modal" onclick="if(event.target === this) window.closeStoreInfo()" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 relative">
+            <button onclick="closeStoreInfo()" class="absolute top-4 right-4 text-gray-400"><i class="fas fa-times"></i></button>
+            <h2 class="text-xl font-serif font-bold mb-4 dark:text-white">Informações</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <p class="text-xs font-bold text-orange-600 uppercase">Endereço</p>
+                    {% if tenant.address %}
+                    <a href="https://www.google.com/maps/search/?api=1&query={{ tenant.address|urlencode }}" target="_blank" class="text-sm text-gray-700 dark:text-gray-300 hover:text-orange-600 transition flex items-center gap-2">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="underline">{{ tenant.address }}</span>
+                        <i class="fas fa-external-link-alt text-xs opacity-60"></i>
+                    </a>
+                    {% else %}
+                    <p class="text-sm text-gray-400 italic">Endereço não cadastrado</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-4">
+                    <p class="text-xs font-bold text-orange-600 uppercase mb-2">Horários de Funcionamento</p>
+                    <div id="info-horario" class="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                        {% for day in operating_days %}
+                            <div class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1 last:border-0">
+                                <span class="font-medium">{{ day.get_day_display }}</span>
+                                <span>
+                                    {% if day.is_closed %}
+                                        <span class="text-red-500 font-bold text-xs">Fechado</span>
+                                    {% else %}
+                                        {{ day.open_time|date:"H:i" }} - {{ day.close_time|date:"H:i" }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        {% empty %}
+                            <p class="italic text-gray-400 text-xs">Horários não configurados pelo estabelecimento.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <script>
+
+        window.API_URL = "{% url 'api_create_order' tenant.slug %}";
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+        window.TENANT_SLUG = "{{ tenant.slug }}";
+
+        // Configurações Globais da Loja vindas do Backend
+        window.STORE_CONFIG = {
+            storeName: "{{ tenant.name|escapejs }}",
+            phone: "{{ tenant.phone_whatsapp }}",
+            pixKey: "{{ tenant.pix_key|default:'' }}",
+            pixName: "{{ tenant.pix_name|default:'' }}",
+            pixCity: "{{ tenant.pix_city|default:'' }}",
+            manualOpen: {{ tenant.is_open|yesno:"true,false" }},
+            schedule: JSON.parse('{{ schedule_json|safe }}'),
+            deliveryFees: JSON.parse('{{ delivery_fees_json|safe }}'),
+            isOpen: true 
+        };
+
+        // Dados completos dos produtos (para o modal funcionar sem ir no banco)
+        window.PRODUCTS_DATA = {};
+        
+        {% for category in categories %}
+            {% for product in category.products.all %}
+            window.PRODUCTS_DATA['{{ product.id }}'] = {
+                id: '{{ product.id }}',
+                name: '{{ product.name|escapejs }}',
+                price: {{ product.price|stringformat:".2f" }},
+                // Adiciona o preço original ao objeto JSON
+                original_price: {% if product.original_price %}{{ product.original_price|stringformat:".2f" }}{% else %}null{% endif %},
+                description: '{{ product.description|escapejs }}',
+                image: '{% if product.image %}{{ product.image.url }}{% else %}data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="%23fff7ed" width="200" height="200"/><circle cx="100" cy="90" r="40" fill="%23fed7aa" opacity="0.5"/><text x="100" y="100" font-family="FontAwesome" font-size="50" text-anchor="middle" fill="%23fdba74"></text><text x="100" y="155" font-family="Arial" font-size="14" text-anchor="middle" fill="%23fb923c" font-weight="bold">SABOR</text></svg>{% endif %}',
+                opcoes: [
+                    {% for opt in product.options.all %}
+                    {
+                        title: "{{ opt.title }}",
+                        type: "{{ opt.type }}",
+                        required: {{ opt.required|yesno:"true,false" }},
+                        max: {{ opt.max_quantity }},
+                        items: [
+                            {% for item in opt.items.all %}
+                            { name: "{{ item.name }}", price: {{ item.price|stringformat:".2f" }} },
+                            {% endfor %}
+                        ]
+                    },
+                    {% endfor %}
+                ]
+            };
+            {% endfor %}
+        {% endfor %}
+    </script>
+
+    <!-- Rodapé com Links Legais -->
+    <footer class="text-center py-6 pb-10 text-xs text-gray-400">
+        <p>{{ tenant.name }} © {% now "Y" %} - Todos os direitos reservados</p>
+        <div class="mt-2 space-x-4">
+            <a href="{% url 'termos' %}" target="_blank" class="hover:text-orange-500 transition">Termos de Uso</a>
+            <span class="text-gray-300">|</span>
+            <a href="{% url 'privacidade' %}" target="_blank" class="hover:text-orange-500 transition">Política de Privacidade</a>
+        </div>
+    </footer>
+
+    <script src="{% static 'script.js' %}?v=2"></script>
+
+</body>
+</html>
