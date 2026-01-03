@@ -14,6 +14,7 @@ from decimal import Decimal
 import logging
 
 from django_ratelimit.decorators import ratelimit
+from django.views.decorators.cache import never_cache
 
 from .models import (
     Tenant, 
@@ -176,6 +177,7 @@ def cardapio_publico(request, slug):
     
     return render(request, 'tenants/cardapio.html', context)
 
+@never_cache
 @login_required
 def painel_lojista(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)

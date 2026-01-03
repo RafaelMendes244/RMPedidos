@@ -74,7 +74,6 @@ window.calcularTaxaEntrega = (bairroInput) => {
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    initDarkMode();
     updateCartCounter();
     setupEventListeners();
     // Verificar status da loja
@@ -699,7 +698,6 @@ window.habilitarEnderecoManual = () => {
     });
 };
 
-function initDarkMode() { if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode'); }
 function setupEventListeners() {
     const phone = document.getElementById("client-phone");
     if (phone) phone.addEventListener("input", (e) => {

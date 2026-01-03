@@ -16,7 +16,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <link rel="stylesheet" href="{% static 'dark-mode.css' %}">
     <meta name="description" content="Cardápio digital de {{ tenant.name }}. Peça pelo WhatsApp com entrega rápida.">
     <meta name="theme-color" content="{{ tenant.primary_color }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -57,6 +56,30 @@
 
         .swal2-close { color: #451a03 !important; outline: none !important; box-shadow: none !important; transition: color 0.3s ease !important; }
         .swal2-close:hover { color: var(--primary) !important; background: transparent !important; }
+
+        /* ============================================
+           ESTILOS PARA BOTÕES DE CATEGORIA
+           ============================================ */
+        .category-btn {
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .category-btn.active-category {
+            border-color: transparent;
+        }
+
+        .category-btn:not(.active-category):hover {
+            transform: scale(1.05);
+        }
+
+        .category-section {
+            transition: opacity 0.3s ease;
+        }
+
+        .category-section:hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -144,14 +167,14 @@
             </div>
 
             <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1" id="category-filters">
-                <a href="#" class="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex-shrink-0 bg-gray-900 text-white shadow-lg transform hover:scale-105 active:scale-95 dark:bg-white dark:text-gray-900">
+                <button onclick="filterCategory('all', this)" class="category-btn px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex-shrink-0 bg-gray-900 text-white shadow-lg transform hover:scale-105 active:scale-95 dark:bg-white dark:text-gray-900 active-category">
                     <i class="fas fa-th-large mr-1"></i> Todos
-                </a>
+                </button>
                 
                 {% for category in categories %}
-                <a href="#cat-{{ category.id }}" class="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 border flex-shrink-0 bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-600 hover:shadow-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                <button onclick="filterCategory('cat-{{ category.id }}', this)" class="category-btn px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 border flex-shrink-0 bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-600 hover:shadow-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
                     {{ category.name }}
-                </a>
+                </button>
                 {% endfor %}
             </div>
         </div>
@@ -160,7 +183,7 @@
     <main class="max-w-7xl mx-auto px-4 min-h-[400px]" id="menu-items">
         
         {% for category in categories %}
-            <div id="cat-{{ category.id }}" class="flex items-center gap-4 mt-8 mb-6 w-full animate-fadeIn pt-4">
+            <div id="cat-{{ category.id }}" class="category-section flex items-center gap-4 mt-8 mb-6 w-full animate-fadeIn pt-4">
                 <span class="h-px w-8" style="background-color: {{ tenant.primary_color }}"></span>
                 <h2 class="text-3xl font-serif text-gray-800 dark:text-white capitalize italic tracking-wide">
                     {{ category.name }}
@@ -497,6 +520,106 @@
             };
             {% endfor %}
         {% endfor %}
+
+        // ============================================
+        // FUNÇÃO DE FILTRAGEM DE CATEGORIAS
+        // ============================================
+        
+        // Função para filtrar por categoria com scroll suave
+        window.filterCategory = function(categoryId, buttonElement) {
+            // Remove a classe active-category de todos os botões
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active-category', 'bg-gray-900', 'text-white', 'dark:bg-white', 'dark:text-gray-900');
+                btn.classList.add('bg-white', 'text-gray-600', 'dark:bg-gray-800', 'dark:text-gray-300', 'border', 'border-gray-200', 'dark:border-gray-700');
+            });
+
+            // Adiciona a classe active-category ao botão clicado
+            if (buttonElement) {
+                buttonElement.classList.add('active-category', 'bg-gray-900', 'text-white', 'dark:bg-white', 'dark:text-gray-900');
+                buttonElement.classList.remove('bg-white', 'text-gray-600', 'dark:bg-gray-800', 'dark:text-gray-300', 'border', 'border-gray-200', 'dark:border-gray-700');
+            }
+
+            // Se for "all", mostra todos os produtos e rola para o topo
+            if (categoryId === 'all') {
+                document.querySelectorAll('.category-section').forEach(section => {
+                    section.style.display = 'block';
+                });
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                return;
+            }
+
+            // Esconde todas as seções primeiro
+            document.querySelectorAll('.category-section').forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Mostra apenas a categoria selecionada
+            const targetSection = document.getElementById(categoryId);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                
+                // Scroll suave até a seção
+                const navHeight = document.getElementById('category-nav').offsetHeight;
+                const targetPosition = targetSection.offsetTop - navHeight - 20;
+                
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        };
+
+        // Inicializar estado ativo na carga da página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se há uma categoria na URL (âncora)
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#cat-')) {
+                const categoryId = hash.substring(1); // Remove o #
+                const button = document.querySelector(`button[onclick*="${categoryId}"]`);
+                if (button) {
+                    // Pequeno delay para garantir que tudo carregou
+                    setTimeout(() => {
+                        filterCategory(categoryId, button);
+                    }, 100);
+                }
+            }
+        });
+
+        // Atualizar botão ativo durante scroll (Intersection Observer)
+        document.addEventListener('DOMContentLoaded', function() {
+            const observerOptions = {
+                root: null,
+                rootMargin: '-20% 0px -80% 0px',
+                threshold: 0
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const categoryId = entry.target.id;
+                        const button = document.querySelector(`button[onclick*="${categoryId}"]`);
+                        if (button && !button.classList.contains('active-category')) {
+                            // Remove active de todos
+                            document.querySelectorAll('.category-btn').forEach(btn => {
+                                btn.classList.remove('active-category', 'bg-gray-900', 'text-white', 'dark:bg-white', 'dark:text-gray-900');
+                                btn.classList.add('bg-white', 'text-gray-600', 'dark:bg-gray-800', 'dark:text-gray-300', 'border', 'border-gray-200', 'dark:border-gray-700');
+                            });
+                            // Adiciona active ao botão visível
+                            button.classList.add('active-category', 'bg-gray-900', 'text-white', 'dark:bg-white', 'dark:text-gray-900');
+                            button.classList.remove('bg-white', 'text-gray-600', 'dark:bg-gray-800', 'dark:text-gray-300', 'border', 'border-gray-200', 'dark:border-gray-700');
+                        }
+                    }
+                });
+            }, observerOptions);
+
+            // Observar todas as seções de categoria
+            document.querySelectorAll('.category-section').forEach(section => {
+                observer.observe(section);
+            });
+        });
     </script>
 
     <!-- Rodapé com Links Legais -->
