@@ -37,7 +37,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 # ALLOWED HOSTS PARA SUBDOMINIOS E DOMINIOS
-ALLOWED_HOSTS = ['.rmpedidos.online', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -204,3 +204,12 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Se alguém tentar acessar uma área restrita, manda pra cá:
+LOGIN_URL = 'custom_login' 
+
+# Depois de logar, manda pra cá (caso não tenha next):
+LOGIN_REDIRECT_URL = 'home' 
+
+# Ao sair, manda pra cá:
+LOGOUT_REDIRECT_URL = 'custom_login'

@@ -118,6 +118,10 @@
             <button onclick="switchTab('coupons'); toggleMobileMenu();" id="mob-nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-tag text-lg"></i> Cupons
             </button>
+
+            <a href="{% url 'custom_logout' %}" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-sm transition mt-auto">
+                <i class="fas fa-sign-out-alt text-lg"></i> Sair do Painel
+            </a>
         </nav>
 
         <div class="p-4 border-t border-orange-100">
@@ -167,6 +171,10 @@
             <button onclick="switchTab('coupons')" id="nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-tag text-lg"></i> Cupons
             </button>
+
+            <a href="{% url 'custom_logout' %}" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-sm transition mt-auto">
+                <i class="fas fa-sign-out-alt text-lg"></i> Sair
+            </a>
         </nav>
 
         <div class="p-4 border-t border-orange-100">
@@ -561,11 +569,26 @@
         const API_STORE_TOGGLE = `/${TENANT_SLUG}/api/store/toggle/`;
         const API_STORE_SYNC = `/${TENANT_SLUG}/api/store/sync/`;
         
-        const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
         let knownOrders = new Set();
-        let audio = new Audio(NOTIFICATION_SOUND);
         let categoriesCache = [];
         let isManualToggle = false;
+
+        const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/571/571-preview.mp3"; 
+
+        let audio = new Audio(NOTIFICATION_SOUND);
+        audio.volume = 1.0; // Volume máximo
+
+        // Função inteligente para tocar o som de forma insistente
+        function playAlertSound() {
+            // Toca a primeira vez
+            audio.play().catch(e => console.log("Audio bloqueado (interaja com a página primeiro)"));
+            
+            // Toca de novo após 1.5 segundos (fazendo um efeito DING... DING...)
+            setTimeout(() => {
+                audio.currentTime = 0;
+                audio.play().catch(e => {});
+            }, 1500);
+        }
 
         // --- MOBILE MENU ---
         function toggleMobileMenu() {
@@ -901,8 +924,10 @@
             let html = '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">';
             orders.forEach(order => {
                 if (order.status === 'pendente' && !knownOrders.has(order.id)) {
-                    audio.play().catch(e => {});
+                    playAlertSound();
                     knownOrders.add(order.id);
+
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 }
                 let statusColor = order.status === 'pendente' ? 'bg-yellow-100 text-yellow-700 animate-pulse' : 
                                     order.status === 'em_preparo' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';

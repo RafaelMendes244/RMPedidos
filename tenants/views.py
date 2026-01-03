@@ -176,7 +176,7 @@ def cardapio_publico(request, slug):
     
     return render(request, 'tenants/cardapio.html', context)
 
-@login_required(login_url='/admin/login/') # Se não estiver logado, manda pro login do Django Admin
+@login_required
 def painel_lojista(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -383,7 +383,7 @@ def create_order(request, slug):
 
     return JsonResponse({'status': 'error', 'message': 'Método inválido'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_get_orders(request, slug):
     # Retorna os pedidos da loja (JSON) para o painel atualizar via AJAX
     tenant = get_object_or_404(Tenant, slug=slug)
@@ -425,7 +425,7 @@ def api_get_orders(request, slug):
         
     return JsonResponse({'orders': data})
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_update_order(request, slug, order_id):
     # Atualiza o status do pedido (Ex: Pendente -> Em Preparo)
     tenant = get_object_or_404(Tenant, slug=slug)
@@ -449,7 +449,7 @@ def api_update_order(request, slug, order_id):
             
     return JsonResponse({'status': 'error'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_mark_printed(request, slug, order_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -467,7 +467,7 @@ def api_mark_printed(request, slug, order_id):
             return JsonResponse({'status': 'error'}, status=404)
     return JsonResponse({'status': 'error'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_update_settings(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -538,7 +538,7 @@ def api_customer_history(request, slug):
 
 # --- APIs DE PRODUTOS (CRUD) ---
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_get_products(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -591,7 +591,7 @@ def api_get_products(request, slug):
         
     return JsonResponse({'categories': data})
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_save_product(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -699,7 +699,7 @@ def api_save_product(request, slug):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_delete_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -720,7 +720,7 @@ def api_delete_product(request, slug, product_id):
             return JsonResponse({'status': 'error', 'message': 'Erro ao excluir produto'}, status=400)
     return JsonResponse({'status': 'error'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_toggle_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -846,7 +846,7 @@ def signup(request):
     return render(request, 'tenants/signup.html')
 
 # --- API FINANCEIRO E HISTÓRICO ---
-@login_required(login_url='/admin/login/')
+@login_required
 def api_get_financials(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -894,7 +894,7 @@ def api_get_financials(request, slug):
     })
 
 # --- API ABRIR/FECHAR LOJA ---
-@login_required(login_url='/admin/login/')
+@login_required
 def api_toggle_store_open(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -921,7 +921,7 @@ def api_toggle_store_open(request, slug):
     return JsonResponse({'status': 'error'}, status=400)
 
 # --- API SINCRONIZAR STATUS COM HORÁRIOS ---
-@login_required(login_url='/admin/login/')
+@login_required
 def api_sync_store_status(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -956,7 +956,7 @@ def api_sync_store_status(request, slug):
     return JsonResponse({'status': 'error'}, status=400)
 
 # ROTA PARA HORARIO DE FUNCIONAMENTO/FOLGAS
-@login_required(login_url='/admin/login/')
+@login_required
 def api_save_hours(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -985,7 +985,7 @@ def api_save_hours(request, slug):
     return JsonResponse({'status': 'error'}, status=400)
 
 # ROTA PARA TAXAS DE ENTREGAS
-@login_required(login_url='/admin/login/')
+@login_required
 def api_delivery_fees(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -1020,7 +1020,7 @@ def api_delivery_fees(request, slug):
 
     return JsonResponse({'status': 'error'}, status=400)
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_delete_delivery_fee(request, slug, fee_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
@@ -1041,7 +1041,7 @@ def api_delete_delivery_fee(request, slug, fee_id):
 # API DE CUPONS DE DESCONTO
 # ========================
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_coupons(request, slug):
     """
     GET: Lista todos os cupons da loja
@@ -1127,7 +1127,7 @@ def api_coupons(request, slug):
     return JsonResponse({'status': 'error'}, status=400)
 
 
-@login_required(login_url='/admin/login/')
+@login_required
 def api_coupon_details(request, slug, coupon_id):
     """
     GET: Retorna detalhes de um cupom específico
