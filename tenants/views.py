@@ -22,7 +22,7 @@ from .models import (
     Product, 
     Order, 
     OrderItem, 
-    OperatingDay, 
+    OperatingDay,
     DeliveryFee,
     ProductOption,
     OptionItem,
