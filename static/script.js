@@ -866,7 +866,7 @@ function checkRestaurantOpen() {
         return true;
     }
 
-    let msg = "FECHADO AGORA";
+    let msg = "FECHADO HOJE";
     if (regraHoje && !regraHoje.closed && regraHoje.open) {
         const openMin = getMinutes(regraHoje.open);
         if (horaAtualMin < openMin) {
@@ -882,22 +882,45 @@ function setStatusClosed(msg) {
     const statusEl = document.getElementById("status-text");
     const iconEl = document.getElementById("status-icon");
     const container = document.getElementById("status-loja-container");
+    const mobileStatusEl = document.getElementById("mobile-status-text");
+    
     if(statusEl) statusEl.innerText = msg;
     if(iconEl) iconEl.className = "fas fa-circle text-[8px] text-red-500";
     if(container) container.className = "inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-red-500/30 text-xs font-bold shadow-lg mb-8 transition hover:bg-black/50";
+    
+    // Atualizar status mobile
+    if(mobileStatusEl) {
+        mobileStatusEl.innerText = "FECHADO";
+        mobileStatusEl.classList.remove("text-green-500", "animate-pulse");
+        mobileStatusEl.classList.add("text-red-500");
+    }
 }
 
 function setStatusOpen(msg) {
     const statusEl = document.getElementById("status-text");
     const iconEl = document.getElementById("status-icon");
     const container = document.getElementById("status-loja-container");
+    const mobileStatusEl = document.getElementById("mobile-status-text");
+    
     if(statusEl) statusEl.innerText = msg;
     if(iconEl) iconEl.className = "fas fa-circle text-[8px] animate-pulse text-green-400";
     if(container) container.className = "inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-green-500/30 text-xs font-bold shadow-lg mb-8 transition hover:bg-black/50";
+    
+    // Atualizar status mobile
+    if(mobileStatusEl) {
+        mobileStatusEl.innerText = "ABERTO";
+        mobileStatusEl.classList.add("text-green-500", "animate-pulse");
+        mobileStatusEl.classList.remove("text-red-500");
+    }
 }
 
 // Atualiza a cada minuto
 setInterval(checkRestaurantOpen, 60000);
+
+// Verificar status imediatamente ao carregar
+if (typeof checkRestaurantOpen === 'function') {
+    checkRestaurantOpen();
+}
 
 // ========================
 // FUNCOES DE CUPOM DE DESCONTO
