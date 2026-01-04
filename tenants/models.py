@@ -39,6 +39,28 @@ class Tenant(models.Model):
     # Quando True, a loja NÃO abre automaticamente (mesmo que o horário permita)
     manual_override = models.BooleanField(default=False, verbose_name="Fechamento Manual?")
     
+    # TEMPO DE ENTREGA E ESPERA
+    delivery_time = models.IntegerField(
+        default=45, 
+        verbose_name="Tempo de Entrega (minutos)",
+        help_text="Tempo estimado para entrega em minutos. Ex: 45"
+    )
+    pickup_time = models.IntegerField(
+        default=25, 
+        verbose_name="Tempo de Retirada (minutos)",
+        help_text="Tempo estimado para retirada em minutos. Ex: 25"
+    )
+    show_delivery_time = models.BooleanField(
+        default=True, 
+        verbose_name="Mostrar Tempo de Entrega?",
+        help_text="Exibir o tempo de entrega estimado na página do cardápio"
+    )
+    show_pickup_time = models.BooleanField(
+        default=True, 
+        verbose_name="Mostrar Tempo de Retirada?",
+        help_text="Exibir o tempo de retirada estimado na página do cardápio"
+    )
+    
     # Contato
     phone_whatsapp = models.CharField(max_length=20, verbose_name="WhatsApp", help_text="Apenas números com DDD")
 

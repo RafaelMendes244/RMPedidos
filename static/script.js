@@ -290,8 +290,16 @@ function sendToWhatsApp(order) {
     if (Object.keys(order.address).length > 0) {
         msg += `\nEntrega: ${order.address.street}, ${order.address.number} - ${order.address.neighborhood}\n`;
         if (valorFreteAtual > 0) msg += `Frete: R$ ${valorFreteAtual.toFixed(2)}\n`;
+        // Adiciona tempo de entrega estimado
+        if (window.STORE_CONFIG?.deliveryTime) {
+            msg += `\nTempo Estimado de Entrega: ${window.STORE_CONFIG.deliveryTime} minutos\n`;
+        }
     } else {
         msg += `\nRetirada no Balcao\n`;
+        // Adiciona tempo de retirada estimado
+        if (window.STORE_CONFIG?.pickupTime) {
+            msg += `\nTempo Estimado de Retirada: ${window.STORE_CONFIG.pickupTime} minutos\n`;
+        }
     }
     
     // Mostrar informacoes do cupom se aplicado

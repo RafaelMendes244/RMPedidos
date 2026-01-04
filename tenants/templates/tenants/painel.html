@@ -68,6 +68,19 @@
                 border-left: 3px solid #ea580c;
             }
         }
+
+        /* Pequena animação para chamar atenção sutilmente a cada 5 segundos */
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-bounce-slow {
+            animation: bounce-slow 3s infinite;
+        }
+        /* Pausa a animação quando passa o mouse para não irritar */
+        .animate-bounce-slow:hover {
+            animation: none;
+        }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden text-gray-800">
@@ -395,19 +408,112 @@
                 <button onclick="closeSettings()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                    <h4 class="text-xs font-bold text-orange-600 uppercase mb-3 border-b border-orange-200 pb-2">PIX</h4>
+                
+                <!-- Tempo de Entrega e Retirada -->
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <h4 class="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-200 pb-2">
+                        <i class="fas fa-clock mr-1"></i> Tempo de Preparo
+                    </h4>
                     <div class="space-y-3">
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Chave PIX</label><input id="conf-pix-key" value="{{ tenant.pix_key|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Titular</label><input id="conf-pix-name" value="{{ tenant.pix_name|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Cidade</label><input id="conf-pix-city" value="{{ tenant.pix_city|default:'' }}" class="w-full p-2 border rounded-lg text-sm"></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Entrega (min)</label>
+                                <input type="number" id="conf-delivery-time" value="{{ tenant.delivery_time|default:45 }}" class="w-full p-2 border rounded-lg text-sm font-bold" min="5" max="120">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Retirada (min)</label>
+                                <input type="number" id="conf-pickup-time" value="{{ tenant.pickup_time|default:25 }}" class="w-full p-2 border rounded-lg text-sm font-bold" min="5" max="120">
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2 pt-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="conf-show-delivery-time" {% if tenant.show_delivery_time %}checked{% endif %} class="w-4 h-4 accent-blue-600">
+                                <span class="text-xs font-bold text-gray-600">Mostrar tempo de entrega no cardápio</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="conf-show-pickup-time" {% if tenant.show_pickup_time %}checked{% endif %} class="w-4 h-4 accent-blue-600">
+                                <span class="text-xs font-bold text-gray-600">Mostrar tempo de retirada no cardápio</span>
+                            </label>
                         </div>
                     </div>
                 </div>
-                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Endereço</label><textarea style="resize: none;" id="conf-address" rows="2" class="w-full p-2 border rounded-lg text-sm">{{ tenant.address|default:'' }}</textarea></div>
+
+                <!-- PIX -->
+                <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h4 class="text-xs font-bold text-orange-600 uppercase mb-3 border-b border-orange-200 pb-2">
+                        <i class="fas fa-qrcode mr-1"></i> PIX para Pagamentos
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Chave PIX</label>
+                            <input type="text" id="conf-pix-key" value="{{ tenant.pix_key|default:'' }}" class="w-full p-2 border rounded-lg text-sm" placeholder="CPF, CNPJ, Email, Telefone ou Aleatória">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Titular</label>
+                                <input type="text" id="conf-pix-name" value="{{ tenant.pix_name|default:'' }}" class="w-full p-2 border rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cidade</label>
+                                <input type="text" id="conf-pix-city" value="{{ tenant.pix_city|default:'' }}" class="w-full p-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Endereço e Contato -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h4 class="text-xs font-bold text-gray-600 uppercase mb-3 border-b border-gray-200 pb-2">
+                        <i class="fas fa-map-marker-alt mr-1"></i> Endereço e Contato
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Endereço Completo</label>
+                            <textarea style="resize: none;" id="conf-address" rows="2" class="w-full p-2 border rounded-lg text-sm" placeholder="Rua, número, bairro, cidade">{{ tenant.address|default:'' }}</textarea>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">WhatsApp de Contato</label>
+                            <input type="text" id="conf-whatsapp" value="{{ tenant.phone_whatsapp|default:'' }}" class="w-full p-2 border rounded-lg text-sm" placeholder="(83) 99999-9999">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações da Loja -->
+                <div class="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <h4 class="text-xs font-bold text-purple-600 uppercase mb-3 border-b border-purple-200 pb-2">
+                        <i class="fas fa-store mr-1"></i> Informações da Loja
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Nome da Loja</label>
+                            <input type="text" id="conf-store-name" value="{{ tenant.name|default:'' }}" class="w-full p-2 border rounded-lg text-sm font-bold" readonly disabled>
+                            <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-lock"></i> Para alterar, entre em contato com o suporte</p>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cor Primária</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="conf-primary-color" value="{{ tenant.primary_color|default:'#ea580c' }}" class="w-10 h-10 p-0 border-2 border-gray-200 rounded-lg cursor-pointer" readonly disabled>
+                                <input type="text" id="conf-primary-color-hex" value="{{ tenant.primary_color|default:'#ea580c' }}" class="flex-1 p-2 border rounded-lg text-sm font-mono uppercase" readonly disabled>
+                                <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-lock"></i> Para alterar, entre em contato com o suporte</p>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Link da Loja</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">{{ request.get_host }}/</span>
+                                <input type="text" id="conf-slug" value="{{ tenant.slug|default:'' }}" class="flex-1 p-2 border rounded-lg text-sm font-bold bg-gray-100" readonly disabled>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <div class="p-6 border-t bg-gray-50"><button onclick="saveSettings()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold uppercase text-xs hover:bg-orange-700 transition">Salvar</button></div>
+            <div class="p-6 border-t bg-gray-50 flex justify-end gap-3">
+                <button onclick="closeSettings()" class="px-4 py-2 text-gray-500 text-xs font-bold uppercase hover:text-gray-700 transition">Cancelar</button>
+                <button onclick="saveSettings()" class="bg-orange-600 text-white px-6 py-2 rounded-xl font-bold uppercase text-xs hover:bg-orange-700 transition shadow-lg">
+                    <i class="fas fa-save mr-1"></i> Salvar Alterações
+                </button>
+            </div>
         </div>
     </div>
 
@@ -559,6 +665,73 @@
         </div>
     </div>
 
+    <!-- Botao Suporte Flutuante -->
+    <a href="https://wa.me/5583920006113?text=Olá! Sou da loja *{{ tenant.name }}* e preciso de ajuda no painel." 
+        target="_blank"
+        class="fixed bottom-6 right-6 z-40 flex items-center gap-0 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-all duration-300 group hover:gap-2 hover:pr-6 animate-bounce-slow">
+            <i class="fab fa-whatsapp text-2xl"></i>
+            <span class="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 font-bold whitespace-nowrap">
+                Suporte VIP
+            </span>
+    </a>
+
+    <!-- MODAL TUTORIAL -->
+    {% if total_products == 0 %}
+    <div id="onboarding-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fadeIn">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative">
+            
+            <div class="bg-gradient-to-r from-orange-600 to-red-600 p-8 text-center text-white relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-full bg-white/10 opacity-30" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+                
+                <h2 class="text-3xl font-black mb-2 relative z-10">Bem-vindo ao {{ tenant.name }}! 🚀</h2>
+                <p class="text-orange-100 text-lg relative z-10">Sua loja foi criada. Siga estes 3 passos para começar a vender hoje:</p>
+            </div>
+
+            <div class="p-8 space-y-6">
+                
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100 hover:bg-orange-100 transition cursor-pointer" onclick="closeOnboarding(); openProductModal();">
+                    <div class="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold shadow-lg flex-shrink-0">1</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">Cadastre seu primeiro produto</h3>
+                        <p class="text-gray-600 text-sm">Adicione foto, preço e descrição do seu carro-chefe.</p>
+                        <span class="text-xs font-bold text-orange-600 uppercase mt-1 inline-block">Clique para fazer agora &rarr;</span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition cursor-pointer" onclick="closeOnboarding(); openHoursModal();">
+                    <div class="w-12 h-12 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0">2</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">Defina seus Horários</h3>
+                        <p class="text-gray-600 text-sm">Configure os dias e horas que sua loja estará aberta.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition">
+                    <div class="w-12 h-12 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0">3</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">Divulgue seu Link</h3>
+                        <p class="text-gray-600 text-sm mb-2">Seu link oficial é: <strong class="text-orange-600">rmpedidos.online/{{ tenant.slug }}</strong></p>
+                        <a href="{% url 'cardapio_publico' tenant.slug %}" target="_blank" class="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-black transition">
+                            <i class="fas fa-external-link-alt mr-1"></i> Ver Loja
+                        </a>
+                        <a href="https://api.whatsapp.com/send?text=Olá! Veja meu cardápio online: https://rmpedidos.online/{{ tenant.slug }}" target="_blank" class="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-600 transition">
+                            <i class="fab fa-whatsapp mr-1"></i> Divulgar
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="p-6 border-t bg-gray-50 flex justify-center">
+                <button onclick="closeOnboarding()" class="text-gray-500 font-bold hover:text-gray-800 text-sm">
+                    Pular tutorial e ir para o painel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     
     <script>
@@ -690,6 +863,26 @@
             setInterval(fetchOrders, 5000);
             syncStoreStatus();
             setInterval(syncStoreStatus, 30000);
+            
+            // --- SINCRONIZAÇÃO DO SELETOR DE CORES ---
+            const colorPicker = document.getElementById('conf-primary-color');
+            const colorHex = document.getElementById('conf-primary-color-hex');
+            
+            if (colorPicker && colorHex) {
+                // Quando muda no seletor de cores
+                colorPicker.addEventListener('input', (e) => {
+                    colorHex.value = e.target.value.toUpperCase();
+                });
+                
+                // Quando muda no campo de texto
+                colorHex.addEventListener('input', (e) => {
+                    let val = e.target.value;
+                    if (!val.startsWith('#')) val = '#' + val;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                        colorPicker.value = val;
+                    }
+                });
+            }
         });
 
         // --- SINCRONIZAR STATUS COM HORÁRIOS ---
@@ -1339,19 +1532,66 @@ ${line}
         // Settings
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
         function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+        
         async function saveSettings() {
-            const data = {
-                pix_key: document.getElementById('conf-pix-key').value,
-                pix_name: document.getElementById('conf-pix-name').value,
-                pix_city: document.getElementById('conf-pix-city').value,
-                address: document.getElementById('conf-address').value,
-            };
-            await fetch(`/${TENANT_SLUG}/api/settings/`, { 
-                method: 'POST', 
-                headers: { 'X-CSRFToken': getCookie('csrftoken') },
-                body: JSON.stringify(data) 
-            });
-            closeSettings(); Toastify({text: "Salvo!", style: {background: "#10b981"}}).showToast();
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Salvando...';
+            btn.disabled = true;
+
+            try {
+                const data = {
+                    // Tempo de Entrega
+                    delivery_time: parseInt(document.getElementById('conf-delivery-time').value) || 45,
+                    pickup_time: parseInt(document.getElementById('conf-pickup-time').value) || 25,
+                    show_delivery_time: document.getElementById('conf-show-delivery-time').checked,
+                    show_pickup_time: document.getElementById('conf-show-pickup-time').checked,
+                    // PIX
+                    pix_key: document.getElementById('conf-pix-key').value,
+                    pix_name: document.getElementById('conf-pix-name').value,
+                    pix_city: document.getElementById('conf-pix-city').value,
+                    // Endereço e Contato
+                    address: document.getElementById('conf-address').value,
+                    phone_whatsapp: document.getElementById('conf-whatsapp').value,
+                    // Visual
+                    primary_color: document.getElementById('conf-primary-color').value,
+                };
+
+                const response = await fetch(`/${TENANT_SLUG}/api/settings/`, { 
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') 
+                    },
+                    body: JSON.stringify(data) 
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    Toastify({
+                        text: "Configurações salvas com sucesso!",
+                        style: { background: "#10b981" }
+                    }).showToast();
+                    closeSettings();
+                    
+                    // Recarregar página para aplicar mudanças visuais
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(result.message || 'Erro ao salvar');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                Toastify({
+                    text: "Erro ao salvar: " + error.message,
+                    style: { background: "#ef4444" }
+                }).showToast();
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         // HORARIO DE FUNCIONAMENTO
@@ -1751,6 +1991,16 @@ ${line}
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        // MODAL TUTORIAL
+        function closeOnboarding() {
+            const modal = document.getElementById('onboarding-modal');
+            if(modal) {
+                modal.style.opacity = '0';
+                modal.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => modal.remove(), 300);
+            }
         }
     </script>
 </body>

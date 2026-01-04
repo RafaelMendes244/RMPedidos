@@ -104,9 +104,29 @@
                 Faça seu pedido online. Entrega rápida e segura.
             </p>
 
-            <div id="status-loja-container" class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs font-bold shadow-lg mb-8 transition hover:bg-black/50">
+            <div id="status-loja-container" class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs font-bold shadow-lg mb-6 transition hover:bg-black/50">
                 <i id="status-icon" class="fas fa-circle text-[8px] animate-pulse text-green-400"></i>
                 <span id="status-text" class="tracking-widest uppercase">LOJA ONLINE</span>
+            </div>
+
+            <!-- Tempo de Entrega e Retirada -->
+            <div class="flex flex-wrap justify-center gap-3 mb-6">
+                {% if tenant.show_delivery_time %}
+                <div class="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full">
+                    <i class="fas fa-motorcycle text-orange-300"></i>
+                    <span class="text-xs font-bold text-white">
+                        Entrega: {{ tenant.delivery_time }}min
+                    </span>
+                </div>
+                {% endif %}
+                {% if tenant.show_pickup_time %}
+                <div class="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full">
+                    <i class="fas fa-walking text-orange-300"></i>
+                    <span class="text-xs font-bold text-white">
+                        Retirada: {{ tenant.pickup_time }}min
+                    </span>
+                </div>
+                {% endif %}
             </div>
 
             <a href="#menu-items" class="px-8 py-3 bg-white text-gray-900 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-gray-100 transition shadow-lg">
@@ -368,7 +388,7 @@
                             </label>
                         </div>
                         
-                        <textarea id="order-notes" placeholder="Observações..." class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>
+                        <textarea style-"resize: none;" id="order-notes" placeholder="Observações..." class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>
                     </div>
                 </div>
             </div>
@@ -486,7 +506,10 @@
             manualOpen: {{ tenant.is_open|yesno:"true,false" }},
             schedule: JSON.parse('{{ schedule_json|safe }}'),
             deliveryFees: JSON.parse('{{ delivery_fees_json|safe }}'),
-            isOpen: true 
+            isOpen: true,
+            // Configurações de Tempo
+            deliveryTime: {{ tenant.delivery_time|default:45 }},
+            pickupTime: {{ tenant.pickup_time|default:25 }}
         };
 
         // Dados completos dos produtos (para o modal funcionar sem ir no banco)

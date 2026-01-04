@@ -481,18 +481,32 @@ def api_update_settings(request, slug):
         try:
             data = json.loads(request.body)
             
-            # Atualiza os campos
+            # Configurações de Tempo de Entrega
+            if 'delivery_time' in data:
+                tenant.delivery_time = int(data.get('delivery_time', 45))
+            if 'pickup_time' in data:
+                tenant.pickup_time = int(data.get('pickup_time', 25))
+            if 'show_delivery_time' in data:
+                tenant.show_delivery_time = bool(data.get('show_delivery_time', True))
+            if 'show_pickup_time' in data:
+                tenant.show_pickup_time = bool(data.get('show_pickup_time', True))
+            
+            # Configurações de PIX
             tenant.pix_key = data.get('pix_key')
             tenant.pix_name = data.get('pix_name')
             tenant.pix_city = data.get('pix_city')
-            tenant.address = data.get('address')
             
-            # Se quiser permitir mudar cor também:
+            # Endereço e Contato
+            tenant.address = data.get('address')
+            if 'phone_whatsapp' in data:
+                tenant.phone_whatsapp = data.get('phone_whatsapp')
+            
+            # Personalização Visual
             if data.get('primary_color'):
                 tenant.primary_color = data.get('primary_color')
                 
             tenant.save()
-            return JsonResponse({'status': 'success'})
+            return JsonResponse({'status': 'success', 'message': 'Configurações salvas com sucesso'})
         except Exception as e:
             logger.error(f"Erro ao salvar configurações: {e}")
             return JsonResponse({'status': 'error', 'message': 'Erro ao salvar configurações'}, status=500)
