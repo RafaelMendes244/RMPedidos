@@ -504,8 +504,8 @@
             pixName: "{{ tenant.pix_name|default:'' }}",
             pixCity: "{{ tenant.pix_city|default:'' }}",
             manualOpen: {{ tenant.is_open|yesno:"true,false" }},
-            schedule: JSON.parse('{{ schedule_json|default:"{}"|escapejs }}'),
-            deliveryFees: JSON.parse('{{ delivery_fees_json|default:"[]"|escapejs }}'),
+            schedule: JSON.parse('{{ schedule_json|safe }}'),
+            deliveryFees: JSON.parse('{{ delivery_fees_json|safe }}'),
             isOpen: true,
             // Configurações de Tempo
             deliveryTime: {{ tenant.delivery_time|default:45 }},
