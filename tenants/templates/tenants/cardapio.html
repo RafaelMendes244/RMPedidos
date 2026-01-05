@@ -383,7 +383,7 @@
                                 <span class="text-sm font-bold dark:text-white">PIX</span>
                             </label>
                             <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800">
-                                <input type="radio" name="payment-method" value="cartao" class="accent-orange-600">
+                                <input type="radio" name="payment-method" value="cartao_dinheiro" class="accent-orange-600">
                                 <span class="text-sm font-bold dark:text-white">Cartão / Dinheiro</span>
                             </label>
                         </div>
@@ -394,11 +394,28 @@
             </div>
 
             <div class="p-6 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
+                <!-- Resumo do Pedido -->
+                <div id="order-summary" class="space-y-1 mb-4 hidden">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-xs font-bold text-gray-400">Subtotal</span>
+                        <span id="cart-subtotal" class="text-sm font-medium text-gray-600 dark:text-gray-300">R$ 0,00</span>
+                    </div>
+                    <div id="delivery-fee-row" class="flex justify-between items-center text-sm hidden">
+                        <span class="text-xs font-bold text-gray-400">Taxa de Entrega</span>
+                        <span id="cart-delivery-fee" class="text-sm font-medium text-gray-600 dark:text-gray-300">R$ 0,00</span>
+                    </div>
+                    <div id="discount-summary-row" class="hidden flex justify-between items-center text-sm">
+                        <span class="text-xs font-bold text-green-600">Desconto</span>
+                        <span id="discount-amount-summary" class="text-sm font-bold text-green-600">-R$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Total Original (se houver desconto) -->
                 <div id="discount-display" class="hidden flex justify-between items-end mb-1">
                     <span class="text-xs font-bold text-green-600">Desconto aplicado</span>
                     <span id="discount-amount" class="text-sm font-bold text-green-600">-R$ 0,00</span>
                 </div>
-                <div class="flex justify-between items-end mb-4">
+                <div class="flex justify-between items-end">
                     <span class="text-xs font-bold text-gray-400">Total</span>
                     <span id="cart-total-final" class="text-2xl font-serif font-bold dark:text-white">R$ 0,00</span>
                 </div>

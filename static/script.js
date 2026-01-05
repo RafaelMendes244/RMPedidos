@@ -46,10 +46,16 @@ let IS_STORE_OPEN = true;
 let cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
 let isDelivery = JSON.parse(localStorage.getItem(DELIVERY_KEY)) !== false; // true por padrão
 let valorFreteAtual = 0;
+let ultimoValorFreteValido = 0; // Armazena o último valor válido do frete
 
 // --- FUNÇÃO DE CÁLCULO DE TAXA DE ENTREGA (CORRIGIDA) ---
 window.calcularTaxaEntrega = (bairroInput) => {
     if (!bairroInput) return;
+
+    // Se já temos um valor válido e o bairro não mudou, não recalcular
+    if (ultimoValorFreteValido > 0 && valorFreteAtual === ultimoValorFreteValido) {
+        return;
+    }
 
     // Normaliza string (remove acentos e põe maiusculo)
     const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
@@ -62,15 +68,38 @@ window.calcularTaxaEntrega = (bairroInput) => {
     
     if (taxaEncontrada) {
         valorFreteAtual = parseFloat(taxaEncontrada.fee);
+        ultimoValorFreteValido = valorFreteAtual; // Salva o valor válido
         Toastify({ text: `Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: "#ea580c" } }).showToast();
     } else {
-        // Se não achar o bairro exato, taxa a combinar
+        // Se não achar o bairro exato, taxa a combinar (mantém 0 mas marca flag)
         valorFreteAtual = 0;
-        Toastify({ text: `Bairro nao tabelado. Taxa a combinar.`, style: { background: "#f59e0b" } }).showToast();
+        Toastify({ text: `Bairro não tabelado. Taxa a combinar.`, style: { background: "#f59e0b" } }).showToast();
     }
     
+    // Atualizar display da taxa de entrega
+    updateDeliveryFeeDisplay();
     updateCartTotal();
 };
+
+// Função para atualizar o display da taxa de entrega
+function updateDeliveryFeeDisplay() {
+    const deliveryFeeRow = document.getElementById("delivery-fee-row");
+    const deliveryFeeEl = document.getElementById("cart-delivery-fee");
+    
+    if (!deliveryFeeRow || !deliveryFeeEl) return;
+    
+    if (isDelivery && valorFreteAtual > 0) {
+        deliveryFeeRow.classList.remove("hidden");
+        deliveryFeeEl.innerText = `R$ ${valorFreteAtual.toFixed(2)}`;
+    } else if (isDelivery && valorFreteAtual === 0) {
+        // Bairro não tabelado ou ainda não calculado
+        deliveryFeeRow.classList.remove("hidden");
+        deliveryFeeEl.innerText = "A combinar";
+        deliveryFeeEl.classList.add("text-orange-500");
+    } else {
+        deliveryFeeRow.classList.add("hidden");
+    }
+}
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -310,7 +339,13 @@ function sendToWhatsApp(order) {
     
     // order.total ja vem com o desconto aplicado
     msg += `\nTOTAL: R$ ${order.total.toFixed(2)}\n`;
-    msg += `Pagamento: ${order.method.toUpperCase()}\n`;
+    
+    // Formata o método de pagamento para exibição
+    let paymentDisplay = order.method ? order.method.toUpperCase() : 'NÃO INFORMADO';
+    if (paymentDisplay === 'CARTAO_DINHEIRO') {
+        paymentDisplay = 'CARTÃO/DINHEIRO';
+    }
+    msg += `Pagamento: ${paymentDisplay}\n`;
     
     if (order.obs) msg += `\nObs: ${order.obs}`;
 
@@ -595,8 +630,16 @@ window.toggleDelivery = (val) => {
         btnPick.classList.remove("bg-white", "text-orange-600");
         btnPick.classList.add("text-gray-500");
         addrCont.classList.remove("hidden");
+        
+        // Restaura o último valor válido se existir
+        if (ultimoValorFreteValido > 0) {
+            valorFreteAtual = ultimoValorFreteValido;
+        }
     } else {
-        // RETIRADA selecionado
+        // RETIRADA selecionado - salva o valor atual antes de zerar
+        if (valorFreteAtual > 0) {
+            ultimoValorFreteValido = valorFreteAtual;
+        }
         btnPick.classList.add("bg-white", "text-orange-600");
         btnPick.classList.remove("text-gray-500");
         btnDel.classList.remove("bg-white", "text-orange-600");
@@ -604,32 +647,63 @@ window.toggleDelivery = (val) => {
         addrCont.classList.add("hidden");
         valorFreteAtual = 0;
     }
+    updateDeliveryFeeDisplay();
     updateCartTotal();
 };
 
 function updateCartTotal() {
-    let total = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
-    if (isDelivery) total += valorFreteAtual;
+    // Calculate subtotal (items only)
+    let subtotal = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
+    
+    // Calculate total with delivery fee if applicable
+    let totalWithDelivery = subtotal + (isDelivery ? valorFreteAtual : 0);
+    
+    // Calculate final total with discount if applicable
+    let finalTotal = totalWithDelivery;
     
     const elFinal = document.getElementById("cart-total-final");
     const elPreview = document.getElementById("cart-total-preview");
     const discountEl = document.getElementById("discount-display");
     const discountAmountEl = document.getElementById("discount-amount");
     
+    // Update order summary elements
+    const orderSummary = document.getElementById("order-summary");
+    const subtotalEl = document.getElementById("cart-subtotal");
+    const discountSummaryRow = document.getElementById("discount-summary-row");
+    const discountAmountSummaryEl = document.getElementById("discount-amount-summary");
+    
+    // Always show order summary when there are items
+    if (cart.length > 0) {
+        if (orderSummary) orderSummary.classList.remove("hidden");
+        if (subtotalEl) subtotalEl.innerText = `R$ ${subtotal.toFixed(2)}`;
+    } else {
+        if (orderSummary) orderSummary.classList.add("hidden");
+    }
+    
+    // Update delivery fee display (handles visibility and value)
+    updateDeliveryFeeDisplay();
+    
     if (appliedCoupon) {
-        const finalWithDiscount = total - appliedCoupon.discount_amount;
+        finalTotal = totalWithDelivery - appliedCoupon.discount_amount;
         
-        if (elFinal) elFinal.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
-        if (elPreview) elPreview.innerText = `R$ ${finalWithDiscount.toFixed(2)}`;
+        if (elFinal) elFinal.innerText = `R$ ${finalTotal.toFixed(2)}`;
+        if (elPreview) elPreview.innerText = `R$ ${finalTotal.toFixed(2)}`;
         
         if (discountEl) {
             discountEl.classList.remove("hidden");
             discountAmountEl.innerText = `-R$ ${appliedCoupon.discount_amount.toFixed(2)}`;
         }
+        
+        // Show discount in summary
+        if (discountSummaryRow) {
+            discountSummaryRow.classList.remove("hidden");
+            if (discountAmountSummaryEl) discountAmountSummaryEl.innerText = `-R$ ${appliedCoupon.discount_amount.toFixed(2)}`;
+        }
     } else {
-        if (elFinal) elFinal.innerText = `R$ ${total.toFixed(2)}`;
-        if (elPreview) elPreview.innerText = `R$ ${total.toFixed(2)}`;
+        if (elFinal) elFinal.innerText = `R$ ${totalWithDelivery.toFixed(2)}`;
+        if (elPreview) elPreview.innerText = `R$ ${totalWithDelivery.toFixed(2)}`;
         if (discountEl) discountEl.classList.add("hidden");
+        if (discountSummaryRow) discountSummaryRow.classList.add("hidden");
     }
 }
 

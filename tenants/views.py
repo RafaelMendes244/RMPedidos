@@ -413,7 +413,10 @@ def api_get_orders(request, slug):
             'id': order.id,
             'customer_name': order.customer_name,
             'customer_phone': order.customer_phone,
+            'phone': order.customer_phone,  # Para compatibilidade
             'total_value': float(order.total_value),
+            'delivery_fee': float(order.delivery_fee) if order.delivery_fee else 0,
+            'discount_amount': float(order.discount_value) if order.discount_value else 0,
             'discount_value': float(order.discount_value) if order.discount_value else 0,
             'coupon_code': order.coupon.code if order.coupon else None,
             'status': order.status,

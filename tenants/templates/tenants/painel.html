@@ -264,7 +264,7 @@
                             <select id="filter-payment" class="w-full p-2 border rounded-lg text-sm bg-gray-50">
                                 <option value="">Todos</option>
                                 <option value="pix">PIX</option>
-                                <option value="cartao">Cartão/Dinheiro</option>
+                                <option value="cartao_dinheiro">Cartão/Dinheiro</option>
                             </select>
                         </div>
                         <div class="flex-1 min-w-[140px]">
@@ -1056,7 +1056,7 @@
                 if (paymentFilter) {
                     const isPix = order.payment && order.payment.toLowerCase().includes('pix');
                     if (paymentFilter === 'pix' && !isPix) return false;
-                    if (paymentFilter === 'cartao' && isPix) return false;
+                    if (paymentFilter === 'cartao_dinheiro' && isPix) return false;
                 }
                 
                 // Filtro de status
@@ -1108,7 +1108,7 @@
                 const isPix = order.payment && order.payment.toLowerCase().includes('pix');
                 const paymentBadge = isPix 
                     ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold">PIX</span>'
-                    : '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">CARTÃO</span>';
+                    : '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">CARTÃO/DINHEIRO</span>';
 
                 tbody.innerHTML += `
                     <tr class="bg-white border-b hover:bg-gray-50">
@@ -1150,11 +1150,12 @@
             // Tabela
             const tableData = filteredOrders.map(order => {
                 const isPix = order.payment && order.payment.toLowerCase().includes('pix');
+                const paymentDisplay = isPix ? 'PIX' : 'CARTÃO/DINHEIRO';
                 return [
                     `#${order.id}`,
                     order.customer,
                     order.date_display || order.date,
-                    isPix ? 'PIX' : 'Cartão',
+                    paymentDisplay,
                     order.status.replace('_', ' ').toUpperCase(),
                     `R$ ${order.total.toFixed(2)}`
                 ];
@@ -1214,6 +1215,13 @@
                 const safeAddress = escapeHtml(order.address);
                 const safePayment = escapeHtml(order.payment_method || '');
 
+                // Cálculo de valores para breakdown
+                const itemsSubtotal = order.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+                const deliveryFee = order.delivery_fee || 0;
+                const discountAmount = order.discount_amount || 0;
+                const hasCoupon = order.coupon_code && discountAmount > 0;
+                const hasDeliveryFee = deliveryFee > 0;
+                
                 const itemsHtml = order.items.map(i => {
                     const safeItemName = escapeHtml(i.name);
                     const safeItemObs = i.obs ? `<p class="text-[10px] text-orange-600 bg-orange-50 p-1 rounded">Obs: ${escapeHtml(i.obs)}</p>` : '';
@@ -1227,6 +1235,32 @@
                             ${safeItemObs}`;
                 }).join('');
 
+                // HTML do breakdown de valores
+                const valuesBreakdownHtml = `
+                    <div class="mt-3 pt-3 border-t border-dashed border-gray-200 space-y-1">
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>Subtotal itens</span>
+                            <span>R$ ${itemsSubtotal.toFixed(2)}</span>
+                        </div>
+                        ${hasDeliveryFee ? `
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span class="flex items-center gap-1"><i class="fas fa-motorcycle text-orange-400"></i> Taxa entrega</span>
+                            <span>R$ ${deliveryFee.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                        ${hasCoupon ? `
+                        <div class="flex justify-between text-xs text-green-600">
+                            <span class="flex items-center gap-1"><i class="fas fa-tag text-green-500"></i> ${order.coupon_code}</span>
+                            <span>- R$ ${discountAmount.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="flex justify-between font-bold text-gray-800 pt-1 border-t border-gray-100 mt-1">
+                            <span class="text-sm">Total</span>
+                            <span class="text-base text-orange-600">R$ ${order.total_value.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+
                 html += `
                 <div class="bg-white rounded-2xl p-4 md:p-5 border shadow-sm flex flex-col hover:shadow-lg transition ${order.status === 'pendente' ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-200'}">
                     <div class="flex justify-between items-start mb-4">
@@ -1236,16 +1270,16 @@
                         </div>
                         <span class="px-2 md:px-3 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor}">${order.status.replace('_', ' ')}</span>
                     </div>
-                    <div class="flex-1 bg-gray-50 rounded-xl p-3 mb-4 space-y-2 text-sm border border-gray-100">
+                    <div class="flex-1 bg-gray-50 rounded-xl p-3 mb-2 space-y-2 text-sm border border-gray-100">
                         ${itemsHtml}
                     </div>
-                    <div class="text-xs text-gray-500 mb-4 space-y-1">
+                    ${valuesBreakdownHtml}
+                    <div class="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100 space-y-1">
                         <p><i class="fas fa-map-marker-alt w-4"></i> ${safeAddress}</p>
                         <p><i class="fas fa-wallet w-4"></i> ${safePayment}</p>
                         ${safeObs ? `<p class="text-orange-600 font-bold"><i class="fas fa-comment w-4"></i> "${safeObs}"</p>` : ''}
                     </div>
                     <div class="flex items-center justify-between pt-4 border-t mt-auto">
-                        <span class="text-lg md:text-xl font-bold">R$ ${order.total_value.toFixed(2)}</span>
                         <div class="flex gap-2">${getActionButtons(order)}</div>
                     </div>
                 </div>`;
@@ -1288,7 +1322,12 @@
         // Função Wrapper para imprimir com segurança
         function printOrderSafe(order) {
             // Reconstrói os dados que a função original esperava
-            const itemsStr = order.items.map(i => `${i.quantity}x ${i.name}${i.options ? ' ['+i.options+']' : ''}`).join('|');
+            const itemsStr = order.items.map(i => {
+                let itemText = `${i.quantity}x ${i.name}`;
+                if (i.options) itemText += ` [${i.options}]`;
+                if (i.obs) itemText += ` (Obs: ${i.obs})`;
+                return itemText;
+            }).join('|');
             
             printOrder(
                 order.id, 
@@ -1297,48 +1336,91 @@
                 order.total_value, 
                 order.observation || '', 
                 order.address, 
-                order.payment_method
+                order.payment_method,
+                order.items || [],
+                order.delivery_fee || 0,
+                order.discount_amount || 0,
+                order.coupon_code || null,
+                order.customer_phone || order.phone || '',
+                "{{ tenant.name }}"  // Nome do estabelecimento para a nota
             );
         }
 
-        async function printOrder(id, name, itemsStr, total, obs, address, payment) {
+        async function printOrder(id, name, itemsStr, total, obs, address, payment, orderItems = [], deliveryFee = 0, discountAmount = 0, couponCode = null, customerPhone = '', storeName = '') {
             await fetch(`/${TENANT_SLUG}/api/orders/${id}/printed/`, { 
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
             fetchOrders();
             
+            // Cálculo do subtotal dos itens
+            const itemsSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+            const hasDeliveryFee = deliveryFee > 0;
+            const hasCoupon = couponCode && discountAmount > 0;
+            
             // Formato otimizado para impressora térmica 80mm (48 caracteres)
             const line = '================================================';
             const line2 = '------------------------------------------------';
+            const line3 = '________________________________________________';
             const now = new Date().toLocaleString('pt-BR');
             const items = itemsStr.split('|').map(item => `  ${item}`).join('\n');
             
+            // Build breakdown para impressão
+            let breakdownText = '';
+            breakdownText += `  SUBTOTAL ITENS..... R$ ${itemsSubtotal.toFixed(2).padStart(8)}\n`;
+            if (hasDeliveryFee) {
+                breakdownText += `  TAXA ENTREGA....... R$ ${deliveryFee.toFixed(2).padStart(8)}\n`;
+            }
+            if (hasCoupon) {
+                breakdownText += `  DESCONTO APLICADO... -R$ ${discountAmount.toFixed(2).padStart(8)}\n`;
+            }
+            breakdownText += `\n  TOTAL A RECEBER.... R$ ${parseFloat(total).toFixed(2).padStart(8)}\n`;
+            
+            // Valores para motoboy (troco se necessário)
+            const isCardPayment = payment && (payment.toLowerCase().includes('cartao') || payment.toLowerCase().includes('débito') || payment.toLowerCase().includes('crédito'));
+            
+            // Formata o método de pagamento para exibição
+            let paymentInfo = payment || 'Não informado';
+            if (paymentInfo.toLowerCase() === 'cartao') {
+                paymentInfo = 'CARTÃO/DINHEIRO';
+            } else if (paymentInfo.toLowerCase().includes('cartao')) {
+                paymentInfo = paymentInfo.replace(/cartao/gi, 'Cartão/Dinheiro');
+            }
+            
+            // Formata telefone se existir
+            const phoneDisplay = customerPhone ? customerPhone : '_____________';
+            
             const receiptText = `
 ${line}
-             ** PEDIDO #${id} **
+           *** ${storeName.toUpperCase()} ***
+${line}
+            PEDIDO #${id}
+            ${now}
 ${line}
 
 CLIENTE: ${name}
-DATA: ${now}
-PAGAMENTO: ${payment || 'Não informado'}
-
-${line2}
+FONE: ${phoneDisplay}
+${line3}
+            INFORMAÇÕES
+${line3}
+PAGAMENTO: ${paymentInfo}
+${!isCardPayment && hasDeliveryFee ? `VALOR ENTREGA: R$ ${deliveryFee.toFixed(2)}` : ''}
+${obs ? `OBSERVAÇÃO: ${obs}` : ''}
+${line3}
             ITENS
-${line2}
+${line3}
 ${items}
-${line2}
-${obs ? `\nOBS: ${obs}\n${line2}` : ''}
-
-        TOTAL: R$ ${parseFloat(total).toFixed(2)}
-
-${line2}
-            ENTREGA
-${line2}
+${line3}
+            FINANCEIRO
+${line3}
+${breakdownText}${line3}
+            ENDEREÇO
+${line3}
 ${address}
-
+${line3}
 ${line}
-        Obrigado pela preferência!
+      OBRIGADO PELA PREFERÊNCIA!
+      VOLTE SEMPRE!
 ${line}
 `;
             
@@ -1355,11 +1437,11 @@ ${line}
                         }
                         body { 
                             font-family: 'Courier New', monospace; 
-                            font-size: 12px; 
-                            line-height: 1.3;
+                            font-size: 11px; 
+                            line-height: 1.4;
                             width: 80mm; 
                             margin: 0 auto; 
-                            padding: 5mm;
+                            padding: 4mm;
                         }
                         pre { 
                             white-space: pre-wrap; 
