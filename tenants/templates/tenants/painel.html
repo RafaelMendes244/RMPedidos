@@ -1213,7 +1213,15 @@
                 const safeName = escapeHtml(order.customer_name);
                 const safeObs = escapeHtml(order.observation || '');
                 const safeAddress = escapeHtml(order.address);
-                const safePayment = escapeHtml(order.payment_method || '');
+                let paymentRaw = order.payment_method || '';
+
+                if (paymentRaw.toLowerCase() === 'cartao') {
+                    paymentRaw = 'Cartão/Dinheiro';
+                } else if (paymentRaw.toLowerCase() === 'pix') {
+                    paymentRaw = 'PIX';
+                }
+
+                const safePayment = escapeHtml(paymentRaw);
 
                 // Cálculo de valores para breakdown
                 const itemsSubtotal = order.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
