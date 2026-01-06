@@ -1207,17 +1207,27 @@
 
                     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 }
-                let statusColor = order.status === 'pendente' ? 'bg-yellow-100 text-yellow-700 animate-pulse' : 
-                                    order.status === 'em_preparo' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
+                let statusColor = '';
+                if (order.status === 'pendente') {
+                    statusColor = 'bg-yellow-100 text-yellow-700 animate-pulse';
+                } else if (order.status === 'em_preparo') {
+                    statusColor = 'bg-blue-100 text-blue-700';
+                } else if (order.status === 'saiu_entrega') {
+                    statusColor = 'bg-orange-100 text-orange-700'; // Nova cor para entrega
+                } else if (order.status === 'cancelado') {
+                    statusColor = 'bg-red-100 text-red-700 opacity-60';
+                } else {
+                    statusColor = 'bg-green-100 text-green-700';
+                }
 
                 const safeName = escapeHtml(order.customer_name);
                 const safeObs = escapeHtml(order.observation || '');
                 const safeAddress = escapeHtml(order.address);
                 let paymentRaw = order.payment_method || '';
 
-                if (paymentRaw.toLowerCase() === 'cartao') {
+                if (paymentRaw.includes('cartao') || paymentRaw.includes('dinheiro')) {
                     paymentRaw = 'Cartão/Dinheiro';
-                } else if (paymentRaw.toLowerCase() === 'pix') {
+                } else if (paymentRaw.toLowerCase().includes('pix')) {
                     paymentRaw = 'PIX';
                 }
 
@@ -1296,19 +1306,75 @@
         }
 
         function getActionButtons(order) {
-
             const orderJson = JSON.stringify(order).replace(/"/g, '&quot;');
 
-            if (order.status === 'pendente') {
-                return `<button onclick="confirmCancel(${order.id})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><i class="fas fa-times"></i></button><button onclick="updateStatus(${order.id}, 'em_preparo')" class="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-600 flex items-center gap-2"><i class="fas fa-fire"></i> <span class="hidden sm:inline">Aceitar</span></button>`;
-            } else if (order.status === 'em_preparo') {
-                const printBtnClass = order.is_printed 
-                    ? "bg-yellow-100 text-yellow-700 border border-yellow-300" 
-                    : "bg-blue-100 text-blue-700 border border-blue-200";
-                const printBtnText = order.is_printed ? '<i class="fas fa-redo"></i> <span class="hidden sm:inline">Reimprimir</span>' : '<i class="fas fa-print"></i> <span class="hidden sm:inline">Imprimir</span>';
-                return `<button onclick="printOrderSafe(${orderJson})" class="px-3 py-2 ${printBtnClass} rounded-lg font-bold text-xs uppercase transition flex items-center gap-2">${printBtnText}</button><button onclick="updateStatus(${order.id}, 'concluido')" class="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-700 flex items-center gap-2"><i class="fas fa-check"></i> <span class="hidden sm:inline">Concluir</span></button>`;
+            let printBtnHtml = '';
+            
+            if (order.is_printed) {
+                printBtnHtml = `
+                    <button onclick="printOrderSafe(${orderJson})" class="px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold text-xs hover:bg-green-100 transition flex items-center gap-2 shadow-sm" title="Reimprimir Comanda">
+                        <i class="fas fa-check-circle"></i> <span class="hidden sm:inline">Impresso</span>
+                    </button>
+                `;
+            } else {
+                // ESTILO PENDENTE DE IMPRESSÃO: Botão Padrão, Ícone Print e texto "Imprimir"
+                printBtnHtml = `
+                    <button onclick="printOrderSafe(${orderJson})" class="px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold text-xs hover:bg-gray-50 hover:text-black transition flex items-center gap-2 shadow-sm" title="Imprimir Comanda">
+                        <i class="fas fa-print"></i> <span class="hidden sm:inline">Imprimir</span>
+                    </button>
+                `;
             }
-            return `<span class="text-gray-400 text-xs font-bold">Arquivado</span>`;
+
+            // 1. FLUXO PENDENTE (Só Aceitar ou Recusar)
+            if (order.status === 'pendente') {
+                return `
+                    <div class="flex gap-2 w-full">
+                        <button onclick="confirmCancel(${order.id})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-100" title="Recusar Pedido">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button onclick="updateStatus(${order.id}, 'em_preparo')" class="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-600 flex items-center justify-center gap-2 transition">
+                            <i class="fas fa-fire"></i> <span>Aceitar</span>
+                        </button>
+                    </div>
+                `;
+            } 
+            
+            // 2. FLUXO EM PREPARO (Cozinha)
+            else if (order.status === 'em_preparo') {
+                return `
+                    <div class="flex gap-2 w-full justify-end items-center">
+                        <button onclick="confirmCancel(${order.id})" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Cancelar Pedido">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        ${printBtnHtml}
+
+                        <button onclick="updateStatus(${order.id}, 'saiu_entrega')" class="px-3 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-blue-700 flex items-center gap-2 transition ml-auto sm:ml-0">
+                            <i class="fas fa-motorcycle"></i> <span class="hidden sm:inline">Entrega</span>
+                        </button>
+                    </div>
+                `;
+            } 
+            
+            // 3. FLUXO SAIU PARA ENTREGA (Na Rua)
+            else if (order.status === 'saiu_entrega') {
+                return `
+                    <div class="flex gap-2 w-full justify-end items-center">
+                        <button onclick="confirmCancel(${order.id})" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Cancelar Pedido">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        ${printBtnHtml}
+
+                        <button onclick="updateStatus(${order.id}, 'concluido')" class="px-3 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase shadow hover:bg-green-700 flex items-center gap-2 transition ml-auto sm:ml-0" title="Concluir Pedido">
+                            <i class="fas fa-check-double"></i> <span class="hidden sm:inline">Concluir</span>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // 4. FINALIZADOS
+            return `<span class="text-gray-400 text-xs font-bold flex items-center gap-1"><i class="fas fa-archive"></i> Arquivado</span>`;
         }
 
         function confirmCancel(orderId) {
@@ -1389,10 +1455,11 @@
             
             // Formata o método de pagamento para exibição
             let paymentInfo = payment || 'Não informado';
-            if (paymentInfo.toLowerCase() === 'cartao') {
-                paymentInfo = 'CARTÃO/DINHEIRO';
-            } else if (paymentInfo.toLowerCase().includes('cartao')) {
-                paymentInfo = paymentInfo.replace(/cartao/gi, 'Cartão/Dinheiro');
+
+            if (paymentInfo.toLowerCase().includes('cartao') || paymentInfo.toLowerCase().includes('dinheiro')) {
+                paymentInfo = 'CARTÃO / DINHEIRO';
+            } else if (paymentInfo.toLowerCase().includes('pix')) {
+                paymentInfo = 'PIX';
             }
             
             // Formata telefone se existir
