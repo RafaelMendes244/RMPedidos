@@ -1924,7 +1924,35 @@ ${line}
             renderOptions();
         }
         function removeOptionGroup(idx) {
-            if(confirm('Remover este grupo?')) { currentOptions.splice(idx, 1); renderOptions(); }
+            Swal.fire({
+                title: 'Remover Grupo?',
+                text: "Deseja excluir este grupo de adicionais e todas as suas opções?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444', // Vermelho para indicar ação destrutiva
+                cancelButtonColor: '#9ca3af',  // Cinza
+                confirmButtonText: 'Sim, remover',
+                cancelButtonText: 'Cancelar',
+                // Estilo arredondado igual ao resto do seu painel
+                customClass: {
+                    popup: 'rounded-2xl',
+                    confirmButton: 'rounded-lg',
+                    cancelButton: 'rounded-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // A lógica de remoção continua a mesma
+                    currentOptions.splice(idx, 1);
+                    renderOptions();
+                    
+                    // Feedback visual extra (opcional)
+                    Toastify({ 
+                        text: "Grupo removido!", 
+                        style: { background: "#ef4444" },
+                        duration: 2000
+                    }).showToast();
+                }
+            });
         }
         function updateOptionGroup(idx, field, val) {
             currentOptions[idx][field] = val;

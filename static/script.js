@@ -410,7 +410,7 @@ window.showProductModal = (id) => {
                         ? `<img src="${product.image}" class="w-full h-full object-cover">`
                         : `<div class="w-full h-full flex items-center justify-center bg-orange-50">
                             <i class="fas fa-utensils text-6xl text-orange-300"></i>
-                           </div>`
+                            </div>`
                     }
                 </div>
                 <p class="text-sm text-gray-500 mb-6 border-b border-orange-100 pb-4">${product.description || ''}</p>
@@ -421,7 +421,7 @@ window.showProductModal = (id) => {
                 </div>
                 <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
                     <span class="text-xs font-bold uppercase text-gray-400">Total</span>
-                    <span class="text-2xl font-serif text-gray-900 font-medium">R$ ${product.price.toFixed(2)}</span>
+                    <span id="modal-total-display" data-base="${product.price}" class="text-2xl font-serif text-gray-900 font-medium">R$ ${product.price.toFixed(2)}</span>
                 </div>
             </div>
         `,
@@ -1128,3 +1128,28 @@ window.clearCart = () => {
         }
     });
 }
+
+// --- FUNÇÂO PARA CALCULAR TOTAL DO MODAL ---
+window.calculateModalTotal = () => {
+    // 1. Pega o elemento que mostra o preço
+    const priceEl = document.getElementById('modal-total-display');
+    if (!priceEl) return;
+
+    // 2. Pega o preço base que salvamos no atributo data-base
+    let total = parseFloat(priceEl.dataset.base);
+
+    // 3. Pega todos os inputs MARCADOS dentro do modal do SweetAlert
+    const checkedInputs = document.querySelectorAll('.swal2-popup input:checked');
+
+    // 4. Soma os valores
+    checkedInputs.forEach(input => {
+        // O value é "Nome::Preco", então damos split
+        const parts = input.value.split('::');
+        if (parts.length === 2) {
+            total += parseFloat(parts[1]);
+        }
+    });
+
+    // 5. Atualiza o texto na tela
+    priceEl.innerText = `R$ ${total.toFixed(2)}`;
+};
