@@ -343,6 +343,9 @@
                         </div>
 
                         <div id="address-container" class="space-y-2">
+                            <button type="button" onclick="usarLocalizacao()" id="btn-geo" class="w-full py-2 mb-2 flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold uppercase hover:bg-blue-100 transition">
+                                <i class="fas fa-location-arrow"></i> Usar minha localização atual
+                            </button>
                             <input type="tel" id="cep" placeholder="CEP" onblur="buscarCep()" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
                             <input type="text" id="address" placeholder="Rua" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white">
                             <div class="flex gap-2">
@@ -377,15 +380,40 @@
                         </div>
 
                         <div class="space-y-2">
-                            <p class="text-xs font-bold uppercase text-gray-400">Pagamento</p>
-                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800">
+                            <p class="text-xs font-bold uppercase text-gray-400">Forma de Pagamento</p>
+                            
+                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(false)">
                                 <input type="radio" name="payment-method" value="pix" class="accent-orange-600" checked>
-                                <span class="text-sm font-bold dark:text-white">PIX</span>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-qrcode text-orange-500"></i>
+                                    <span class="text-sm font-bold dark:text-white">PIX (Automático)</span>
+                                </div>
                             </label>
-                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800">
-                                <input type="radio" name="payment-method" value="cartao_dinheiro" class="accent-orange-600">
-                                <span class="text-sm font-bold dark:text-white">Cartão / Dinheiro</span>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(false)">
+                                <input type="radio" name="payment-method" value="cartao" class="accent-orange-600">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-credit-card text-blue-500"></i>
+                                    <span class="text-sm font-bold dark:text-white">Cartão (Maquininha)</span>
+                                </div>
                             </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(true)">
+                                <input type="radio" name="payment-method" value="dinheiro" class="accent-orange-600">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-money-bill-wave text-green-500"></i>
+                                    <span class="text-sm font-bold dark:text-white">Dinheiro</span>
+                                </div>
+                            </label>
+
+                            <div id="troco-container" class="hidden animate-fadeIn ml-2 border-l-2 border-orange-200 pl-4 mt-2">
+                                <label class="text-xs font-bold text-gray-500 block mb-1">Precisa de troco para quanto?</label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-500 font-bold">R$</span>
+                                    <input type="number" id="troco-valor" placeholder="Ex: 50.00" class="w-full p-2 border rounded-lg bg-white outline-none focus:border-orange-500">
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1">Deixe em branco se tiver o valor trocado.</p>
+                            </div>
                         </div>
                         
                         <textarea style="resize: none;" id="order-notes" placeholder="Observações..." class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>

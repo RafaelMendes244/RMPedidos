@@ -157,10 +157,38 @@ window.finalizeOrder = async () => {
         if (totalFinal < 0) totalFinal = 0;
     }
     
-    // Dados do Pedido
+    // --- LÓGICA DE PAGAMENTO E TROCO (ATUALIZADA) ---
     const methodEl = document.querySelector('input[name="payment-method"]:checked');
-    const method = methodEl ? methodEl.value : "Dinheiro/Cartao";
-    const obs = document.getElementById("order-notes").value;
+    const method = methodEl ? methodEl.value : "Não Informado";
+    let obs = document.getElementById("order-notes").value;
+
+    // Se for dinheiro, processa o troco ANTES de criar o pedido
+    if (method === 'dinheiro') {
+        const trocoInput = document.getElementById("troco-valor");
+        const trocoVal = trocoInput ? trocoInput.value : "";
+        
+        if (trocoVal) {
+            // Converte virgula para ponto para garantir calculo certo
+            const valorTroco = parseFloat(trocoVal.replace(',', '.'));
+            
+            // VALIDAÇÃO: O troco não pode ser menor que o total do pedido
+            if (isNaN(valorTroco) || valorTroco < totalFinal) {
+                Toastify({
+                    text: `O valor do troco (R$ ${valorTroco.toFixed(2)}) é menor que o total do pedido!`, 
+                    duration: 4000,
+                    style: {background: "#ef4444"}
+                }).showToast();
+                document.getElementById("troco-valor").focus();
+                return; // <--- PARA TUDO AQUI SE O TROCO TIVER ERRADO
+            }
+            
+            // Adiciona na observação para salvar no banco sem mexer no backend
+            obs += `\n --- \n 💵 LEVAR TROCO PARA: R$ ${valorTroco.toFixed(2)}`;
+        } else {
+            obs += `\n --- \n 💵 NÃO PRECISA DE TROCO (Cliente tem o valor trocado)`;
+        }
+    }
+    // ------------------------------------------------
 
     const orderData = {
         nome: nome,
@@ -170,7 +198,7 @@ window.finalizeOrder = async () => {
         discount_amount: discountAmount,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         method: method,
-        obs: obs,
+        obs: obs, // Aqui já vai com o texto do troco
         items: cart,
         address: isDelivery ? {
             cep: document.getElementById("cep").value,
@@ -1152,4 +1180,97 @@ window.calculateModalTotal = () => {
 
     // 5. Atualiza o texto na tela
     priceEl.innerText = `R$ ${total.toFixed(2)}`;
+};
+
+// --- FUNÇÃO DE GEOLOCALIZAÇÃO ---
+window.usarLocalizacao = () => {
+    const btn = document.getElementById("btn-geo");
+    const originalText = btn.innerHTML;
+
+    if (!navigator.geolocation) {
+        Toastify({ text: "Seu dispositivo não tem GPS.", style: { background: "#fb923c" } }).showToast();
+        return;
+    }
+
+    // Muda estado do botão
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando GPS...';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        // 1. SUCESSO (GPS Funcionou)
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            
+            // Busca o endereço exato
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    const addr = data.address;
+                    const rua = addr.road || addr.street || addr.pedestrian || "";
+                    const bairro = addr.suburb || addr.neighbourhood || addr.residential || "";
+                    const cep = addr.postcode || "";
+                    
+                    if (rua) document.getElementById("address").value = rua;
+                    if (bairro) document.getElementById("neighborhood").value = bairro;
+                    if (cep) document.getElementById("cep").value = cep.replace(/\D/g, "");
+
+                    document.getElementById("address").removeAttribute("readonly");
+                    document.getElementById("neighborhood").removeAttribute("readonly");
+
+                    if (bairro) window.calcularTaxaEntrega(bairro);
+
+                    // Foca no número para o cliente completar
+                    document.getElementById("number").value = "";
+                    document.getElementById("number").focus();
+                    
+                    Toastify({ text: "Localização encontrada!", style: { background: "#10b981" } }).showToast();
+                })
+                .catch(() => {
+                    Toastify({ text: "GPS funcionou, mas não achamos o endereço escrito. Digite manualmente.", style: { background: "#fb923c" } }).showToast();
+                    window.habilitarEnderecoManual(); // Já libera os campos
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+        },
+        // 2. ERRO (Timeout ou Bloqueio)
+        (error) => {
+            console.error(error);
+            // Mensagem amigável dependendo do erro
+            let msg = "Não conseguimos sua localização exata.";
+            
+            if (error.code === 1) msg = "Você negou a permissão de localização.";
+            // Se for Timeout (Desktop geralmente cai aqui), pedimos para digitar
+            if (error.code === 3) msg = "Sinal de GPS fraco ou indisponível no PC.";
+
+            Toastify({ text: `${msg} Por favor, digite seu endereço.`, duration: 4000, style: { background: "#fb923c" } }).showToast();
+            
+            // Truque de UX: Se der erro, já libera os campos e foca no CEP para ele digitar logo
+            window.habilitarEnderecoManual();
+            document.getElementById("cep").focus();
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        },
+        // 3. CONFIGURAÇÃO (Prioridade na Precisão)
+        {
+            enableHighAccuracy: true, // MANTÉM TRUE: Prioriza precisão para entrega
+            timeout: 20000,           // Aumentamos para 20s (ajuda celulares lentos)
+            maximumAge: 0             // Não usa cache velho, quer a posição de AGORA
+        }
+    );
+};
+
+// Função para mostrar/esconder campo de troco
+window.toggleTroco = (show) => {
+    const el = document.getElementById("troco-container");
+    if (show) {
+        el.classList.remove("hidden");
+        document.getElementById("troco-valor").focus();
+    } else {
+        el.classList.add("hidden");
+        document.getElementById("troco-valor").value = ""; // Limpa se mudar de ideia
+    }
 };
