@@ -179,13 +179,13 @@ window.finalizeOrder = async () => {
                     style: {background: "#ef4444"}
                 }).showToast();
                 document.getElementById("troco-valor").focus();
-                return; // <--- PARA TUDO AQUI SE O TROCO TIVER ERRADO
+                return;
             }
             
             // Adiciona na observação para salvar no banco sem mexer no backend
-            obs += `\n --- \n 💵 LEVAR TROCO PARA: R$ ${valorTroco.toFixed(2)}`;
+            obs += `\n --- \n LEVAR TROCO PARA: R$ ${valorTroco.toFixed(2)}`;
         } else {
-            obs += `\n --- \n 💵 NÃO PRECISA DE TROCO (Cliente tem o valor trocado)`;
+            obs += `\n --- \n NÃO PRECISA DE TROCO (Cliente tem o valor trocado)`;
         }
     }
     // ------------------------------------------------
