@@ -197,7 +197,7 @@
                         Depoimentos
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                     </a>
-                    <a href="#precos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
+                    <a href="#planos" class="text-sm font-semibold text-slate-700 hover:text-orange-600 transition-colors relative group">
                         Preços
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                     </a>
@@ -233,7 +233,7 @@
                 <a href="#depoimentos" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
                     <i class="fas fa-comments text-orange-500 mr-3 w-5"></i>Depoimentos
                 </a>
-                <a href="#precos" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
+                <a href="#planos" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
                     <i class="fas fa-tag text-orange-500 mr-3 w-5"></i>Preços
                 </a>
                 <a href="{% url 'custom_login' %}" class="block py-3 text-slate-700 font-semibold hover:text-orange-600 transition-colors border-b border-slate-100">
@@ -700,178 +700,100 @@
     </section>
 
     <!-- Sessão de Preços Simplificada -->
-    <section id="precos" class="py-16 md:py-24 bg-white relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-96 h-96 bg-orange-100 rounded-full blur-3xl opacity-50 -translate-x-1/2 -translate-y-1/2"></div>
-        <div class="absolute bottom-0 right-0 w-96 h-96 bg-red-100 rounded-full blur-3xl opacity-50 translate-x-1/2 translate-y-1/2"></div>
-
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
-                <span class="text-orange-600 font-bold tracking-wider uppercase text-sm">Planos e Preços</span>
-                <h2 class="text-3xl md:text-5xl font-black text-slate-900 mt-2 mb-4">
-                    Escolha o melhor plano
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">
-                        para seu negócio
-                    </span>
-                </h2>
-                <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Todos os planos incluem PIX automático, cardápio ilimitado e tudo que você precisa para vender mais.
-                </p>
+    <section id="planos" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-orange-600 font-bold tracking-wider uppercase text-sm">Nossos Planos</span>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2 mb-4">Escolha o melhor para seu negócio</h2>
+                <p class="text-gray-600">Comece com 14 dias grátis do plano PRO. Sem fidelidade, cancele quando quiser.</p>
             </div>
 
-            <!-- Planos Simplificados -->
-            <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                <!-- Plano Starter (Grátis) -->
-                <div class="price-card bg-white rounded-2xl md:rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-6 md:p-8">
-                    <div class="text-center mb-6">
-                        <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-100 rounded-xl mb-4">
-                            <i class="fas fa-gift text-slate-600 text-xl"></i>
-                        </div>
-                        <h3 class="text-2xl md:text-3xl font-black text-slate-900 mb-2">Starter</h3>
-                        <p class="text-sm text-slate-600">Para começar a vender</p>
+            <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto items-center">
+                
+                <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 hover:shadow-xl transition relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-bl-lg">BÁSICO</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Plano Starter</h3>
+                    <p class="text-gray-500 text-sm mb-6">Para quem quer apenas o Cardápio Digital.</p>
+                    
+                    <div class="mb-6">
+                        <span class="text-4xl font-extrabold text-gray-900">R$ 49,90</span>
+                        <span class="text-gray-500">/mês</span>
                     </div>
-                    
-                    <div class="text-center mb-6">
-                        <div class="text-4xl md:text-5xl font-black text-slate-900">R$ 69,90</div>
-                        <div class="text-sm text-slate-500">por mês</div>
-                    </div>
-                    
-                    <ul class="space-y-4 mb-8">
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Cardápio digital ilimitado</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Pedidos no WhatsApp</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">PIX automático</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">QR Code do cardápio</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Produtos ilimitados</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Relatórios e métricas</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Personalização de cores</span>
-                        </li>
-                        <li class="flex items-start gap-3 opacity-50">
-                            <i class="fas fa-times text-slate-400 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-500">Domínio personalizado</span>
-                        </li>
-                    </ul>
-                    
-                    <a href="{% url 'signup' %}" class="block w-full py-4 bg-slate-100 text-slate-700 font-bold rounded-xl text-center hover:bg-slate-200 transition-colors">
+
+                    <a href="{% url 'signup' %}" class="block w-full py-3 px-6 text-center rounded-xl border-2 border-orange-600 text-orange-600 font-bold hover:bg-orange-50 transition mb-8">
                         Começar Grátis
                     </a>
-                    <p class="text-xs text-slate-500 text-center mt-3">Sem cartão de crédito</p>
-                </div>
 
-                <!-- Plano Pro (Destaque) -->
-                <div class="price-card featured bg-white rounded-2xl md:rounded-3xl shadow-xl shadow-orange-500/30 border-2 border-orange-500 p-6 md:p-8 relative">
-                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-4 py-2 rounded-full">
-                        MAIS VENDIDO
-                    </div>
-                    
-                    <div class="text-center mb-6">
-                        <div class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl mb-4">
-                            <i class="fas fa-crown text-white text-xl"></i>
-                        </div>
-                        <h3 class="text-2xl md:text-3xl font-black text-slate-900 mb-2">Pro</h3>
-                        <p class="text-sm text-slate-600">Para profissionais que querem grow</p>
-                    </div>
-                    
-                    <div class="text-center mb-6">
-                        <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">R$ 99,90</div>
-                        <div class="text-sm text-slate-500">por mês</div>
-                    </div>
-                    
-                    <ul class="space-y-4 mb-8">
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-orange-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700 font-medium">Tudo do Starter</span>
+                    <ul class="space-y-4 text-gray-600 text-sm">
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-500"></i> Cardápio Digital Ilimitado
                         </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-orange-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700 font-bold">Suporte prioritário</span>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-500"></i> Gestão de Mesas e QR Code
                         </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-orange-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700 font-bold">Domínio personalizado</span>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-500"></i> Taxas de Entrega por Bairro
                         </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-orange-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Sua marca, seu domínio</span>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-500"></i> Configuração de Horários
                         </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check text-orange-500 mt-1 flex-shrink-0"></i>
-                            <span class="text-sm text-slate-700">Ex: www.minhaloja.com.br</span>
+                        <li class="flex items-center gap-3 opacity-50">
+                            <i class="fas fa-times text-gray-400"></i> Painel de Pedidos em Tempo Real
+                        </li>
+                        <li class="flex items-center gap-3 opacity-50">
+                            <i class="fas fa-times text-gray-400"></i> Relatórios Financeiros
+                        </li>
+                        <li class="flex items-center gap-3 opacity-50">
+                            <i class="fas fa-times text-gray-400"></i> Cupons de Desconto
                         </li>
                     </ul>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-2xl p-8 border-2 border-orange-500 relative transform md:-translate-y-4">
+                    <div class="absolute top-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-600 to-orange-500 text-white text-xs font-bold px-4 py-1 rounded-b-lg shadow-sm">
+                        MAIS ESCOLHIDO
+                    </div>
                     
-                    <a href="{% url 'signup' %}" class="block w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold rounded-xl text-center hover:from-orange-600 hover:to-red-600 transition-all shadow-lg shadow-orange-500/30">
-                        Testar Grátis 14 Dias
+                    <h3 class="text-xl font-bold text-gray-900 mb-2 mt-2">Plano PRO</h3>
+                    <p class="text-gray-500 text-sm mb-6">Gestão completa e automatizada.</p>
+                    
+                    <div class="mb-6">
+                        <span class="text-4xl font-extrabold text-gray-900">R$ 89,90</span>
+                        <span class="text-gray-500">/mês</span>
+                    </div>
+
+                    <a href="{% url 'signup' %}" class="block w-full py-4 px-6 text-center rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold hover:shadow-lg hover:scale-105 transition mb-8">
+                        Testar PRO por 14 dias
                     </a>
-                    <p class="text-xs text-slate-500 text-center mt-3">Cancele quando quiser</p>
-                </div>
-            </div>
 
-            <!-- Diferenças e Trust -->
-            <div class="mt-12">
-                <div class="bg-slate-50 rounded-2xl p-6 md:p-8 max-w-3xl mx-auto">
-                    <h4 class="text-lg font-bold text-slate-900 text-center mb-6">
-                        <i class="fas fa-info-circle text-orange-500 mr-2"></i>
-                        Qual a diferença entre Starter e Pro?
-                    </h4>
-                    <div class="text-center">
-                        <p class="text-slate-700 mb-4">
-                            <strong class="text-slate-900">Starter:</strong> Sua loja fica em <span class="font-mono text-orange-600">rmpedidos.online/sualoja</span>
-                        </p>
-                        <p class="text-slate-700">
-                            <strong class="text-slate-900">Pro:</strong> Sua loja fica no <strong>seu domínio</strong>, como <span class="font-mono text-orange-600">www.sualoja.com.br</span>
-                        </p>
-                    </div>
+                    <ul class="space-y-4 text-gray-700 font-medium text-sm">
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span><b>Tudo do Starter</b> incluso</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span>Gestor de Pedidos (Cozinha/Balcão)</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span>Relatórios de Vendas e Lucro</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span>Cupons de Desconto</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span>Suporte Prioritário</span>
+                        </li>
+                    </ul>
                 </div>
-            </div>
 
-            <!-- Garantia e Trust -->
-            <div class="mt-12 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-shield-alt text-green-600"></i>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-sm font-bold text-slate-900">14 dias de garantia</p>
-                        <p class="text-xs text-slate-600">Dinheiro de volta, sem perguntas</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-credit-card text-orange-600"></i>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-sm font-bold text-slate-900">Pagamento facilitado</p>
-                        <p class="text-xs text-slate-600">Pix, cartão ou boleto</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-headset text-blue-600"></i>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-sm font-bold text-slate-900">Suporte brasileiro</p>
-                        <p class="text-xs text-slate-600">Atendimento em português</p>
-                    </div>
-                </div>
+            </div>
+            
+            <div class="mt-12 text-center">
+                <p class="text-gray-500 text-sm">Dúvidas sobre os planos? <a href="https://wa.me/5583920006113" class="text-orange-600 font-bold hover:underline">Fale conosco no WhatsApp</a></p>
             </div>
         </div>
     </section>
@@ -962,7 +884,7 @@
                     <h4 class="font-bold text-white mb-4 text-sm">Links Rápidos</h4>
                     <ul class="space-y-2.5 text-sm">
                         <li><a href="#beneficios" class="hover:text-orange-400 transition-colors">Benefícios</a></li>
-                        <li><a href="#precos" class="hover:text-orange-400 transition-colors">Preços</a></li>
+                        <li><a href="#planos" class="hover:text-orange-400 transition-colors">Preços</a></li>
                         <li><a href="{% url 'custom_login' %}" class="hover:text-orange-400 transition-colors">Entrar</a></li>
                         <li><a href="{% url 'signup' %}" class="hover:text-orange-400 transition-colors">Criar Loja Grátis</a></li>
                     </ul>

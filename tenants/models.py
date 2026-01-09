@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 class Tenant(models.Model):
     # NOME DA LOJA E SUBDOMINIO
@@ -15,6 +17,31 @@ class Tenant(models.Model):
         verbose_name="Domínio Personalizado",
         help_text="Ex: pizzariadoze.com.br (sem http:// ou www)"
     )
+
+    # --- SISTEMA DE PLANOS PROFISSIONAL ---
+    PLAN_CHOICES = [
+        ('starter', 'Plano Starter'),
+        ('pro', 'Plano Pro'),
+    ]
+    
+    plan_type = models.CharField(
+        max_length=20, 
+        choices=PLAN_CHOICES, 
+        default='starter', 
+        verbose_name="Tipo de Plano"
+    )
+
+    # Data de Criação (Editável conforme você pediu)
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="Data de Criação")
+    
+    # NOVA CAMPO: Data de Vencimento
+    valid_until = models.DateField(null=True, blank=True, verbose_name="Válido Até")
+    
+    # Kill Switch (Cancelamento manual)
+    subscription_active = models.BooleanField(default=True, verbose_name="Assinatura Ativa?")
+
+    def __str__(self):
+        return self.name
 
     # VINCULO DE DONO
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tenants', verbose_name="Dono da Loja", null=True, blank=True)
@@ -64,6 +91,51 @@ class Tenant(models.Model):
     # Contato
     phone_whatsapp = models.CharField(max_length=20, verbose_name="WhatsApp", help_text="Apenas números com DDD")
 
+    @property
+    def is_trial(self):
+        """Verifica se está nos 14 dias de teste grátis"""
+        if not self.created_at: return False
+        return (timezone.now() - self.created_at) < timedelta(days=14)
+
+    @property
+    def remaining_trial_days(self):
+        if not self.is_trial: return 0
+        delta = (self.created_at + timedelta(days=14)) - timezone.now()
+        return delta.days
+    
+    @property
+    def has_active_subscription(self):
+        """
+        Lógica Mestra:
+        1. Se subscription_active for False -> Bloqueado (Cancelado)
+        2. Se tiver data de validade futura -> Ativo (Pago)
+        3. Se estiver no período de trial -> Ativo (Trial)
+        4. Senão -> Bloqueado (Vencido)
+        """
+        if not self.subscription_active:
+            return False
+            
+        # Se tem data de vencimento definida e é futura ou hoje
+        if self.valid_until and self.valid_until >= timezone.now().date():
+            return True
+            
+        # Se não tem vencimento ou já venceu, verifica o trial
+        return self.is_trial
+
+    # --- PERMISSÕES DE RECURSOS ---
+
+    @property
+    def can_access_orders(self):
+        return self.has_active_subscription and (self.is_trial or self.plan_type == 'pro')
+
+    @property
+    def can_access_reports(self):
+        return self.has_active_subscription and (self.is_trial or self.plan_type == 'pro')
+
+    @property
+    def can_access_coupons(self):
+        return self.has_active_subscription and (self.is_trial or self.plan_type == 'pro')
+    
     class Meta:
         verbose_name = "Loja"
         verbose_name_plural = "Lojas"

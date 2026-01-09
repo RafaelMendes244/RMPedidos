@@ -262,6 +262,9 @@ def painel_lojista(request, slug):
             # Usuário sem lojas - fazer logout e mostrar erro
             logout(request)
             return render(request, 'tenants/login.html', {'error': 'Você não tem permissão para acessar esta loja.'})
+
+    if not tenant.has_active_subscription:
+        return render(request, 'tenants/plan_expired.html', {'tenant': tenant})
     
     total_products = Product.objects.filter(tenant=tenant).count()
     total_tables = Table.objects.filter(tenant=tenant).count()
@@ -280,7 +283,14 @@ def painel_lojista(request, slug):
         'tenant': tenant,
         'total_products': total_products,
         'total_tables': total_tables,
-        'schedule_json': json.dumps(schedule_data) # Manda como JSON string
+        'schedule_json': json.dumps(schedule_data),
+
+        # FLAGS PARA O FRONTEND
+        'is_trial': tenant.is_trial,
+        'trial_days': tenant.remaining_trial_days,
+        'can_access_orders': tenant.can_access_orders,
+        'can_access_reports': tenant.can_access_reports,
+        'can_access_coupons': tenant.can_access_coupons,
     }
     return render(request, 'tenants/painel.html', context)
 
@@ -493,6 +503,10 @@ def api_get_orders(request, slug):
     # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
+
+    # --- PROTEÇÃO DO PLANO ---
+    if not tenant.can_access_orders:
+        return JsonResponse({'orders': [], 'plan_block': True, 'message': 'Faça upgrade para ver pedidos em tempo real.'})
     
     # Filtro por tipo de pedido (NOVO)
     filter_type = request.GET.get('type', 'all')  # all, delivery, table
@@ -981,6 +995,10 @@ def api_get_financials(request, slug):
     
     if tenant.owner != request.user:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
+
+    # --- PROTEÇÃO DO PLANO ---
+    if not tenant.can_access_reports:
+        return JsonResponse({'orders': [], 'plan_block': True, 'message': 'Faça upgrade para ver pedidos em tempo real.'})
     
     today = timezone.now().date()
     
@@ -1480,6 +1498,10 @@ def api_coupons(request, slug):
     
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    # --- PROTEÇÃO DO PLANO ---
+    if not tenant.can_access_coupons:
+        return JsonResponse({'orders': [], 'plan_block': True, 'message': 'Faça upgrade para ver pedidos em tempo real.'})
     
     if request.method == 'GET':
         coupons = tenant.coupons.annotate(

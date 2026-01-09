@@ -100,6 +100,7 @@
         </div>
         
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            {% if can_access_orders %}
             <button onclick="switchTab('orders'); toggleMobileMenu();" id="mob-nav-orders" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition active-nav">
                 <div class="relative">
                     <i class="fas fa-bell text-lg"></i>
@@ -107,10 +108,21 @@
                 </div>
                 Pedidos
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Pedidos <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
+            {% if can_access_reports %}
             <button onclick="switchTab('history'); toggleMobileMenu();" id="mob-nav-history" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-chart-line text-lg"></i> Relatórios
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Relatórios <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <button onclick="switchTab('menu'); toggleMobileMenu();" id="mob-nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
@@ -132,9 +144,15 @@
                 <i class="fas fa-motorcycle text-lg"></i> Taxas de Entrega
             </button>
 
+            {% if can_access_coupons %}
             <button onclick="switchTab('coupons'); toggleMobileMenu();" id="mob-nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-tag text-lg"></i> Cupons
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Cupons <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <a href="{% url 'custom_logout' %}" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-sm transition mt-auto">
                 <i class="fas fa-sign-out-alt text-lg"></i> Sair do Painel
@@ -157,6 +175,7 @@
         </div>
         
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            {% if can_access_orders %}
             <button onclick="switchTab('orders')" id="nav-orders" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition active-nav">
                 <div class="relative">
                     <i class="fas fa-bell text-lg"></i>
@@ -164,10 +183,21 @@
                 </div>
                 Pedidos
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Pedidos <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
+            {% if can_access_reports %}
             <button onclick="switchTab('history')" id="nav-history" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-chart-line text-lg"></i> Relatórios
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Relatórios <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <button onclick="switchTab('menu')" id="nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
@@ -189,9 +219,15 @@
                 <i class="fas fa-motorcycle text-lg"></i> Taxas de Entrega
             </button>
 
+            {% if can_access_coupons %}
             <button onclick="switchTab('coupons')" id="nav-coupons" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-tag text-lg"></i> Cupons
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Cupons <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <a href="{% url 'custom_logout' %}" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-sm transition mt-auto">
                 <i class="fas fa-sign-out-alt text-lg"></i> Sair
@@ -239,6 +275,17 @@
                 </button>
             </div>
         </header>
+
+        {% if is_trial %}
+        <div id="trial-banner" class="bg-indigo-600 text-white text-xs font-bold text-center py-2 px-4 relative transition-all duration-300">
+            <div class="flex items-center justify-center gap-2">
+                <span>🚀 Você está no TESTE GRÁTIS PRO! Restam {{ trial_days }} dias.</span>
+                <button onclick="document.getElementById('trial-banner').style.display='none'" class="absolute right-2 top-1.5 p-1 hover:bg-indigo-700 rounded text-white/80 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        {% endif %}
 
         <div id="section-orders" class="flex-1 overflow-y-auto p-4 md:p-6">
             <div id="orders-container" class="pb-20">
@@ -2475,6 +2522,34 @@ function printQRCode() {
         </html>
     `);
     win.document.close();
+}
+
+// MODAL UPGRADE PRO
+function showUpgradeModal() {
+    Swal.fire({
+        title: 'Recurso PRO 🚀',
+        html: `
+            <div class="text-left text-sm text-gray-600">
+                <p class="mb-2">Esta funcionalidade está disponível apenas no <b>Plano PRO</b>.</p>
+                <ul class="list-disc pl-5 mb-4">
+                    <li>Pedidos em Tempo Real</li>
+                    <li>Relatórios Financeiros</li>
+                    <li>Cupons de Desconto</li>
+                </ul>
+                <p>Faça o upgrade para desbloquear!</p>
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Ver Planos',
+        confirmButtonColor: '#ea580c',
+        cancelButtonText: 'Fechar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Aqui você redirecionaria para uma página de pagamento ou chamaria no WhatsApp
+            window.open('https://wa.me/5583920006113?text=Quero assinar o Plano PRO do RM Pedidos', '_blank');
+        }
+    });
 }
     </script>
 </body>

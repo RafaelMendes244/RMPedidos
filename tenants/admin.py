@@ -1,15 +1,83 @@
 from django.contrib import admin
 from .models import Tenant, Category, Product, Order, OrderItem, OperatingDay, DeliveryFee, Coupon, CouponUsage, ProductOption, OptionItem, Table
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+from django.utils import timezone
+from datetime import timedelta
+
+# --- AÇÕES RÁPIDAS (ACTIONS) ---
+
+@admin.action(description="💰 Renovar Assinatura (+30 Dias)")
+def renew_30_days(modeladmin, request, queryset):
+    for tenant in queryset:
+        # Se já tem data futura, adiciona +30 nela. Se não, começa de hoje +30.
+        start_date = tenant.valid_until if tenant.valid_until and tenant.valid_until >= timezone.now().date() else timezone.now().date()
+        tenant.valid_until = start_date + timedelta(days=30)
+        tenant.subscription_active = True # Garante que reativa se estava cancelado
+        tenant.save()
+
+@admin.action(description="👑 Mudar para Plano PRO")
+def make_pro(modeladmin, request, queryset):
+    queryset.update(plan_type='pro')
+
+@admin.action(description="👶 Mudar para Plano Starter")
+def make_starter(modeladmin, request, queryset):
+    queryset.update(plan_type='starter')
+
+@admin.action(description="⛔ Bloquear Acesso (Inadimplente)")
+def block_access(modeladmin, request, queryset):
+    queryset.update(subscription_active=False)
 
 
 # --- Cadastros Básicos ---
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'custom_domain', 'phone_whatsapp', 'owner', 'is_open')
-    search_fields = ('name', 'slug', 'custom_domain')
-    list_filter = ('is_open', 'manual_override')
+    list_display = ('name', 'slug', 'custom_domain', 
+                    'phone_whatsapp', 'owner', 'is_open', 'plan_type', 
+                    'is_trial_display', 'subscription_active', 'created_at',
+                    'get_plan_badge', 'get_status_badge', 'valid_until')
+    search_fields = ('name', 'slug', 'custom_domain', 'owner__email')
+    list_filter = ('is_open', 'manual_override', 'plan_type', 'subscription_active', 'created_at', 'valid_until')
+
+    # Adiciona as ações no dropdown
+    actions = [renew_30_days, make_pro, make_starter, block_access]
+
+    # Permite editar o plano direto na lista, sem entrar no cadastro
+    list_editable = ('plan_type', 'subscription_active')
+
     autocomplete_fields = ['owner']
+
+    def get_plan_badge(self, obj):
+        if obj.plan_type == 'pro':
+            return mark_safe('<span style="background:#e0e7ff; color:#3730a3; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">PRO</span>')
+        return mark_safe('<span style="background:#f3f4f6; color:#374151; padding: 2px 8px; border-radius: 10px; font-size: 11px;">STARTER</span>')
+    get_plan_badge.short_description = "Plano"
+
+    def get_status_badge(self, obj):
+        # 1. Cancelado Manualmente
+        if not obj.subscription_active:
+            return mark_safe('<span style="color:red; font-weight:bold;">Cancelado</span>')
+        
+        # 2. Vencimento Futuro (Pago)
+        if obj.valid_until and obj.valid_until >= timezone.now().date():
+            days_left = (obj.valid_until - timezone.now().date()).days
+            color = "green" if days_left > 5 else "orange"
+            return mark_safe(f'<span style="color:{color}; font-weight:bold;">Ativo ({days_left}d)</span>')
+            
+        # 3. Trial
+        if obj.is_trial:
+            return mark_safe(f'<span style="color:#2563eb; font-weight:bold;">Trial ({obj.remaining_trial_days}d)</span>')
+            
+        # 4. Vencido
+        return mark_safe('<span style="color:gray; text-decoration: line-through;">Vencido</span>')
+    get_status_badge.short_description = "Status Real"
+
+    # Função auxiliar para mostrar se é trial na lista (opcional)
+    def is_trial_display(self, obj):
+        return obj.is_trial
+    is_trial_display.boolean = True
+    is_trial_display.short_description = 'Em Trial?'
 
     fieldsets = (
         ('Informações Principais', {
@@ -34,6 +102,10 @@ class TenantAdmin(admin.ModelAdmin):
         ('Status da Loja', {
             'fields': ('is_open', 'manual_override'),
             'description': 'Controle se a loja está aberta ou fechada. O fechamento manual impede abertura automática.'
+        }),
+        ('Status da Assinatura', {
+            'fields': ('plan_type', 'valid_until', 'subscription_active', 'created_at'),
+            'description': 'Gerencie aqui o pagamento e validade da loja.'
         }),
     )
 
