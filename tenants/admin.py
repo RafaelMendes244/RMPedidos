@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Tenant, Category, Product, Order, OrderItem, OperatingDay, DeliveryFee, Coupon, CouponUsage, ProductOption, OptionItem
+from .models import Tenant, Category, Product, Order, OrderItem, OperatingDay, DeliveryFee, Coupon, CouponUsage, ProductOption, OptionItem, Table
 
 
 # --- Cadastros Básicos ---
@@ -180,3 +180,14 @@ class CouponUsageAdmin(admin.ModelAdmin):
     list_filter = ('coupon', 'used_at')
     search_fields = ('order__customer_name', 'coupon__code')
     readonly_fields = ('coupon', 'order', 'discount_applied', 'used_at')
+
+
+# --- Gestão de Mesas ---
+
+@admin.register(Table)
+class TableAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'number', 'capacity', 'is_active', 'created_at')
+    list_filter = ('tenant', 'is_active')
+    search_fields = ('tenant__name', 'number')
+    list_editable = ('is_active',)
+    ordering = ('tenant', 'number')

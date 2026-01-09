@@ -3,15 +3,18 @@ from django.contrib.auth.decorators import login_required
 import json
 from django.http import JsonResponse
 from django.core.files.storage import default_storage
-from django.db.models import Prefetch
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils.text import slugify 
+from django.db.models import Prefetch
 from django.db import IntegrityError, transaction
-from django.db.models import Sum, Prefetch, Count
+from django.db.models import Sum, Prefetch, Count, Q
 from django.utils import timezone
 from decimal import Decimal
 import logging
+import qrcode
+import base64
+from io import BytesIO
 
 from django_ratelimit.decorators import ratelimit
 from django.views.decorators.cache import never_cache
@@ -27,7 +30,8 @@ from .models import (
     ProductOption,
     OptionItem,
     Coupon,
-    CouponUsage
+    CouponUsage,
+    Table,
 )
 
 # CORRIGIDO: Usar logger ao invés de print
@@ -35,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 def is_store_open_by_hours(tenant):
     """
-    Verifica se a loja está aberta baseado no horário de funcionamento.
+    Verifica se a loja está aberto baseado no horário de funcionamento.
     Suporta horários de madrugada (ex: abre 18:00, fecha 02:00).
-    Retorna (True, None) se estiver aberta, (False, mensagem) se fechada.
+    Retorna (True, None) se estiver aberto, (False, mensagem) se fechado.
     """
     from datetime import datetime
     
@@ -46,15 +50,6 @@ def is_store_open_by_hours(tenant):
     current_weekday = now.weekday()  # 0=Segunda, 6=Domingo
     
     # Converter Python weekday (0=Segunda...6=Domingo) para model (0=Domingo...6=Sábado)
-    # Python: 0=Seg, 1=Ter, 2=Qua, 3=Qui, 4=Sex, 5=Sab, 6=Dom
-    # Model:   0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
-    # Corrigido: Agora ambos usam 0=Domingo, 1=Segunda, etc.
-    # Se Python é Segunda(0), o model também é Segunda(1)
-    # Se Python é Domingo(6), o model é Domingo(0)
-    # Então: model_day = (python_day + 1) % 7
-    # python 0(seg) -> model 1(seg) ✓
-    # python 1(ter) -> model 2(ter) ✓
-    # python 6(dom) -> model 0(dom) ✓
     model_today = (current_weekday + 1) % 7
     
     def check_rule(rule):
@@ -88,8 +83,7 @@ def is_store_open_by_hours(tenant):
             return (True, None)
     
     # 2. Se hoje está fechada ou fora do horário, verificar DIA ANTERIOR
-    # Para cobrir casos de madrugada (ex: abre 18:00 ter, fecha 02:00 qua)
-    model_yesterday = (current_weekday) % 7  # Dia anterior no model
+    model_yesterday = (current_weekday) % 7
     yesterday_rule = OperatingDay.objects.filter(tenant=tenant, day=model_yesterday).first()
     
     if yesterday_rule:
@@ -148,13 +142,11 @@ def cardapio_publico(request, slug):
     categories = Category.objects.filter(
         tenant=tenant,
         products__is_available=True 
-    ).distinct().prefetch_related(
+    ).prefetch_related(
         Prefetch('products', queryset=produtos_ativos)
-    ).order_by('order')
+    ).distinct().order_by('order')
 
     # 4. Determinar se a loja está aberta
-    # Se manual_override = True, está fechada (lojista fechou manualmente)
-    # Caso contrário, usa o horário de funcionamento
     if tenant.manual_override:
         store_is_open = False
         store_closed_message = "Loja temporariamente fechada pelo lojista"
@@ -172,10 +164,87 @@ def cardapio_publico(request, slug):
         # Variáveis de status da loja
         'store_is_open': store_is_open,
         'store_closed_message': store_closed_message,
-        'delivery_fees_json': json.dumps(delivery_fees, default=float)
+        'delivery_fees_json': json.dumps(delivery_fees, default=float),
+        # Flag para identificar que não é pedido de mesa
+        'is_table_order': False,
+        'table': None
     }
     
     return render(request, 'tenants/cardapio.html', context)
+
+
+# ========================
+# NOVA ROTA: CARDÁPIO POR MESA (QR CODE)
+# ========================
+def cardapio_mesa(request, slug, table_number):
+    """
+    Cardápio específico para pedido na mesa.
+    O cliente escaneia o QR code da mesa e vai direto para esta página.
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    # Validar mesa
+    table = get_object_or_404(
+        Table, 
+        tenant=tenant, 
+        number=table_number,
+        is_active=True
+    )
+    
+    # 1. Carrega todos os horários para o JS
+    db_days = OperatingDay.objects.filter(tenant=tenant).order_by('day')
+    schedule_data = {}
+    for d in db_days:
+        schedule_data[d.day] = {
+            'open': d.open_time.strftime('%H:%M') if d.open_time else '00:00',
+            'close': d.close_time.strftime('%H:%M') if d.close_time else '00:00',
+            'closed': d.is_closed
+        }
+
+    delivery_fees = list(tenant.delivery_fees.values('neighborhood', 'fee'))
+    
+    now = timezone.localtime(timezone.now())
+    py_weekday = now.weekday() 
+    
+    today_index = 0 if py_weekday == 6 else py_weekday + 1
+    
+    day_today = OperatingDay.objects.filter(tenant=tenant, day=today_index).first()
+
+    # 3. Produtos e Categorias
+    produtos_ativos = Product.objects.filter(is_available=True)
+    categories = Category.objects.filter(
+        tenant=tenant,
+        products__is_available=True 
+    ).prefetch_related(
+        Prefetch('products', queryset=produtos_ativos)
+    ).distinct().order_by('order')
+
+    # 4. Determinar se a loja está aberta
+    if tenant.manual_override:
+        store_is_open = False
+        store_closed_message = "Loja temporariamente fechada pelo lojista"
+    else:
+        is_open, message = is_store_open_by_hours(tenant)
+        store_is_open = tenant.is_open and is_open
+        store_closed_message = None if store_is_open else f"Fora do horário! {message or 'Volte mais tarde'}"
+
+    context = {
+        'tenant': tenant,
+        'categories': categories,
+        'schedule_json': json.dumps(schedule_data),
+        'operating_days': db_days,
+        'day_today': day_today,
+        # Variáveis de status da loja
+        'store_is_open': store_is_open,
+        'store_closed_message': store_closed_message,
+        'delivery_fees_json': json.dumps(delivery_fees, default=float),
+        # Flag para identificar que é pedido de mesa
+        'is_table_order': True,
+        'table': table
+    }
+    
+    return render(request, 'tenants/cardapio.html', context)
+
 
 @never_cache
 @login_required
@@ -195,6 +264,7 @@ def painel_lojista(request, slug):
             return render(request, 'tenants/login.html', {'error': 'Você não tem permissão para acessar esta loja.'})
     
     total_products = Product.objects.filter(tenant=tenant).count()
+    total_tables = Table.objects.filter(tenant=tenant).count()
     
     # Carrega horários (converte para lista amigável pro JS)
     db_days = OperatingDay.objects.filter(tenant=tenant).order_by('day')
@@ -209,6 +279,7 @@ def painel_lojista(request, slug):
     context = {
         'tenant': tenant,
         'total_products': total_products,
+        'total_tables': total_tables,
         'schedule_json': json.dumps(schedule_data) # Manda como JSON string
     }
     return render(request, 'tenants/painel.html', context)
@@ -229,7 +300,7 @@ def create_order(request, slug):
             # 1. Identifica a loja
             tenant = get_object_or_404(Tenant, slug=slug)
             
-            # Validações de Loja Aberta (Mantive sua lógica que é boa)
+            # Validações de Loja Aberta (Mantida sua lógica que é boa)
             if not tenant.is_open:
                 return JsonResponse({'status': 'error', 'message': 'A loja está fechada temporariamente!'}, status=400)
             
@@ -238,6 +309,31 @@ def create_order(request, slug):
                 return JsonResponse({'status': 'error', 'message': f'Fora do horário! {message}'}, status=400)
             
             data = json.loads(request.body)
+            
+            # ========================
+            # DETECTAR TIPO DE PEDIDO (NOVO)
+            # ========================
+            table_number = data.get('table_number')
+            order_type = data.get('order_type', 'delivery')
+            
+            # Se table_number foi informado, força o tipo como mesa
+            if table_number:
+                order_type = 'table'
+            
+            # Buscar mesa se for pedido de mesa
+            table = None
+            if order_type == 'table' and table_number:
+                table = Table.objects.filter(
+                    tenant=tenant,
+                    number=table_number,
+                    is_active=True
+                ).first()
+                
+                if not table:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Mesa não encontrada ou inativa. Peça atendimento.'
+                    }, status=400)
             
             # --- INICIO DA BLINDAGEM DE PREÇO ---
             
@@ -267,11 +363,9 @@ def create_order(request, slug):
                 
                 for opt in options_list:
                     # O front manda {name: 'Bacon', price: 2.00}. Ignoramos o price do front.
-                    # Buscamos no banco se existe essa opção para este produto
                     opt_name = opt.get('name')
                     
                     # Busca complexa: OpçãoItem -> ProductOption -> Product
-                    # Garante que a opção pertence mesmo a esse produto
                     db_option_item = OptionItem.objects.filter(
                         name=opt_name, 
                         option__product=product
@@ -281,8 +375,6 @@ def create_order(request, slug):
                         current_item_total += db_option_item.price
                         valid_options_text.append(db_option_item.name)
                     else:
-                        # Se não achou no banco, pode ser um hack ou dado antigo. 
-                        # Aqui decidimos se ignoramos ou barramos. Vamos ignorar o adicional hackeado.
                         pass
 
                 quantity = int(item['qtd'])
@@ -301,16 +393,18 @@ def create_order(request, slug):
             delivery_fee = Decimal('0.00')
             neighborhood = data.get('address', {}).get('neighborhood')
             
-            if neighborhood:
+            # Para pedidos de mesa, não cobra taxa de entrega
+            if order_type == 'table':
+                delivery_fee = Decimal('0.00')
+            elif neighborhood:
                 # Busca exata ou 'iexact' (case insensitive)
                 fee_obj = DeliveryFee.objects.filter(tenant=tenant, neighborhood__iexact=neighborhood).first()
                 if fee_obj:
                     delivery_fee = fee_obj.fee
-                # Se não achar, assume 0 (A combinar) ou barra. Mantive 0.
 
             # C. Calcular Cupom (Validar no Backend)
             discount_value = Decimal('0.00')
-            coupon_code = data.get('coupon_code') # <--- O Front precisa mandar isso!
+            coupon_code = data.get('coupon_code')
             applied_coupon = None
 
             if coupon_code:
@@ -318,15 +412,12 @@ def create_order(request, slug):
                 if coupon:
                     is_valid, msg = coupon.is_valid()
                     if is_valid:
-                        # Verifica mínimo
                         if coupon.minimum_order_value > 0 and items_total < coupon.minimum_order_value:
-                            pass # Não aplica se não atingir minimo
+                            pass
                         else:
-                            # Aplica desconto
-                            final_val, discount_amt = coupon.apply_discount(items_total) # Calcula sobre produtos
+                            final_val, discount_amt = coupon.apply_discount(items_total)
                             discount_value = Decimal(str(discount_amt))
                             
-                            # Incrementa uso do cupom
                             coupon.used_count += 1
                             coupon.save()
                             applied_coupon = coupon
@@ -354,7 +445,11 @@ def create_order(request, slug):
                 address_street=data.get('address', {}).get('street', ''),
                 address_number=data.get('address', {}).get('number', ''),
                 address_neighborhood=neighborhood,
-                observation=data.get('obs', '')
+                observation=data.get('obs', ''),
+                
+                # NOVOS CAMPOS (NOVO)
+                order_type=order_type,
+                table=table
             )
             
             # Cria os Itens (usando os dados validados)
@@ -376,7 +471,12 @@ def create_order(request, slug):
                     discount_applied=discount_value
                 )
             
-            return JsonResponse({'status': 'success', 'order_id': order.id, 'real_total': float(final_total)})
+            return JsonResponse({
+                'status': 'success', 
+                'order_id': order.id, 
+                'real_total': float(final_total),
+                'order_type': order_type
+            })
 
         except Exception as e:
             # Em caso de erro, o transaction.atomic desfaz tudo
@@ -394,8 +494,20 @@ def api_get_orders(request, slug):
     if tenant.owner != request.user:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
     
-    # Pega pedidos que NÃO estão cancelados (ou filtre como preferir)
-    orders = Order.objects.filter(tenant=tenant).order_by('-created_at')[:20] # Pega os últimos 20
+    # Filtro por tipo de pedido (NOVO)
+    filter_type = request.GET.get('type', 'all')  # all, delivery, table
+    
+    orders = Order.objects.filter(tenant=tenant)
+    
+    if filter_type == 'table':
+        orders = orders.filter(order_type='table')
+    elif filter_type == 'delivery':
+        orders = orders.filter(order_type='delivery')
+    elif filter_type == 'pickup':
+        orders = orders.filter(order_type='pickup')
+    # 'all' não aplica filtro
+    
+    orders = orders.order_by('-created_at')[:20]
     
     data = []
     for order in orders:
@@ -409,11 +521,27 @@ def api_get_orders(request, slug):
                 'options': item.options_text or ''
             })
             
+        # Identificar informações da mesa (NOVO)
+        table_info = None
+        if order.table:
+            table_info = {
+                'id': order.table.id,
+                'number': order.table.number
+            }
+        
+        # Formata o endereço ou mesa
+        if order.order_type == 'table':
+            address_display = f"Mesa {order.table.number}"
+        elif order.address_street:
+            address_display = f"{order.address_street}, {order.address_number} - {order.address_neighborhood}"
+        else:
+            address_display = "Retirada"
+            
         data.append({
             'id': order.id,
             'customer_name': order.customer_name,
             'customer_phone': order.customer_phone,
-            'phone': order.customer_phone,  # Para compatibilidade
+            'phone': order.customer_phone,
             'total_value': float(order.total_value),
             'delivery_fee': float(order.delivery_fee) if order.delivery_fee else 0,
             'discount_amount': float(order.discount_value) if order.discount_value else 0,
@@ -422,10 +550,13 @@ def api_get_orders(request, slug):
             'status': order.status,
             'is_printed': order.is_printed,
             'payment_method': order.payment_method,
-            'address': f"{order.address_street}, {order.address_number} - {order.address_neighborhood}" if order.address_street else "Retirada",
+            'address': address_display,
             'observation': order.observation,
             'created_at': timezone.localtime(order.created_at).strftime('%d/%m %H:%M'),
-            'items': items
+            'items': items,
+            'order_type': order.order_type,
+            'table': table_info,
+            'table_number': order.table.number if order.table else None,
         })
         
     return JsonResponse({'orders': data})
@@ -524,7 +655,6 @@ def api_customer_history(request, slug):
             data = json.loads(request.body)
             order_ids = data.get('order_ids', [])
             
-            # Busca pedidos que pertencem a esta loja e estão na lista de IDs
             orders = Order.objects.filter(
                 tenant=tenant,
                 id__in=order_ids
@@ -532,20 +662,25 @@ def api_customer_history(request, slug):
             
             history_data = []
             for order in orders:
-                # Serializa itens
                 items_str = []
                 for item in order.items.all():
                     desc = f"{item.quantity}x {item.product_name}"
                     items_str.append(desc)
                 
+                # Determinar tipo de pedido para exibir (NOVO)
+                is_delivery = order.order_type == 'delivery'
+                is_table = order.order_type == 'table'
+                
                 history_data.append({
                     'id': order.id,
-                    'status': order.get_status_display(), # Pega o texto bonito do status
-                    'status_key': order.status, # Para usar cores no front
+                    'status': order.get_status_display(),
+                    'status_key': order.status,
                     'total': float(order.total_value),
                     'date': timezone.localtime(order.created_at).strftime('%d/%m %H:%M'),
                     'items_summary': ', '.join(items_str),
-                    'is_delivery': True if order.address_street else False
+                    'is_delivery': is_delivery,
+                    'is_table': is_table,
+                    'table_number': order.table.number if order.table else None
                 })
                 
             return JsonResponse({'status': 'success', 'orders': history_data})
@@ -571,7 +706,6 @@ def api_get_products(request, slug):
     for cat in categories:
         products = []
         for prod in cat.products.all():
-            # Serializa as opções
             options_list = []
             for opt in prod.options.all():
                 items_list = []
@@ -599,7 +733,7 @@ def api_get_products(request, slug):
                 'badge': prod.badge,
                 'image': prod.image.url if prod.image else '',
                 'is_available': prod.is_available,
-                'options': options_list # <--- ADICIONADO AQUI
+                'options': options_list
             })
         
         data.append({
@@ -620,12 +754,10 @@ def api_save_product(request, slug):
     
     if request.method == 'POST':
         try:
-            # Dados básicos
             prod_id = request.POST.get('id')
             cat_input = request.POST.get('category') 
             name = request.POST.get('name')
             
-            # Tratamento de preço (mantém sua lógica)
             price_str = request.POST.get('price', '0').replace('.', '').replace(',', '.') 
             if request.POST.get('price') and ',' in request.POST.get('price'):
                  price = request.POST.get('price').replace('.', '').replace(',', '.')
@@ -661,15 +793,12 @@ def api_save_product(request, slug):
                 product.description = desc
                 product.category = category
                 
-                # Tratamento de imagem
                 clear_image = request.POST.get('clear_image', 'false') == 'true'
                 if clear_image:
-                    # Remove a imagem atual
                     if product.image:
                         product.image.delete(save=False)
                     product.image = None
                 elif image:
-                    # Nova imagem foi enviada, substitui a anterior
                     if product.image:
                         product.image.delete(save=False)
                     product.image = image
@@ -687,12 +816,10 @@ def api_save_product(request, slug):
                     is_available=True
                 )
             
-            # --- SALVAR AS OPÇÕES (ADICIONAIS) ---
             options_json = request.POST.get('options_json')
             if options_json:
                 options_data = json.loads(options_json)
                 
-                # Estratégia simples: Apaga tudo antigo e cria novo (Sync)
                 product.options.all().delete()
                 
                 for opt_data in options_data:
@@ -722,7 +849,6 @@ def api_save_product(request, slug):
 def api_delete_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -743,7 +869,6 @@ def api_delete_product(request, slug, product_id):
 def api_toggle_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -758,7 +883,6 @@ def api_toggle_product(request, slug, product_id):
     return JsonResponse({'status': 'error'}, status=400)
 
 def _limpar_categorias_vazias(tenant):
-    """Remove categorias que não possuem produtos vinculados"""
     Category.objects.filter(tenant=tenant, products__isnull=True).delete()
 
 # ROTAS DE LOGIN E LOGOUT
@@ -775,7 +899,6 @@ def custom_login(request):
         username = request.POST.get('username', '').strip().lower()
         passw = request.POST.get('password', '')
         
-        # CORRIGIDO: Removido prints de debug - usando logger em vez disso
         logger.info(f"Tentativa de login para: {username}")
         
         user = authenticate(request, username=username, password=passw)
@@ -784,20 +907,14 @@ def custom_login(request):
             login(request, user)
             logger.info(f"Login sucesso para usuário ID: {user.id}")
             
-            # Busca TODAS as lojas do usuário e usa a mais recente
             user_tenants = Tenant.objects.filter(owner=user).order_by('-id')
-            
-            # Verificar quantas lojas o usuário tem
             tenant_count = user_tenants.count()
             
             if tenant_count == 0:
-                # Usuário logado mas sem loja - criar uma ou direcionar para criação
                 return redirect('signup')
             elif tenant_count == 1:
-                # Apenas uma loja - direcionar diretamente
                 return redirect('painel_lojista', slug=user_tenants.first().slug)
             else:
-                # Múltiplas lojas - usar a mais recente
                 return redirect('painel_lojista', slug=user_tenants.first().slug)
         else:
             logger.warning(f"Login falhou para: {username}")
@@ -816,18 +933,15 @@ def signup(request):
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
         
-        # Validações Básicas
         if not store_name or len(store_name) < 3:
             return render(request, 'tenants/signup.html', {'error': 'Nome da loja deve ter pelo menos 3 caracteres.'})
             
         if not email or '@' not in email:
             return render(request, 'tenants/signup.html', {'error': 'Digite um email válido.'})
         
-        # CORRIGIDO: Agora exige 8 caracteres (consistente com o frontend)
         if not password or len(password) < 8:
             return render(request, 'tenants/signup.html', {'error': 'A senha deve ter pelo menos 8 caracteres.'})
             
-        # 1. Gerar Slug da Loja
         slug = slugify(store_name)
         
         if Tenant.objects.filter(slug=slug).exists():
@@ -837,24 +951,20 @@ def signup(request):
             return render(request, 'tenants/signup.html', {'error': 'Este email já está cadastrado.'})
 
         try:
-            # 2. Criar Usuário
             user = User.objects.create_user(username=email, email=email, password=password)
             logger.info(f"Novo usuário criado: ID {user.id}")
             
-            # 3. Criar a Loja (Tenant) vinculada
             tenant = Tenant.objects.create(
                 owner=user,
                 name=store_name,
                 slug=slug,
-                primary_color='#ea580c' # Cor laranja padrão
+                primary_color='#ea580c'
             )
             logger.info(f"Nova loja criada: {tenant.name} (slug: {tenant.slug})")
             
-            # 4. Criar Categorias de Exemplo
             Category.objects.create(tenant=tenant, name="Destaques", order=1)
             Category.objects.create(tenant=tenant, name="Bebidas", order=2)
 
-            # 5. Logar e Redirecionar
             login(request, user)
             return redirect('painel_lojista', slug=tenant.slug)
 
@@ -869,13 +979,11 @@ def signup(request):
 def api_get_financials(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
     
     today = timezone.now().date()
     
-    # 1. Resumo do Dia
     sales_today = Order.objects.filter(
         tenant=tenant, 
         status='concluido', 
@@ -888,7 +996,6 @@ def api_get_financials(request, slug):
         created_at__date=today
     ).count()
 
-    # 2. Histórico (Últimos 50 pedidos concluídos ou cancelados)
     history_orders = Order.objects.filter(
         tenant=tenant,
         status__in=['concluido', 'cancelado']
@@ -917,7 +1024,6 @@ def api_get_financials(request, slug):
 def api_toggle_store_open(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -944,7 +1050,6 @@ def api_toggle_store_open(request, slug):
 def api_sync_store_status(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -957,10 +1062,8 @@ def api_sync_store_status(request, slug):
                     'reason': 'fechamento_manual'
                 })
             
-            # Se manual_override = False, permite atualização automática baseada no horário
             is_open, message = is_store_open_by_hours(tenant)
             
-            # Atualiza o status se necessário
             if is_open != tenant.is_open:
                 tenant.is_open = is_open
                 tenant.save()
@@ -979,13 +1082,12 @@ def api_sync_store_status(request, slug):
 def api_save_hours(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body) # Recebe lista: [{day:0, open:'18:00', close:'23:00', closed:false}, ...]
+            data = json.loads(request.body)
             
             for item in data:
                 OperatingDay.objects.update_or_create(
@@ -1003,21 +1105,18 @@ def api_save_hours(request, slug):
             return JsonResponse({'status': 'error', 'message': 'Erro ao salvar horários'}, status=500)
     return JsonResponse({'status': 'error'}, status=400)
 
-# ROTA PARA TAXAS DE ENTREGAS
+# --- API TAXAS DE ENTREGA ---
 @login_required
 def api_delivery_fees(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
-    # GET: Retorna lista de taxas
     if request.method == 'GET':
         fees = list(tenant.delivery_fees.values('id', 'neighborhood', 'fee'))
         return JsonResponse({'fees': fees})
 
-    # POST: Salva uma nova taxa
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -1027,10 +1126,9 @@ def api_delivery_fees(request, slug):
             if not neighborhood or fee is None:
                 return JsonResponse({'status': 'error', 'message': 'Dados inválidos'}, status=400)
 
-            # Usa update_or_create para evitar duplicatas (atualiza se já existir)
             DeliveryFee.objects.update_or_create(
                 tenant=tenant,
-                neighborhood__iexact=neighborhood, # Busca ignorando maiuscula/minuscula
+                neighborhood__iexact=neighborhood,
                 defaults={'neighborhood': neighborhood, 'fee': fee}
             )
             return JsonResponse({'status': 'success'})
@@ -1043,7 +1141,6 @@ def api_delivery_fees(request, slug):
 def api_delete_delivery_fee(request, slug, fee_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -1057,22 +1154,333 @@ def api_delete_delivery_fee(request, slug, fee_id):
 
 
 # ========================
+# APIs DE MESAS (NOVO)
+# ========================
+
+@login_required
+def api_tables(request, slug):
+    """
+    GET: Lista todas as mesas da loja
+    POST: Cria uma nova mesa
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    # GET: Lista mesas
+    if request.method == 'GET':
+
+        tables_qs = tenant.tables.annotate(
+            order_count=Count('orders', filter=Q(orders__status__in=['pendente', 'em_preparo']))
+        ).order_by('number')
+        
+        tables_data = []
+        for table in tables_qs:
+            tables_data.append({
+                'id': table.id,
+                'number': table.number,
+                'capacity': table.capacity,
+                'is_active': table.is_active,
+                'qr_code': table.get_qr_code_url(), # Agora chama a função correta do model!
+                'created_at': table.created_at.strftime('%Y-%m-%d'),
+                'order_count': table.order_count
+            })
+
+        return JsonResponse({'tables': tables_data})
+    
+    # POST: Cria nova mesa
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            number = int(data.get('number'))
+            capacity = int(data.get('capacity', 4))
+            
+            if not number:
+                return JsonResponse({'status': 'error', 'message': 'Número da mesa é obrigatório'}, status=400)
+            
+            # Verifica se já existe mesa com esse número
+            if Table.objects.filter(tenant=tenant, number=number).exists():
+                return JsonResponse({'status': 'error', 'message': 'Já existe uma mesa com este número'}, status=400)
+            
+            table = Table.objects.create(
+                tenant=tenant,
+                number=number,
+                capacity=capacity,
+                is_active=True
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'table': {
+                    'id': table.id,
+                    'number': table.number,
+                    'capacity': table.capacity,
+                    'is_active': table.is_active,
+                    'qr_code': table.get_qr_code_url()
+                }
+            })
+        except Exception as e:
+            logger.error(f"Erro ao criar mesa: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def api_table_details(request, slug, table_id):
+    """
+    GET: Retorna detalhes de uma mesa específica
+    PUT: Atualiza uma mesa
+    DELETE: Exclui uma mesa
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    table = get_object_or_404(Table, id=table_id, tenant=tenant)
+    
+    # GET: Retorna detalhes da mesa
+    if request.method == 'GET':
+        recent_orders = table.orders.order_by('-created_at')[:5]
+        recent_orders_data = []
+        for order in recent_orders:
+            recent_orders_data.append({
+                'id': order.id,
+                'customer_name': order.customer_name,
+                'total_value': float(order.total_value),
+                'status': order.status,
+                'created_at': timezone.localtime(order.created_at).strftime('%d/%m %H:%M')
+            })
+        
+        return JsonResponse({
+            'table': {
+                'id': table.id,
+                'number': table.number,
+                'capacity': table.capacity,
+                'is_active': table.is_active,
+                'qr_code': table.get_qr_code_url(),
+                'created_at': table.created_at.strftime('%d/%m/%Y'),
+                'recent_orders': recent_orders_data
+            }
+        })
+    
+    # PUT: Atualiza a mesa
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            
+            # Verifica se o novo número já existe em outra mesa
+            new_number = int(data.get('number', table.number))
+            if new_number != table.number:
+                if Table.objects.filter(tenant=tenant, number=new_number).exists():
+                    return JsonResponse({'status': 'error', 'message': 'Já existe outra mesa com este número'}, status=400)
+            
+            table.number = new_number
+            table.capacity = int(data.get('capacity', table.capacity))
+            table.is_active = bool(data.get('is_active', table.is_active))
+            table.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'table': {
+                    'id': table.id,
+                    'number': table.number,
+                    'capacity': table.capacity,
+                    'is_active': table.is_active,
+                    'qr_code': table.get_qr_code_url()
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    # DELETE: Exclui a mesa
+    if request.method == 'DELETE':
+        try:
+            table.delete()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Erro ao excluir mesa'}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def api_delete_table(request, slug, table_id):
+    """Exclui uma mesa"""
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            table = get_object_or_404(Table, id=table_id, tenant=tenant)
+            
+            # Remove QR Code antigo se existir
+            if table.qr_code:
+                table.qr_code.delete(save=False)
+            
+            table.delete()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Erro ao excluir mesa'}, status=500)
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def api_toggle_table(request, slug, table_id):
+    """Ativa ou desativa uma mesa"""
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            table = get_object_or_404(Table, id=table_id, tenant=tenant)
+            table.is_active = not table.is_active
+            table.save()
+            return JsonResponse({
+                'status': 'success', 
+                'is_active': table.is_active,
+                'message': f'Mesa {"ativada" if table.is_active else "desativada"} com sucesso'
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Erro ao alterar status da mesa'}, status=500)
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def api_generate_qrcode(request, slug, table_id):
+    """
+    Gera QR Code para uma mesa específica.
+    O QR Code leva para a URL: /{slug}/mesa/{number}/
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            table = get_object_or_404(Table, id=table_id, tenant=tenant)
+            
+            # Remove QR Code antigo se existir
+            if table.qr_code:
+                table.qr_code.delete(save=False)
+            
+            # Gera a URL que o QR Code vai指向
+            base_url = request.build_absolute_uri('/').rstrip('/')
+            table_url = f"{base_url}/{slug}/mesa/{table.number}/"
+            
+            # Gera o QR Code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=2,
+            )
+            qr.add_data(table_url)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Salva a imagem
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+            
+            filename = f"table_{table.id}_{table.number}.png"
+            table.qr_code.save(filename, buffer, save=True)
+            
+            return JsonResponse({
+                'status': 'success',
+                'qr_code': table.get_qr_code_url(),
+                'table_url': table_url
+            })
+        except Exception as e:
+            logger.error(f"Erro ao gerar QR Code: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def api_generate_all_qrcodes(request, slug):
+    """
+    Gera QR Codes para todas as mesas ativas da loja.
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            tables = Table.objects.filter(tenant=tenant, is_active=True)
+            base_url = request.build_absolute_uri('/').rstrip('/')
+            
+            results = []
+            for table in tables:
+                # Remove QR Code antigo se existir
+                if table.qr_code:
+                    table.qr_code.delete(save=False)
+                
+                # Gera a URL
+                table_url = f"{base_url}/{slug}/mesa/{table.number}/"
+                
+                # Gera o QR Code
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=2,
+                )
+                qr.add_data(table_url)
+                qr.make(fit=True)
+                
+                img = qr.make_image(fill_color="black", back_color="white")
+                
+                # Salva a imagem
+                buffer = BytesIO()
+                img.save(buffer, format="PNG")
+                buffer.seek(0)
+                
+                filename = f"table_{table.id}_{table.number}.png"
+                table.qr_code.save(filename, buffer, save=True)
+                
+                results.append({
+                    'table_id': table.id,
+                    'table_number': table.number,
+                    'qr_code': table.get_qr_code_url()
+                })
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'{len(results)} QR Codes gerados com sucesso',
+                'tables': results
+            })
+        except Exception as e:
+            logger.error(f"Erro ao gerar QR Codes em massa: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+# ========================
 # API DE CUPONS DE DESCONTO
 # ========================
 
 @login_required
 def api_coupons(request, slug):
-    """
-    GET: Lista todos os cupons da loja
-    POST: Cria um novo cupom
-    """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
-    # GET: Lista cupons
     if request.method == 'GET':
         coupons = tenant.coupons.annotate(
             usage_count=Count('usages')
@@ -1083,12 +1491,10 @@ def api_coupons(request, slug):
         )
         return JsonResponse({'coupons': list(coupons)})
     
-    # POST: Cria novo cupom
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             
-            # Validação básica
             code = data.get('code', '').strip().upper()
             if not code:
                 return JsonResponse({'status': 'error', 'message': 'Código do cupom é obrigatório'}, status=400)
@@ -1104,11 +1510,9 @@ def api_coupons(request, slug):
             minimum_order = float(data.get('minimum_order_value', 0))
             usage_limit = int(data.get('usage_limit', 0))
             
-            # Validações específicas por tipo
             if discount_type == 'percentage' and discount_value > 100:
                 return JsonResponse({'status': 'error', 'message': 'Porcentagem não pode ser maior que 100%'}, status=400)
             
-            # Cria o cupom
             coupon = Coupon.objects.create(
                 tenant=tenant,
                 code=code,
@@ -1148,20 +1552,13 @@ def api_coupons(request, slug):
 
 @login_required
 def api_coupon_details(request, slug, coupon_id):
-    """
-    GET: Retorna detalhes de um cupom específico
-    PUT: Atualiza um cupom
-    DELETE: Exclui um cupom
-    """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     coupon = get_object_or_404(Coupon, id=coupon_id, tenant=tenant)
     
-    # GET: Retorna detalhes do cupom
     if request.method == 'GET':
         usages = list(coupon.usages.select_related('order').values(
             'id', 'order__id', 'discount_applied', 'used_at'
@@ -1184,7 +1581,6 @@ def api_coupon_details(request, slug, coupon_id):
             'usages': usages
         })
     
-    # PUT: Atualiza o cupom
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)
@@ -1210,7 +1606,6 @@ def api_coupon_details(request, slug, coupon_id):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     
-    # DELETE: Exclui o cupom
     if request.method == 'DELETE':
         try:
             coupon.delete()
@@ -1222,10 +1617,6 @@ def api_coupon_details(request, slug, coupon_id):
 
 
 def api_validate_coupon(request, slug):
-    """
-    Valida um cupom durante o checkout (público)
-    POST: Recebe o código do cupom e o valor do pedido
-    """
     tenant = get_object_or_404(Tenant, slug=slug)
     
     if request.method == 'POST':
@@ -1240,7 +1631,6 @@ def api_validate_coupon(request, slug):
                     'message': 'Código do cupom é obrigatório'
                 }, status=400)
             
-            # Busca o cupom
             coupon = Coupon.objects.filter(
                 tenant=tenant,
                 code=code
@@ -1252,7 +1642,6 @@ def api_validate_coupon(request, slug):
                     'message': 'Cupom não encontrado'
                 })
             
-            # Valida o cupom
             is_valid, message = coupon.is_valid()
             if not is_valid:
                 return JsonResponse({
@@ -1260,14 +1649,12 @@ def api_validate_coupon(request, slug):
                     'message': message
                 })
             
-            # Verifica valor mínimo
             if coupon.minimum_order_value > 0 and order_value < float(coupon.minimum_order_value):
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Valor mínimo do pedido é R$ {float(coupon.minimum_order_value):.2f}'
                 })
             
-            # Calcula o desconto
             final_value, discount = coupon.apply_discount(order_value)
             
             return JsonResponse({
@@ -1294,9 +1681,6 @@ def api_validate_coupon(request, slug):
 # --- PÁGINAS LEGAIS (Termos de Uso e Política de Privacidade) ---
 
 def termos_de_uso(request):
-    """
-    Página de Termos de Uso
-    """
     context = {
         'tenant': {
             'name': 'RM Pedidos',
@@ -1307,13 +1691,10 @@ def termos_de_uso(request):
 
 
 def politica_privacidade(request):
-    """
-    Página de Política de Privacidade
-    """
     context = {
         'tenant': {
             'name': 'RM Pedidos',
-            'phone_whatsapp': '(83) 98855-3366',
+            'phone_whatsapp': '(83) 92000-6113',
             'address': '',
         }
     }

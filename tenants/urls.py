@@ -2,6 +2,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from . import views
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # ROTA DE LOGIN E LOGOUT ADMIN
@@ -18,9 +19,16 @@ urlpatterns = [
     # ROTA HOME(INICIO DE TUDO)
     path('', views.home, name='home'),
 
+    # ROTA DO CARDÁPIO PÚBLICO
     path('<slug:slug>/', views.cardapio_publico, name='cardapio_publico'),
+    
+    # ROTA DO CARDÁPIO POR MESA (QR Code)
+    path('<slug:slug>/mesa/<int:table_number>/', views.cardapio_mesa, name='cardapio_mesa'),
+    
+    # ROTA DO PAINEL DO LOJISTA
     path('<slug:slug>/painel/', views.painel_lojista, name='painel_lojista'),
 
+    # ROTA PARA CRIAÇÃO DE PEDIDOS
     path('<slug:slug>/api/create_order/', views.create_order, name='api_create_order'),
 
     # NOVAS ROTAS PARA O PAINEL
@@ -54,6 +62,16 @@ urlpatterns = [
     path('<slug:slug>/api/coupons/', views.api_coupons, name='api_coupons'),
     path('<slug:slug>/api/coupons/<int:coupon_id>/', views.api_coupon_details, name='api_coupon_details'),
     path('<slug:slug>/api/coupons/validate/', views.api_validate_coupon, name='api_validate_coupon'),
+    
+    # ========================
+    # ROTAS DE MESAS (NOVO)
+    # ========================
+    path('<slug:slug>/api/tables/', views.api_tables, name='api_tables'),
+    path('<slug:slug>/api/tables/<int:table_id>/', views.api_table_details, name='api_table_details'),
+    path('<slug:slug>/api/tables/<int:table_id>/delete/', views.api_delete_table, name='api_delete_table'),
+    path('<slug:slug>/api/tables/<int:table_id>/toggle/', views.api_toggle_table, name='api_toggle_table'),
+    path('<slug:slug>/api/tables/<int:table_id>/qrcode/', views.api_generate_qrcode, name='api_generate_qrcode'),
+    path('<slug:slug>/api/tables/generate-all-qrcodes/', views.api_generate_all_qrcodes, name='api_generate_all_qrcodes'),
 ]
 
 # Configuração para servir arquivos de mídia (imagens, logos, etc.)

@@ -541,6 +541,85 @@
         window.CSRF_TOKEN = "{{ csrf_token }}";
         window.TENANT_SLUG = "{{ tenant.slug }}";
 
+        // ============================================
+        // LÓGICA DE MESA (QR CODE) - DEVE VIR ANTES DE QUALQUER USO
+        // ============================================
+
+        // Extrair número da mesa da URL (ex: /loja/slug/mesa/5/)
+        function getTableNumberFromUrl() {
+            const path = window.location.pathname;
+            // Regex para capturar o número após /mesa/
+            const match = path.match(/\/mesa\/(\d+)/i);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Função toggleDelivery local para uso imediato (antes do script.js carregar)
+        window.TABLE_MODE = getTableNumberFromUrl();
+        
+        function setupTableMode() {
+            if (!window.TABLE_MODE) return;
+
+            window.TABLE_NUMBER = window.TABLE_MODE;
+            
+            const btnDelivery = document.getElementById('btn-delivery');
+            const btnPickup = document.getElementById('btn-pickup');
+            const addrCont = document.getElementById('address-container');
+            const geoBtn = document.getElementById('btn-geo');
+            const cepInput = document.getElementById('cep');
+            const addressInput = document.getElementById('address');
+            const numberInput = document.getElementById('number');
+            const neighborhoodInput = document.getElementById('neighborhood');
+
+            // Adicionar badge de mesa no header
+            const statusContainer = document.getElementById('status-loja-container');
+            if (statusContainer) {
+                const tableBadge = document.createElement('div');
+                tableBadge.className = 'flex items-center gap-2 px-3 py-1 bg-orange-500/90 rounded-full text-white font-bold text-xs shadow-lg animate-pulse ml-2';
+                tableBadge.innerHTML = '<i class="fas fa-chair"></i> MESA ' + window.TABLE_MODE;
+                statusContainer.parentNode.insertBefore(tableBadge, statusContainer.nextSibling);
+            }
+
+            // Atualizar texto do rodapé para indicar mesa
+            const footerCart = document.getElementById('footer-cart');
+            if (footerCart) {
+                const mesaBadge = document.createElement('div');
+                mesaBadge.className = 'bg-white/20 px-3 py-1 rounded-full text-white text-xs font-bold';
+                mesaBadge.innerHTML = '<i class="fas fa-chair mr-1"></i>Mesa ' + window.TABLE_MODE;
+                footerCart.querySelector('.flex').insertBefore(mesaBadge, footerCart.querySelector('.flex').lastElementChild);
+            }
+
+            // Esconder completamente campos de endereço
+            if (addrCont) addrCont.style.display = 'none';
+            if (geoBtn) geoBtn.style.display = 'none';
+            if (cepInput) cepInput.style.display = 'none';
+            if (addressInput) addressInput.style.display = 'none';
+            if (numberInput) numberInput.style.display = 'none';
+            if (neighborhoodInput) neighborhoodInput.style.display = 'none';
+
+            // Desabilitar visualmente o botão de entrega
+            if (btnDelivery) {
+                btnDelivery.classList.remove('bg-white', 'text-orange-600');
+                btnDelivery.classList.add('text-gray-300', 'cursor-not-allowed', 'bg-gray-50');
+                btnDelivery.onclick = null;
+            }
+
+            // Ativar visualmente o botão de retirada
+            if (btnPickup) {
+                btnPickup.classList.add('bg-white', 'text-orange-600');
+                btnPickup.classList.remove('text-gray-500');
+                // Atualizar texto para indicar mesa
+                btnPickup.innerHTML = '<i class="fas fa-utensils mr-1"></i> MESA ' + window.TABLE_MODE;
+            }
+
+            // Log para debug
+            console.log('Cliente na mesa:', window.TABLE_MODE);
+        }
+
+        // Aplicar modo mesa ANTES de qualquer outra coisa
+        document.addEventListener('DOMContentLoaded', function() {
+            setupTableMode();
+        });
+
         // Configurações Globais da Loja vindas do Backend
         window.STORE_CONFIG = {
             storeName: "{{ tenant.name|escapejs }}",

@@ -103,7 +103,31 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+# Modelo de Mesa para pedidos no local
+class Table(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='tables', verbose_name="Loja")
+    number = models.IntegerField(verbose_name="Número da Mesa")
+    capacity = models.IntegerField(default=4, verbose_name="Capacidade")
+    is_active = models.BooleanField(default=True, verbose_name="Ativa?")
+    qr_code = models.ImageField(upload_to='tables_qr/', blank=True, null=True, verbose_name="QR Code")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+
+    class Meta:
+        unique_together = ('tenant', 'number')
+        ordering = ['number']
+        verbose_name = "Mesa"
+        verbose_name_plural = "Mesas"
+
+    def __str__(self):
+        return f"Mesa {self.number} - {self.tenant.name}"
     
+    def get_qr_code_url(self):
+        """Retorna a URL do QR Code ou None"""
+        if self.qr_code:
+            return self.qr_code.url
+        return None
+
 # Estrutura de Pedidos
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -114,11 +138,35 @@ class Order(models.Model):
         ('cancelado', 'Cancelado'),
     ]
 
+    ORDER_TYPE_CHOICES = [
+        ('delivery', 'Delivery'),
+        ('pickup', 'Retirada'),
+        ('table', 'Mesa'),
+    ]
+
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
     customer_name = models.CharField(max_length=100, verbose_name="Nome do Cliente")
     customer_phone = models.CharField(max_length=20, verbose_name="Telefone")
     
-    # Endereço (pode ser null se for retirada)
+    # Tipo de pedido (delivery, pickup, ou mesa)
+    order_type = models.CharField(
+        max_length=20, 
+        choices=ORDER_TYPE_CHOICES, 
+        default='delivery',
+        verbose_name="Tipo de Pedido"
+    )
+    
+    # Mesa vinculada (para pedidos no local)
+    table = models.ForeignKey(
+        Table, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='orders',
+        verbose_name="Mesa"
+    )
+    
+    # Endereço (pode ser null se for retirada ou mesa)
     address_cep = models.CharField(max_length=10, blank=True, null=True)
     address_street = models.CharField(max_length=200, blank=True, null=True)
     address_number = models.CharField(max_length=20, blank=True, null=True)
@@ -141,7 +189,8 @@ class Order(models.Model):
         ordering = ['-created_at'] # Mais recentes primeiro
 
     def __str__(self):
-        return f"Pedido #{self.id} - {self.customer_name}"
+        table_info = f" - Mesa {self.table.number}" if self.table and self.order_type == 'table' else ""
+        return f"Pedido #{self.id} - {self.customer_name}{table_info}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')

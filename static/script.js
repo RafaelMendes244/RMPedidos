@@ -48,6 +48,9 @@ let isDelivery = JSON.parse(localStorage.getItem(DELIVERY_KEY)) !== false; // tr
 let valorFreteAtual = 0;
 let ultimoValorFreteValido = 0; // Armazena o último valor válido do frete
 
+// Variável global para número da mesa (definida no cardapio.html)
+window.TABLE_NUMBER = null;
+
 // --- FUNÇÃO DE CÁLCULO DE TAXA DE ENTREGA (CORRIGIDA) ---
 window.calcularTaxaEntrega = (bairroInput) => {
     if (!bairroInput) return;
@@ -205,7 +208,9 @@ window.finalizeOrder = async () => {
             street: document.getElementById("address").value,
             number: document.getElementById("number").value,
             neighborhood: document.getElementById("neighborhood").value
-        } : {}
+        } : {},
+        // Inclui número da mesa se estiver ordenando de uma mesa
+        table_number: window.TABLE_NUMBER
     };
 
     // --- DECISAO DE FLUXO ---
@@ -344,18 +349,24 @@ function sendToWhatsApp(order) {
         if(i.obs) msg += `   Obs: ${i.obs}\n`;
     });
     
-    if (Object.keys(order.address).length > 0) {
+    // VERIFICA SE É MESA PRIMEIRO
+    if (order.table_number) {
+        msg += `\n📍 PEDIDO NA MESA ${order.table_number}\n`;
+        msg += `(Cliente aguardando na mesa)\n`;
+    } 
+    // SE NÃO FOR MESA, VERIFICA ENDEREÇO
+    else if (order.address && Object.keys(order.address).length > 0 && order.address.street) {
         msg += `\nEntrega: ${order.address.street}, ${order.address.number} - ${order.address.neighborhood}\n`;
         if (valorFreteAtual > 0) msg += `Frete: R$ ${valorFreteAtual.toFixed(2)}\n`;
-        // Adiciona tempo de entrega estimado
         if (window.STORE_CONFIG?.deliveryTime) {
-            msg += `\nTempo Estimado de Entrega: ${window.STORE_CONFIG.deliveryTime} minutos\n`;
+            msg += `Tempo Estimado: ${window.STORE_CONFIG.deliveryTime} min\n`;
         }
-    } else {
-        msg += `\nRetirada no Balcao\n`;
-        // Adiciona tempo de retirada estimado
+    } 
+    // SE NÃO TEM MESA NEM ENDEREÇO, É RETIRADA
+    else {
+        msg += `\nRetirada no Balcão\n`;
         if (window.STORE_CONFIG?.pickupTime) {
-            msg += `\nTempo Estimado de Retirada: ${window.STORE_CONFIG.pickupTime} minutos\n`;
+            msg += `Tempo Estimado: ${window.STORE_CONFIG.pickupTime} min\n`;
         }
     }
     
@@ -814,6 +825,10 @@ window.openHistory = async () => {
                 const typeIcon = order.is_delivery 
                     ? `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
                         <i class="fas fa-motorcycle text-gray-800"></i> Entrega
+                        </div>`
+                    : order.table_number
+                    ? `<div class="bg-orange-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-orange-600">
+                        <i class="fas fa-chair text-orange-800"></i> Mesa ${order.table_number}
                         </div>`
                     : `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
                         <i class="fas fa-store text-gray-800"></i> Retirada
