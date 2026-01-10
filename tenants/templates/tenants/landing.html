@@ -312,10 +312,10 @@
                     <span>Criar Cardápio Grátis</span>
                     <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
                 </a>
-                <button onclick="openDemo()" class="px-6 md:px-10 py-4 md:py-5 glass text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-3 border border-white/20">
-                    <i class="fas fa-play-circle text-lg md:text-xl"></i>
-                    <span>Ver Demonstração</span>
-                </button>
+                <a href="/hari-burguer" target="_blank" class="px-6 md:px-10 py-4 md:py-5 glass text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-3 border border-white/20">
+                    <i class="fas fa-eye text-lg md:text-xl"></i>
+                    <span>Ver Loja Modelo</span>
+                </a>
             </div>
 
             <!-- Preview do Dashboard -->
@@ -787,6 +787,10 @@
                             <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
                             <span>Suporte Prioritário</span>
                         </li>
+                        <li class="flex items-center gap-3">
+                            <div class="bg-orange-100 p-1 rounded-full"><i class="fas fa-check text-orange-600 text-xs"></i></div>
+                            <span>Dominio Personalizado</span>
+                        </li>
                     </ul>
                 </div>
 
@@ -926,33 +930,6 @@
                 mobileMenu.classList.remove('active');
             });
         });
-
-        function openDemo() {
-            Swal.fire({
-                title: '<strong>Demonstração RMPedidos</strong>',
-                html: `
-                    <div class="text-left space-y-3 p-4">
-                        <p class="text-slate-600">Em breve você poderá ver uma demonstração completa do sistema!</p>
-                        <div class="bg-orange-50 p-3 rounded-lg">
-                            <p class="text-sm text-orange-800"><i class="fas fa-info-circle mr-2"></i>Enquanto isso, crie sua loja grátis e comece a vender hoje mesmo!</p>
-                        </div>
-                    </div>
-                `,
-                icon: 'info',
-                confirmButtonColor: '#ea580c',
-                confirmButtonText: '<i class="fas fa-rocket mr-2"></i>Criar Minha Loja',
-                cancelButtonText: 'Fechar',
-                showCancelButton: true,
-                customClass: {
-                    confirmButton: 'font-bold',
-                    cancelButton: 'font-bold'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "{% url 'signup' %}";
-                }
-            });
-        }
 
         // Calculadora de economia
         function calculateSavings() {

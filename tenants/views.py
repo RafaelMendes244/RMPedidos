@@ -252,7 +252,7 @@ def painel_lojista(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # SEGURANÇA CRÍTICA: Verificar se o usuário logado é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         # Se não for o dono, verificar se ele possui alguma loja
         user_tenant = Tenant.objects.filter(owner=request.user).first()
         if user_tenant:
@@ -436,12 +436,15 @@ def create_order(request, slug):
             final_total = items_total + delivery_fee - discount_value
             if final_total < 0: final_total = Decimal('0.00')
 
-            # --- FIM DO CÁLCULO ---
+            status_inicial = 'pendente'
+            if tenant.plan_type == 'starter':
+                status_inicial = 'concluido'
 
             # Criação do Pedido
             order = Order.objects.create(
                 tenant=tenant,
                 customer_name=data.get('nome'),
+                status=status_inicial,
                 customer_phone=data.get('phone'),
                 
                 # VALORES BLINDADOS:
@@ -501,7 +504,7 @@ def api_get_orders(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
 
     # --- PROTEÇÃO DO PLANO ---
@@ -581,7 +584,7 @@ def api_update_order(request, slug, order_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -604,7 +607,7 @@ def api_mark_printed(request, slug, order_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -622,7 +625,7 @@ def api_update_settings(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -711,7 +714,7 @@ def api_get_products(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
     
     categories = Category.objects.filter(tenant=tenant).prefetch_related('products', 'products__options', 'products__options__items').order_by('order')
@@ -763,7 +766,7 @@ def api_save_product(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Verificar se o usuário é o dono da loja
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -863,7 +866,7 @@ def api_save_product(request, slug):
 def api_delete_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -883,7 +886,7 @@ def api_delete_product(request, slug, product_id):
 def api_toggle_product(request, slug, product_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -993,7 +996,7 @@ def signup(request):
 def api_get_financials(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
 
     # --- PROTEÇÃO DO PLANO ---
@@ -1042,7 +1045,7 @@ def api_get_financials(request, slug):
 def api_toggle_store_open(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1068,7 +1071,7 @@ def api_toggle_store_open(request, slug):
 def api_sync_store_status(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1100,7 +1103,7 @@ def api_sync_store_status(request, slug):
 def api_save_hours(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1128,7 +1131,7 @@ def api_save_hours(request, slug):
 def api_delivery_fees(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'GET':
@@ -1159,7 +1162,7 @@ def api_delivery_fees(request, slug):
 def api_delete_delivery_fee(request, slug, fee_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1183,7 +1186,7 @@ def api_tables(request, slug):
     """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     # GET: Lista mesas
@@ -1255,7 +1258,7 @@ def api_table_details(request, slug, table_id):
     """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     table = get_object_or_404(Table, id=table_id, tenant=tenant)
@@ -1330,7 +1333,7 @@ def api_delete_table(request, slug, table_id):
     """Exclui uma mesa"""
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1353,7 +1356,7 @@ def api_toggle_table(request, slug, table_id):
     """Ativa ou desativa uma mesa"""
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1379,8 +1382,15 @@ def api_generate_qrcode(request, slug, table_id):
     """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
-        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    if tenant.owner != request.user and not request.user.is_superuser:
+        
+        # Se não for dono e nem admin, verifica se tem loja própria
+        user_tenant = Tenant.objects.filter(owner=request.user).first()
+        if user_tenant:
+            return redirect('painel_lojista', slug=user_tenant.slug)
+        else:
+            logout(request)
+            return render(request, 'tenants/login.html', {'error': 'Você não tem permissão para acessar esta loja.'})
     
     if request.method == 'POST':
         try:
@@ -1433,7 +1443,7 @@ def api_generate_all_qrcodes(request, slug):
     """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     if request.method == 'POST':
@@ -1496,7 +1506,7 @@ def api_generate_all_qrcodes(request, slug):
 def api_coupons(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     # --- PROTEÇÃO DO PLANO ---
@@ -1576,7 +1586,7 @@ def api_coupons(request, slug):
 def api_coupon_details(request, slug, coupon_id):
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    if tenant.owner != request.user:
+    if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
     coupon = get_object_or_404(Coupon, id=coupon_id, tenant=tenant)

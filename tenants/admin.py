@@ -16,15 +16,21 @@ def renew_30_days(modeladmin, request, queryset):
         tenant.subscription_active = True # Garante que reativa se estava cancelado
         tenant.save()
 
-@admin.action(description="👑 Mudar para Plano PRO")
+@admin.action(description="Mudar para Plano PRO")
 def make_pro(modeladmin, request, queryset):
     queryset.update(plan_type='pro')
 
-@admin.action(description="👶 Mudar para Plano Starter")
+    for tenant in queryset:
+        Order.objects.filter(
+            tenant=tenant, 
+            status='pendente'
+        ).update(status='concluido')
+
+@admin.action(description="Mudar para Plano Starter")
 def make_starter(modeladmin, request, queryset):
     queryset.update(plan_type='starter')
 
-@admin.action(description="⛔ Bloquear Acesso (Inadimplente)")
+@admin.action(description="Bloquear Acesso (Inadimplente)")
 def block_access(modeladmin, request, queryset):
     queryset.update(subscription_active=False)
 
