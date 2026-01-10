@@ -1569,102 +1569,215 @@
         );
     }
 
-        async function printOrder(id, name, itemsStr, total, obs, address, payment, orderItems = [], deliveryFee = 0, discountAmount = 0, couponCode = null, customerPhone = '', storeName = '', tableNumber = null) {
-    // Nota: adicionei tableNumber nos argumentos acima
+async function printOrder(id, name, itemsStr, total, obs, address, payment, orderItems = [], deliveryFee = 0, discountAmount = 0, couponCode = null, customerPhone = '', storeName = '', tableNumber = null) {
     
+    // 1. Marca como impresso na API
+    try {
         await fetch(`/${TENANT_SLUG}/api/orders/${id}/printed/`, { 
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') }
         });
-        fetchOrders(); // Atualiza para marcar como impresso na tela
-        
-        const itemsSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-        const hasDeliveryFee = deliveryFee > 0;
-        const hasCoupon = couponCode && discountAmount > 0;
-        
-        const line = '================================================';
-        const line2 = '------------------------------------------------';
-        const line3 = '________________________________________________';
-        const now = new Date().toLocaleString('pt-BR');
-        const items = itemsStr.split('|').map(item => `  ${item}`).join('\n');
-        
-        // LOGICA DE EXIBICAO DA MESA
-        let headerInfo = '';
-        let addressInfo = '';
-
-        if (tableNumber) {
-            // SE FOR MESA: Destaque gigante no topo e remove endereço
-            headerInfo = `
-    ********************************
-            MESA ${tableNumber}
-    ********************************`;
-            
-            addressInfo = `MESA: ${tableNumber} (Consumo Local)`;
-        } else {
-            // SE FOR DELIVERY/RETIRADA
-            headerInfo = `PEDIDO #${id}`;
-            addressInfo = address ? address : 'RETIRADA NO BALCÃO';
+        // Atualiza a UI sem recarregar tudo se possível, ou chama o fetchOrders
+        const printBtn = document.querySelector(`button[onclick*="printOrderSafe"][onclick*="${id}"]`);
+        if(printBtn) {
+            printBtn.classList.remove('animate-pulse', 'bg-white', 'text-gray-700');
+            printBtn.classList.add('bg-green-50', 'text-green-700');
+            printBtn.innerHTML = '<i class="fas fa-check-circle"></i> <span class="hidden sm:inline">Impresso</span>';
         }
+    } catch (e) { console.error("Erro ao marcar como impresso", e); }
 
-        let breakdownText = '';
-        breakdownText += `  SUBTOTAL ITENS..... R$ ${itemsSubtotal.toFixed(2).padStart(8)}\n`;
-        if (hasDeliveryFee) breakdownText += `  TAXA ENTREGA....... R$ ${deliveryFee.toFixed(2).padStart(8)}\n`;
-        if (hasCoupon) breakdownText += `  DESCONTO........... -R$ ${discountAmount.toFixed(2).padStart(8)}\n`;
-        breakdownText += `\n  TOTAL A RECEBER.... R$ ${parseFloat(total).toFixed(2).padStart(8)}\n`;
-        
-        let paymentInfo = payment || 'Não informado';
-        if (paymentInfo.toLowerCase().includes('cartao') || paymentInfo.toLowerCase().includes('dinheiro')) paymentInfo = 'CARTÃO / DINHEIRO';
-        else if (paymentInfo.toLowerCase().includes('pix')) paymentInfo = 'PIX';
-        
-        const phoneDisplay = customerPhone ? customerPhone : '';
-        
-        const receiptText = `
-    ${line}
-            *** ${storeName.toUpperCase()} ***
-    ${line}
-    ${headerInfo}
-                ${now}
-    ${line}
+    // 2. Prepara os dados
+    const date = new Date().toLocaleString('pt-BR');
+    const subtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const isDelivery = !tableNumber && address;
+    
+    // Tratamento do Pagamento
+    let paymentDisplay = payment || 'Não informado';
+    if (paymentDisplay.toLowerCase().includes('pix')) paymentDisplay = 'PIX';
+    else if (paymentDisplay.toLowerCase().includes('cartao')) paymentDisplay = 'CARTÃO';
+    else if (paymentDisplay.toLowerCase().includes('dinheiro')) paymentDisplay = 'DINHEIRO';
 
-    CLIENTE: ${name}
-    ${phoneDisplay ? `FONE: ${phoneDisplay}` : ''}
-    ${line3}
-                ITENS
-    ${line3}
-    ${items}
-    ${line3}
-                FINANCEIRO
-    ${line3}
-    ${breakdownText}${line3}
-    PAGAMENTO: ${paymentInfo}
-    ${obs ? `OBSERVAÇÃO: ${obs}` : ''}
-    ${line3}
-                LOCAL / ENDEREÇO
-    ${line3}
-    ${addressInfo}
-    ${line3}
-    ${line}
-    `;
-        
-        const win = window.open('', 'print_' + id, 'width=350,height=600');
-        win.document.write(`
-            <html>
-            <head>
-                <title>Pedido #${id}</title>
-                <style>
-                    @page { size: 80mm auto; margin: 0; }
-                    body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; width: 80mm; margin: 0; padding: 2mm; font-weight: bold; }
-                    pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; }
-                </style>
-            </head>
-            <body>
-                <pre>${receiptText}</pre>
-                <script>window.onload=function(){window.print();}<\/script>
-            </body>
-            </html>
-        `);
-        win.document.close();
+    // 3. Constrói o HTML dos Itens (Muito mais robusto que string pura)
+    let itemsHtml = '';
+    if (orderItems && orderItems.length > 0) {
+        itemsHtml = orderItems.map(item => {
+            const totalItem = item.price * item.quantity;
+            let optionsHtml = '';
+            if (item.options) optionsHtml = `<div class="item-options">+ ${item.options}</div>`;
+            if (item.obs) optionsHtml += `<div class="item-obs">Obs: ${item.obs}</div>`;
+
+            return `
+            <div class="item-row">
+                <div class="item-qty">${item.quantity}x</div>
+                <div class="item-info">
+                    <div class="item-name">${item.name}</div>
+                    ${optionsHtml}
+                </div>
+                <div class="item-price">R$ ${totalItem.toFixed(2)}</div>
+            </div>`;
+        }).join('');
+    } else {
+        // Fallback caso orderItems venha vazio (usa a string antiga mas formata melhor)
+        itemsHtml = `<div style="font-size:12px;">${itemsStr.replace(/\|/g, '<br>')}</div>`;
     }
+
+    // 4. Lógica de Cabeçalho (Mesa vs Delivery)
+    let headerHtml = '';
+    let addressHtml = '';
+    
+    if (tableNumber) {
+        headerHtml = `
+            <div class="order-type">PEDIDO DE MESA</div>
+            <div class="big-number">MESA ${tableNumber}</div>
+            <div class="order-id">Senha/ID: #${id}</div>
+        `;
+        addressHtml = '<div class="info-block" style="text-align:center">CONSUMO NO LOCAL</div>';
+    } else {
+        headerHtml = `
+            <div class="order-type">${isDelivery ? 'DELIVERY / ENTREGA' : 'RETIRADA NO BALCÃO'}</div>
+            <div class="big-number">#${id}</div>
+        `;
+        addressHtml = `
+            <div class="section-title">ENDEREÇO DE ENTREGA</div>
+            <div class="info-block">
+                ${address ? address : 'Retirada no Local'}<br>
+                ${customerPhone ? `<strong>Tel:</strong> ${customerPhone}` : ''}
+            </div>
+        `;
+    }
+
+    // 5. Monta o Documento HTML Completo
+    const receiptHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Pedido #${id}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+            @page { margin: 0; padding: 0; }
+            body {
+                font-family: 'Roboto', sans-serif; /* Fonte limpa */
+                width: 80mm; /* Largura padrão térmica */
+                margin: 0;
+                padding: 5mm;
+                color: #000;
+                font-size: 12px;
+                line-height: 1.2;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            
+            .store-name { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+            .meta-info { font-size: 10px; color: #000; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 5px; }
+            
+            .order-type { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-top: 5px; }
+            .big-number { font-size: 28px; font-weight: 900; margin: 5px 0; letter-spacing: -1px; }
+            .order-id { font-size: 12px; margin-bottom: 10px; }
+            
+            .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+            .divider-bold { border-bottom: 2px solid #000; margin: 10px 0; }
+            
+            .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; background: #eee; padding: 2px 0; text-align: center; }
+            
+            /* Layout dos Itens */
+            .item-row { display: flex; align-items: flex-start; margin-bottom: 8px; }
+            .item-qty { font-weight: bold; width: 25px; flex-shrink: 0; }
+            .item-info { flex-grow: 1; }
+            .item-name { font-weight: bold; font-size: 13px; }
+            .item-options { font-size: 11px; color: #333; margin-top: 2px; }
+            .item-obs { font-size: 11px; font-weight: bold; margin-top: 2px; background: #ddd; display: inline-block; padding: 1px 3px; border-radius: 2px; }
+            .item-price { font-weight: bold; text-align: right; width: 60px; flex-shrink: 0; }
+            
+            /* Totais */
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
+            .total-final { font-size: 18px; font-weight: 900; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
+            
+            .info-block { font-size: 12px; margin-bottom: 5px; word-wrap: break-word; }
+            .customer-name { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+            
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="text-center">
+            <div class="store-name">${storeName}</div>
+            <div class="meta-info">${date}</div>
+            
+            ${headerHtml}
+        </div>
+
+        <div class="divider-bold"></div>
+
+        <div class="text-center mb-2">
+            <div class="customer-name">${name}</div>
+        </div>
+        ${addressHtml}
+        
+        <div class="divider-bold"></div>
+        
+        <div class="section-title">ITENS DO PEDIDO</div>
+        <div style="margin-top: 10px;">
+            ${itemsHtml}
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="total-row">
+            <span>Subtotal</span>
+            <span>R$ ${subtotal.toFixed(2)}</span>
+        </div>
+        
+        ${deliveryFee > 0 ? `
+        <div class="total-row">
+            <span>Taxa de Entrega</span>
+            <span>R$ ${deliveryFee.toFixed(2)}</span>
+        </div>` : ''}
+        
+        ${(couponCode && discountAmount > 0) ? `
+        <div class="total-row">
+            <span>Desconto (${couponCode})</span>
+            <span>- R$ ${discountAmount.toFixed(2)}</span>
+        </div>` : ''}
+        
+        <div class="total-row total-final">
+            <span>TOTAL</span>
+            <span>R$ ${parseFloat(total).toFixed(2)}</span>
+        </div>
+        
+        <div style="margin-top: 10px; font-size: 12px;">
+            <strong>Forma de Pagamento:</strong><br>
+            <span style="font-size: 14px; text-transform: uppercase;">${paymentDisplay}</span>
+        </div>
+
+        ${obs ? `
+        <div class="divider"></div>
+        <div style="font-weight: bold; margin-bottom: 2px;">OBSERVAÇÃO GERAL:</div>
+        <div style="font-size: 12px; background: #eee; padding: 5px; border-radius: 4px;">${obs}</div>
+        ` : ''}
+
+        <div class="divider-bold"></div>
+        <div class="footer">
+            Obrigado pela preferência!<br>
+            www.rmpedidos.online
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+                // Opcional: fechar automaticamente após imprimir (alguns navegadores bloqueiam)
+                // setTimeout(function(){ window.close(); }, 500); 
+            }
+        <\/script>
+    </body>
+    </html>
+    `;
+
+    // Abre o popup
+    const win = window.open('', 'PrintWindow', 'width=400,height=600');
+    win.document.write(receiptHtml);
+    win.document.close();
+}
 
         // --- CRUD PRODUTOS ---
         async function fetchProducts() {
