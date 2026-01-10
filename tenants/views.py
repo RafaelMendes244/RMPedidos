@@ -775,11 +775,12 @@ def api_save_product(request, slug):
             cat_input = request.POST.get('category') 
             name = request.POST.get('name')
             
+            # Lógica de tratamento de preço (Mantida a sua lógica original)
             price_str = request.POST.get('price', '0').replace('.', '').replace(',', '.') 
             if request.POST.get('price') and ',' in request.POST.get('price'):
-                 price = request.POST.get('price').replace('.', '').replace(',', '.')
+                price = request.POST.get('price').replace('.', '').replace(',', '.')
             else:
-                 price = request.POST.get('price')
+                price = request.POST.get('price')
 
             original_price = None
             if request.POST.get('original_price'):
@@ -854,13 +855,17 @@ def api_save_product(request, slug):
                             price=item_data['price']
                         )
 
-            _limpar_categorias_vazias(tenant)
+            # === AQUI ESTÁ A CORREÇÃO ===
+            # Passamos o ID da categoria atual para ela ser protegida da exclusão
+            current_cat_id = category.id if category else None
+            _limpar_categorias_vazias(tenant, category_id_to_protect=current_cat_id)
                 
             return JsonResponse({'status': 'success'})
         except Exception as e:
             logger.error(f"Erro ao salvar produto: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error'}, status=400)
+
 
 @login_required
 def api_delete_product(request, slug, product_id):
@@ -899,8 +904,15 @@ def api_toggle_product(request, slug, product_id):
             return JsonResponse({'status': 'error', 'message': 'Erro ao alternar disponibilidade'}, status=400)
     return JsonResponse({'status': 'error'}, status=400)
 
-def _limpar_categorias_vazias(tenant):
-    Category.objects.filter(tenant=tenant, products__isnull=True).delete()
+def _limpar_categorias_vazias(tenant, category_id_to_protect=None):
+    # Pega todas as categorias vazias dessa loja
+    cats_to_delete = Category.objects.filter(tenant=tenant, products__isnull=True)
+    
+    # SE tivermos um ID para proteger (a categoria que acabamos de usar), excluímos ela da lista de deleção
+    if category_id_to_protect:
+        cats_to_delete = cats_to_delete.exclude(id=category_id_to_protect)
+        
+    cats_to_delete.delete()
 
 # ROTAS DE LOGIN E LOGOUT
 @ratelimit(key='ip', rate='5/m', block=False)
