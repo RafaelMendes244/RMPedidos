@@ -3,29 +3,449 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso Bloqueado | {{ tenant.name }}</title>
+    <title>Acesso Bloqueado | {{ tenant.name }} - RMPedidos</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #dc2626;
+            --secondary-color: #f97316;
+            --accent-color: #059669;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Gradientes */
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #ea580c 50%, var(--primary-color) 100%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s ease-in-out infinite;
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Efeitos de Hover */
+        .btn-primary {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s;
+        }
+        
+        .btn-primary:hover::after {
+            left: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(5, 150, 105, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Responsive Typography */
+        @media (max-width: 640px) {
+            .responsive-text {
+                font-size: calc(1.5rem + 0.5vw);
+            }
+            
+            .responsive-subtext {
+                font-size: calc(1rem + 0.3vw);
+            }
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <i class="fas fa-lock text-3xl text-red-600"></i>
-        </div>
-        
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">Acesso Temporariamente Suspenso</h1>
-        <p class="text-gray-600 mb-6">
-            Olá, <b>{{ tenant.name }}</b>. Identificamos uma pendência na sua assinatura. 
-            Para reativar seu painel e voltar a vender imediatamente, entre em contato com o suporte.
-        </p>
-
-        <a href="https://wa.me/5583920006113?text=Olá, minha loja {{ tenant.name }} está bloqueada. Quero regularizar." 
-           class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2">
-            <i class="fab fa-whatsapp text-xl"></i>
-            Reativar Minha Loja
-        </a>
-        
-        <p class="mt-4 text-xs text-gray-400">Se você já efetuou o pagamento, desconsidere este aviso e aguarde a compensação.</p>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 md:p-6 lg:p-8 relative overflow-x-hidden">
+    
+    <!-- Background Decorativo -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-orange-100 rounded-full blur-3xl opacity-30 animate-pulse-subtle"></div>
+        <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-red-100 rounded-full blur-3xl opacity-20 animate-pulse-subtle" style="animation-delay: 1s;"></div>
+        <div class="absolute top-1/2 left-1/3 w-64 h-64 bg-amber-100 rounded-full blur-3xl opacity-20 animate-pulse-subtle" style="animation-delay: 2s;"></div>
     </div>
+
+    <!-- Container Principal -->
+    <main class="relative z-10 w-full max-w-4xl mx-auto animate-fadeIn">
+        
+        <!-- Card Principal -->
+        <article class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+            
+            <!-- Header com Gradiente -->
+            <header class="gradient-bg px-6 py-8 md:px-10 md:py-12 text-center text-white relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
+                
+                <div class="relative z-10">
+                    <div class="inline-flex items-center justify-center w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full mb-6 border-4 border-white/30">
+                        <i class="fas fa-exclamation-circle text-5xl text-white"></i>
+                    </div>
+                    <h1 class="responsive-text text-3xl md:text-4xl lg:text-5xl font-black mb-3 tracking-tight">Acesso Suspenso Temporariamente</h1>
+                    <p class="responsive-subtext text-orange-100 text-lg md:text-xl font-medium">Sua assinatura precisa de atenção</p>
+                </div>
+            </header>
+
+            <!-- Conteúdo -->
+            <section class="p-6 md:p-10 lg:p-12">
+                
+                <!-- Info da Loja -->
+                <div class="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 p-5 md:p-6 rounded-xl mb-8 md:mb-10 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-store-alt text-2xl text-orange-600"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-orange-700 uppercase tracking-wide mb-2">Loja Afetada</p>
+                            <h2 class="text-2xl md:text-3xl font-black text-gray-900 truncate">{{ tenant.name }}</h2>
+                            <p class="text-sm text-gray-600 mt-2">ID: #{{ tenant.id }} • Último acesso: {{ tenant.last_access }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensagem Principal -->
+                <div class="mb-8 md:mb-10">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-info-circle text-xl text-blue-600"></i>
+                        </div>
+                        <h2 class="text-xl md:text-2xl font-bold text-gray-900">O que aconteceu?</h2>
+                    </div>
+                    
+                    <div class="space-y-4 text-gray-700">
+                        <p class="leading-relaxed">
+                            Detectamos uma pendência na sua assinatura do <strong class="font-semibold text-gray-900">RMPedidos</strong>. 
+                            Para continuar aproveitando todos os benefícios e manter sua loja online funcionando, 
+                            é necessário regularizar o pagamento.
+                        </p>
+                        <p class="leading-relaxed">
+                            Não se preocupe! O processo é rápido e você volta a vender em minutos. 
+                            Nossa equipe de suporte está disponível para ajudá-lo.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Benefícios Perdidos -->
+                <div class="bg-gray-50 rounded-2xl p-6 md:p-8 mb-8 md:mb-10 border border-gray-200">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-ban text-xl text-red-600"></i>
+                        </div>
+                        <h3 class="text-lg md:text-xl font-bold text-gray-900">Recursos temporariamente bloqueados</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-shopping-cart text-gray-500"></i>
+                                </div>
+                                <span class="font-medium text-gray-800">Painel de Pedidos</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-utensils text-gray-500"></i>
+                                </div>
+                                <span class="font-medium text-gray-800">Cardápio Online</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chart-bar text-gray-500"></i>
+                                </div>
+                                <span class="font-medium text-gray-800">Relatórios</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-tag text-gray-500"></i>
+                                </div>
+                                <span class="font-medium text-gray-800">Cupons</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CTAs -->
+                <div class="space-y-4">
+                    <!-- Botão Principal WhatsApp -->
+                    <a href="https://wa.me/5583920006113?text=Olá! Preciso reativar minha loja *{{ tenant.name }}* no RMPedidos. Pode me ajudar?" 
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-500/20 flex items-center justify-center gap-3 text-lg group transition-all duration-300">
+                        <i class="fab fa-whatsapp text-2xl"></i>
+                        <span>Reativar Agora pelo WhatsApp</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-2 transition-transform duration-300"></i>
+                    </a>
+
+                    <!-- Botão Secundário -->
+                    <button onclick="showPaymentInfo()" 
+                            class="btn-secondary w-full bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-800 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span>Já efetuei o pagamento</span>
+                    </button>
+                </div>
+
+                <!-- Informações Adicionais -->
+                <div class="mt-10 pt-8 border-t border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <div class="space-y-3">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto">
+                                <i class="fas fa-shield-alt text-xl text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Pagamento Seguro</p>
+                                <p class="text-sm text-gray-600 mt-1">Ambiente 100% protegido</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto">
+                                <i class="fas fa-headset text-xl text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Suporte Imediato</p>
+                                <p class="text-sm text-gray-600 mt-1">Resposta em até 5min</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto">
+                                <i class="fas fa-bolt text-xl text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Reativação Rápida</p>
+                                <p class="text-sm text-gray-600 mt-1">Em poucos minutos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </article>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center animate-fadeIn" style="animation-delay: 0.2s;">
+            <p class="text-sm text-gray-600 mb-2">
+                Precisa de ajuda? Entre em contato com nosso suporte:
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <span class="hidden sm:inline text-gray-400">•</span>
+                <a href="tel:+5583920006113" 
+                   class="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200">
+                    <i class="fas fa-phone"></i>
+                    (83) 92000-6113
+                </a>
+            </div>
+            <p class="text-xs text-gray-500 mt-6 pt-4 border-t border-gray-200">
+                © 2025 RMPedidos. Todos os direitos reservados. <br class="sm:hidden">
+                Este é um aviso automático do sistema.
+            </p>
+        </footer>
+
+    </main>
+
+    <!-- Modal de Pagamento -->
+    <script>
+        function showPaymentInfo() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-labelledby', 'modal-title');
+            modal.setAttribute('aria-modal', 'true');
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative max-h-[90vh] overflow-y-auto">
+                    <button onclick="closeModal()" 
+                            class="absolute top-4 right-4 w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors duration-200"
+                            aria-label="Fechar modal">
+                        <i class="fas fa-times text-xl text-gray-500"></i>
+                    </button>
+                    
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-clock text-3xl text-blue-600"></i>
+                        </div>
+                        <h3 id="modal-title" class="text-2xl font-bold text-gray-900 mb-3">Pagamento Já Efetuado?</h3>
+                        <p class="text-gray-600">Aguarde a compensação bancária</p>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
+                            <div class="flex items-start gap-4">
+                                <i class="fas fa-info-circle text-xl text-blue-600 mt-1"></i>
+                                <div>
+                                    <p class="font-semibold text-blue-900 mb-2">Processo de Compensação</p>
+                                    <p class="text-sm text-blue-800 leading-relaxed">
+                                        Se você acabou de efetuar o pagamento, aguarde até <strong>48 horas úteis</strong> 
+                                        para a compensação bancária. Seu acesso será reativado automaticamente assim que o pagamento for confirmado.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-xl p-5">
+                            <p class="font-semibold text-gray-900 mb-3">Dicas Importantes:</p>
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <span>Verifique o comprovante de pagamento</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <span>Confirme se o pagamento foi debitado da sua conta</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <span>Mantenha seu e-mail cadastrado atualizado</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 mt-8">
+                        <a href="https://wa.me/5583920006113?text=Olá! Já paguei minha assinatura da loja *{{ tenant.name }}*. Quando será reativada?" 
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-300 text-center shadow-md shadow-green-500/20">
+                            <i class="fab fa-whatsapp mr-2"></i>Falar com Suporte no WhatsApp
+                        </a>
+                        <button onclick="closeModal()" 
+                                class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3.5 px-6 rounded-xl transition-colors duration-200">
+                            Voltar para a Página
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+            
+            // Fechar modal com ESC
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+            
+            // Focar no botão de fechar
+            modal.querySelector('button').focus();
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('.fixed.inset-0');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.remove();
+                    document.body.style.overflow = '';
+                }, 200);
+            }
+        }
+
+        // Smooth animations on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Plan Expired page loaded for: {{ tenant.name }}');
+            
+            // Animar elementos sequencialmente
+            const elements = document.querySelectorAll('.animate-fadeIn');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
+            
+            // Adicionar classe de carregamento
+            document.body.classList.add('loaded');
+        });
+        
+        // Fechar modal ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
+                closeModal();
+            }
+        });
+    </script>
 </body>
 </html>
