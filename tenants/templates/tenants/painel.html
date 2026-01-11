@@ -1259,53 +1259,144 @@
         function exportToPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-
-            // Título
-            doc.setFontSize(18);
-            doc.text('{{ tenant.name }} - Relatório de Vendas', 14, 22);
             
-            doc.setFontSize(10);
-            doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30);
-
-            // Resumo
-            const totalPix = document.getElementById('fin-total-pix').innerText;
-            const totalCard = document.getElementById('fin-total-card').innerText;
-            const totalGeral = document.getElementById('fin-total').innerText;
-            const qtdPedidos = document.getElementById('fin-count').innerText;
-
+            // --- CONFIGURAÇÕES DE ESTILO ---
+            const primaryColor = [234, 88, 12]; // A cor laranja do seu tema (RGB)
+            const grayColor = [245, 245, 245];  // Cinza claro para fundos
+            const darkColor = [55, 65, 81];     // Cinza escuro para texto
+            
+            // --- 1. CABEÇALHO PROFISSIONAL ---
+            // Barra superior colorida
+            doc.setFillColor(...primaryColor);
+            doc.rect(0, 0, 210, 35, 'F'); // Largura A4 é 210mm
+            
+            // Nome da Loja (Branco)
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text('{{ tenant.name|upper }}', 14, 20);
+            
+            // Subtítulo (Alinhado à direita)
             doc.setFontSize(12);
-            doc.text('Resumo:', 14, 42);
-            doc.setFontSize(10);
-            doc.text(`Total PIX: ${totalPix}`, 14, 50);
-            doc.text(`Total Cartão/Dinheiro: ${totalCard}`, 14, 56);
-            doc.text(`Total Geral: ${totalGeral}`, 14, 62);
-            doc.text(`Quantidade de Pedidos: ${qtdPedidos}`, 14, 68);
+            doc.setFont("helvetica", "normal");
+            doc.text('RELATÓRIO DE VENDAS', 196, 20, { align: 'right' });
+            
+            // Data de Geração (Abaixo do cabeçalho)
+            doc.setTextColor(100, 100, 100);
+            doc.setFontSize(9);
+            const dataGeracao = new Date().toLocaleString('pt-BR');
+            doc.text(`Gerado em: ${dataGeracao}`, 196, 42, { align: 'right' });
 
-            // Tabela
+            // --- 2. CARDS DE RESUMO (DASHBOARD NO PDF) ---
+            const startY = 50;
+            const boxWidth = 43; // Largura de cada card
+            const boxHeight = 25;
+            const gap = 5;
+            const startX = 14;
+
+            // Pegando os valores do HTML
+            const valPix = document.getElementById('fin-total-pix').innerText;
+            const valCard = document.getElementById('fin-total-card').innerText;
+            const valTotal = document.getElementById('fin-total').innerText;
+            const valQtd = document.getElementById('fin-count').innerText;
+
+            const cards = [
+                { label: "QTD. PEDIDOS", value: valQtd, color: [150, 150, 150] }, // Cinza
+                { label: "TOTAL PIX", value: valPix, color: [22, 163, 74] },      // Verde
+                { label: "TOTAL CARTÃO", value: valCard, color: [37, 99, 235] },  // Azul
+                { label: "FATURAMENTO", value: valTotal, color: primaryColor }    // Laranja
+            ];
+
+            cards.forEach((card, index) => {
+                const x = startX + (index * (boxWidth + gap));
+                
+                // Fundo do Card
+                doc.setDrawColor(220, 220, 220);
+                doc.setFillColor(252, 252, 252);
+                doc.roundedRect(x, startY, boxWidth, boxHeight, 3, 3, 'FD');
+                
+                // Barra lateral colorida do card
+                doc.setFillColor(...card.color);
+                doc.rect(x, startY, 2, boxHeight, 'F'); // Barra fina esquerda
+
+                // Label (Título pequeno)
+                doc.setTextColor(120, 120, 120);
+                doc.setFontSize(7);
+                doc.setFont("helvetica", "bold");
+                doc.text(card.label, x + 5, startY + 8);
+
+                // Valor (Grande e destacado)
+                doc.setTextColor(...darkColor);
+                doc.setFontSize(11);
+                if(index === 3) doc.setTextColor(...primaryColor); // Destaque no Total Geral
+                doc.text(card.value, x + 5, startY + 18);
+            });
+
+            // --- 3. TABELA DETALHADA ---
+            // Preparar dados
             const tableData = filteredOrders.map(order => {
                 const isPix = order.payment && order.payment.toLowerCase().includes('pix');
-                const paymentDisplay = isPix ? 'PIX' : 'CARTÃO/DINHEIRO';
+                const paymentDisplay = isPix ? 'PIX' : 'Cartão/Din';
+                
+                // Formata status para ficar bonito
+                let statusFmt = order.status.replace('_', ' ').toUpperCase();
+                
                 return [
                     `#${order.id}`,
-                    order.customer,
+                    order.customer.substring(0, 25), // Limita tamanho do nome
                     order.date_display || order.date,
                     paymentDisplay,
-                    order.status.replace('_', ' ').toUpperCase(),
+                    statusFmt,
                     `R$ ${order.total.toFixed(2)}`
                 ];
             });
-
+            
             doc.autoTable({
-                startY: 76,
-                head: [['ID', 'Cliente', 'Data', 'Pagamento', 'Status', 'Total']],
+                startY: startY + boxHeight + 15,
+                head: [['ID', 'Cliente', 'Data', 'Pagto', 'Status', 'Valor']],
                 body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [234, 88, 12] },
-                styles: { fontSize: 8 }
+                theme: 'grid', // 'striped' ou 'grid' (grid fica mais "planilha")
+                styles: { 
+                    fontSize: 9, 
+                    cellPadding: 3,
+                    textColor: [60, 60, 60]
+                },
+                headStyles: { 
+                    fillColor: primaryColor, 
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                columnStyles: {
+                    0: { cellWidth: 15, fontStyle: 'bold' }, // ID
+                    1: { cellWidth: 'auto' }, // Cliente
+                    2: { cellWidth: 25, halign: 'center' }, // Data
+                    3: { cellWidth: 25, halign: 'center' }, // Pagto
+                    4: { cellWidth: 25, halign: 'center', fontSize: 8 }, // Status
+                    5: { cellWidth: 30, halign: 'right', fontStyle: 'bold' } // Valor (Direita!)
+                },
+                foot: [[
+                    { content: 'TOTAL GERAL:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+                    { content: valTotal, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }
+                ]],
+                didDrawPage: function (data) {
+                    // --- 4. RODAPÉ (NÚMERO DA PÁGINA) ---
+                    const str = 'Página ' + doc.internal.getNumberOfPages();
+                    doc.setFontSize(8);
+                    doc.setTextColor(150);
+                    const pageSize = doc.internal.pageSize;
+                    const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+                    doc.text(str, data.settings.margin.left, pageHeight - 10);
+                    
+                    // Assinatura do sistema
+                    doc.text('Sistema RM Pedidos', pageSize.width - 25, pageHeight - 10, {align: 'right'});
+                }
             });
 
-            doc.save(`relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
-            Toastify({ text: "PDF exportado!", style: { background: "#10b981" } }).showToast();
+            // Salvar
+            const fileName = `Relatorio_Vendas_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+            Toastify({ text: "Relatório PDF gerado com sucesso!", style: { background: "#10b981" } }).showToast();
         }
 
         // --- PEDIDOS ---
