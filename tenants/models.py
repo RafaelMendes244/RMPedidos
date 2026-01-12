@@ -47,7 +47,7 @@ class Tenant(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tenants', verbose_name="Dono da Loja", null=True, blank=True)
     
     # Customização Visual
-    primary_color = models.CharField(max_length=7, default="#000000", verbose_name="Cor Primária", help_text="Cor Hex. Ex: #FF0000")
+    primary_color = models.CharField(max_length=7, default="#ea580c", verbose_name="Cor Primária", help_text="Cor Hex. Ex: #FF0000")
     background_image = models.ImageField(upload_to='tenants_bg/', blank=True, null=True, verbose_name="Imagem de Fundo")
     logo = models.ImageField(upload_to='tenants_logo/', blank=True, null=True, verbose_name="Logotipo")
 

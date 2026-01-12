@@ -982,12 +982,14 @@ def signup(request):
         try:
             user = User.objects.create_user(username=email, email=email, password=password)
             logger.info(f"Novo usuário criado: ID {user.id}")
+
+            chosen_color = request.POST.get('primary_color', '#ea580c')
             
             tenant = Tenant.objects.create(
                 owner=user,
                 name=store_name,
                 slug=slug,
-                primary_color='#ea580c'
+                primary_color=chosen_color
             )
             logger.info(f"Nova loja criada: {tenant.name} (slug: {tenant.slug})")
             
