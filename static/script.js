@@ -72,11 +72,11 @@ window.calcularTaxaEntrega = (bairroInput) => {
     if (taxaEncontrada) {
         valorFreteAtual = parseFloat(taxaEncontrada.fee);
         ultimoValorFreteValido = valorFreteAtual; // Salva o valor válido
-        Toastify({ text: `Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: "#ea580c" } }).showToast();
+        Toastify({ text: `Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: getPrimaryColor() } }).showToast();
     } else {
         // Se não achar o bairro exato, taxa a combinar (mantém 0 mas marca flag)
         valorFreteAtual = 0;
-        Toastify({ text: `Bairro não tabelado. Taxa a combinar.`, style: { background: "#f59e0b" } }).showToast();
+        Toastify({ text: `Bairro não tabelado. Taxa a combinar.`, style: { background: getPrimaryColor() } }).showToast();
     }
     
     // Atualizar display da taxa de entrega
@@ -203,13 +203,13 @@ window.finalizeOrder = async () => {
         method: method,
         obs: obs, // Aqui já vai com o texto do troco
         items: cart,
+        order_type: window.TABLE_NUMBER ? 'table' : (isDelivery ? 'delivery' : 'pickup'),
         address: isDelivery ? {
             cep: document.getElementById("cep").value,
             street: document.getElementById("address").value,
             number: document.getElementById("number").value,
             neighborhood: document.getElementById("neighborhood").value
         } : {},
-        // Inclui número da mesa se estiver ordenando de uma mesa
         table_number: window.TABLE_NUMBER
     };
 
@@ -229,7 +229,7 @@ window.finalizeOrder = async () => {
 
         // Abre o Modal
         const modalResult = await Swal.fire({
-            title: '<span class="text-orange-600">Pagamento PIX</span>',
+            title: `<span class="text-primary">Pagamento PIX</span>`,
             html: `
                 <p class="text-sm text-gray-600 mb-4">Escaneie o QR Code ou copie a chave:</p>
                 <div class="flex justify-center mb-4 p-2 bg-white rounded-lg border border-gray-200">
@@ -263,7 +263,7 @@ window.finalizeOrder = async () => {
             btnFinalize.disabled = true;
             processarSalvamento(orderData, btnFinalize, textoOriginal);
         } else {
-            Toastify({ text: "Pagamento pendente. Escolha outra forma.", style: { background: "#fb923c" } }).showToast();
+            Toastify({ text: "Pagamento pendente. Escolha outra forma.", style: { background: getPrimaryColor() } }).showToast();
         }
 
     } else {
@@ -331,6 +331,14 @@ window.copiarPix = () => {
         Toastify({ text: "Chave Copiada!", style: { background: "#3b82f6" } }).showToast();
     });
 };
+
+// Return tenant primary color from CSS var or fallback
+function getPrimaryColor(){
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+    if (v && v.trim()) return v.trim();
+    if (window.TENANT_PRIMARY) return window.TENANT_PRIMARY;
+    return '#ea580c';
+}
 
 function sendToWhatsApp(order) {
     const line = "━━━━━━━━━━━━━━━━━━━━";
@@ -464,7 +472,7 @@ window.showProductModal = (id) => {
                 </div>
             </div>
         `,
-        showCloseButton: true, showConfirmButton: true, confirmButtonText: 'ADICIONAR A SACOLA', confirmButtonColor: '#ea580c',
+        showCloseButton: true, showConfirmButton: true, confirmButtonText: 'ADICIONAR A SACOLA', confirmButtonColor: getPrimaryColor(),
         showCancelButton: true, cancelButtonText: 'Voltar',
         customClass: { popup: 'rounded-3xl overflow-hidden shadow-2xl' },
         preConfirm: () => { 
@@ -506,7 +514,7 @@ function addToCart(product, obs, options, extraPrice) {
         });
     }
     saveCart();
-    Toastify({ text: "Adicionado a sacola", style: { background: "#ea580c" } }).showToast();
+    Toastify({ text: "Adicionado a sacola", style: { background: getPrimaryColor() } }).showToast();
 }
 
 function saveCart() { 
@@ -746,7 +754,7 @@ function updateCartTotal() {
     }
 }
 
-window.toggleFavorite = (id) => Toastify({ text: "Favoritado", style: { background: "#ea580c" } }).showToast();
+window.toggleFavorite = (id) => Toastify({ text: "Favoritado", style: { background: getPrimaryColor() } }).showToast();
 window.openStoreInfo = () => {
     document.getElementById("store-info-modal").classList.remove("hidden");
     document.body.classList.add("overflow-hidden");
@@ -822,17 +830,20 @@ window.openHistory = async () => {
                     iconClass = "fa-times-circle";
                 }
 
-                const typeIcon = order.is_delivery 
-                    ? `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
-                        <i class="fas fa-motorcycle text-gray-800"></i> Entrega
-                        </div>`
-                    : order.table_number
-                    ? `<div class="bg-orange-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-orange-600">
+                let typeIcon = '';
+                if (order.table_number) {
+                    typeIcon = `<div class="bg-orange-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-orange-600">
                         <i class="fas fa-chair text-orange-800"></i> Mesa ${order.table_number}
-                        </div>`
-                    : `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
+                        </div>`;
+                } else if (order.is_delivery) {
+                    typeIcon = `<div class="bg-blue-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-blue-600">
+                        <i class="fas fa-motorcycle text-blue-800"></i> Entrega
+                        </div>`;
+                } else {
+                    typeIcon = `<div class="bg-gray-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-gray-600">
                         <i class="fas fa-store text-gray-800"></i> Retirada
                         </div>`;
+                }
 
                 content.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 dark:border-gray-700 relative overflow-hidden">
@@ -1203,7 +1214,7 @@ window.usarLocalizacao = () => {
     const originalText = btn.innerHTML;
 
     if (!navigator.geolocation) {
-        Toastify({ text: "Seu dispositivo não tem GPS.", style: { background: "#fb923c" } }).showToast();
+        Toastify({ text: "Seu dispositivo não tem GPS.", style: { background: getPrimaryColor() } }).showToast();
         return;
     }
 
@@ -1242,7 +1253,7 @@ window.usarLocalizacao = () => {
                     Toastify({ text: "Localização encontrada!", style: { background: "#10b981" } }).showToast();
                 })
                 .catch(() => {
-                    Toastify({ text: "GPS funcionou, mas não achamos o endereço escrito. Digite manualmente.", style: { background: "#fb923c" } }).showToast();
+                    Toastify({ text: "GPS funcionou, mas não achamos o endereço escrito. Digite manualmente.", style: { background: getPrimaryColor() } }).showToast();
                     window.habilitarEnderecoManual(); // Já libera os campos
                 })
                 .finally(() => {
@@ -1260,7 +1271,7 @@ window.usarLocalizacao = () => {
             // Se for Timeout (Desktop geralmente cai aqui), pedimos para digitar
             if (error.code === 3) msg = "Sinal de GPS fraco ou indisponível no PC.";
 
-            Toastify({ text: `${msg} Por favor, digite seu endereço.`, duration: 4000, style: { background: "#fb923c" } }).showToast();
+            Toastify({ text: `${msg} Por favor, digite seu endereço.`, duration: 4000, style: { background: getPrimaryColor() } }).showToast();
             
             // Truque de UX: Se der erro, já libera os campos e foca no CEP para ele digitar logo
             window.habilitarEnderecoManual();

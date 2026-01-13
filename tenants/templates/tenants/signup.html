@@ -324,7 +324,7 @@
                             </div>
                         </div>
                         
-                        <!-- Nome da Loja -->
+                        <!-- Nome da Loja (exibido) -->
                         <div class="mb-5">
                             <label class="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
                                 <i class="fas fa-store text-orange-600"></i>
@@ -339,12 +339,35 @@
                                     name="store_name" 
                                     required 
                                     class="input-field w-full pl-12 pr-4 py-4 bg-transparent text-slate-900 placeholder-slate-400 font-medium"
-                                    placeholder="Ex: Brasa Burguer"
+                                    placeholder="Ex: Rafa Burguer"
                                     autocomplete="organization">
                             </div>
                             <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                <i class="fas fa-info-circle text-blue-500"></i>
+                                <span>Nome exibido para clientes</span>
+                            </div>
+                        </div>
+
+                        <!-- Link da Loja (slug) -->
+                        <div class="mb-5">
+                            <label class="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
+                                <i class="fas fa-link text-orange-600"></i>
+                                Link da sua Loja <span class="text-xs text-slate-500 font-normal">(Opcional)</span>
+                            </label>
+                            <div class="input-group relative bg-white border-2 border-slate-200 rounded-xl overflow-hidden">
+                                <div class="absolute left-4 top-1/2 -translate-y-1/2 input-icon transition-all">
+                                    <i class="fas fa-link text-slate-400"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    name="slug" 
+                                    class="input-field w-full pl-12 pr-4 py-4 bg-transparent text-slate-900 placeholder-slate-400 font-medium"
+                                    placeholder="rafa-burguer"
+                                    autocomplete="off">
+                            </div>
+                            <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
                                 <i class="fas fa-link text-orange-500"></i>
-                                <span>Sua URL: <span class="font-mono font-bold text-orange-600">rmpedidos.online/nomedaloja</span></span>
+                                <span>Sua URL: <span id="storeUrlPreview" class="font-mono font-bold text-orange-600">rmpedidos.online/rafa-burguer</span></span>
                             </div>
                         </div>
 
@@ -706,21 +729,37 @@
             button.disabled = true;
         });
 
-        // Auto-generate store slug preview
-        const storeNameInput = document.querySelector('input[name="store_name"]');
-        if (storeNameInput) {
-            storeNameInput.addEventListener('input', function() {
-                const slug = this.value
-                    .toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-+|-+$/g, '');
-                    
-                const preview = this.parentElement.nextElementSibling.querySelector('.font-mono');
-                if (preview && slug) {
-                    preview.textContent = `rmpedidos.online/${slug}`;
+        // Auto-generate store slug preview and allow manual slug edits
+        const displayInput = document.querySelector('input[name="store_name"]');
+        const slugInput = document.querySelector('input[name="slug"]');
+        const preview = document.getElementById('storeUrlPreview');
+
+        function makeSlug(value) {
+            return value
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        if (displayInput) {
+            displayInput.addEventListener('input', function() {
+                const s = makeSlug(this.value);
+                if (slugInput && (!slugInput.dataset.manual || slugInput.value.trim() === '')) {
+                    slugInput.value = s;
                 }
+                if (preview) preview.textContent = s ? `rmpedidos.online/${s}` : 'rmpedidos.online/nomedaloja';
+            });
+        }
+
+        if (slugInput) {
+            slugInput.addEventListener('input', function() {
+                // mark as manual so display edits don't overwrite user's manual slug
+                this.dataset.manual = '1';
+                const s = makeSlug(this.value);
+                this.value = s;
+                if (preview) preview.textContent = s ? `rmpedidos.online/${s}` : 'rmpedidos.online/nomedaloja';
             });
         }
     </script>

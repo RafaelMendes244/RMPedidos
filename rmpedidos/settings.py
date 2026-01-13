@@ -149,7 +149,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # ADICIONADO: WhiteNoise para servir arquivos estáticos em produção
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# (apenas em produção, não em desenvolvimento)
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -187,25 +189,29 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = 'us-east-2'
 
 # --- ADICIONE/CORRIJA ESTAS LINHAS AQUI ---
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-AWS_QUERYSTRING_AUTH = False  # <--- Isso remove a assinatura ?Signature= da URL
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_QUERYSTRING_AUTH = False  # <--- Isso remove a assinatura ?Signature= da URL
+    # A MEDIA_URL agora usa o Custom Domain automaticamente
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+else:
+    MEDIA_URL = '/media/'
 # ------------------------------------------
 
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None 
 AWS_S3_VERIFY = True
 
-# A MEDIA_URL agora usa o Custom Domain automaticamente
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-    },
-}
+# STORAGES apenas em produção (com AWS)
+if not DEBUG and AWS_ACCESS_KEY_ID:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
 
 # Se alguém tentar acessar uma área restrita, manda pra cá:
 LOGIN_URL = 'custom_login' 

@@ -31,9 +31,31 @@
             --primary: {{ tenant.primary_color }};
             --accent: {{ tenant.primary_color }};
         }
+        /* Ensure common orange utilities reflect tenant color */
+        .text-orange-600 { color: var(--primary) !important; }
+        .text-orange-500 { color: var(--primary) !important; }
+        .text-orange-400 { color: var(--primary) !important; }
+        .text-orange-300 { color: var(--primary) !important; }
+        .text-orange-700 { color: var(--primary) !important; }
+        .bg-orange-50 { background-color: rgba(0,0,0,0.03) !important; }
+        .bg-orange-600 { background-color: var(--primary) !important; }
+        .bg-orange-500 { background-color: var(--primary) !important; }
+        .border-orange-100 { border-color: color-mix(in srgb, var(--primary) 20%, #fff) !important; }
+        .border-orange-500 { border-color: var(--primary) !important; }
+        .border-orange-600 { border-color: var(--primary) !important; }
+        .hover\:text-orange-600:hover { color: var(--primary) !important; }
+        .hover\:bg-orange-500:hover { background-color: var(--primary) !important; }
+        .hover\:bg-orange-50:hover { background-color: rgba(0,0,0,0.03) !important; }
+        .accent-orange-600 { accent-color: var(--primary) !important; }
         .text-primary { color: var(--primary); }
         .bg-primary { background-color: var(--primary); }
         .border-primary { border-color: var(--primary); }
+        
+        /* Ensure buttons with primary background have white/readable text */
+        button[style*="background-color"],
+        [style*="background-color"] { color: inherit !important; }
+        .bg-primary { color: white !important; }
+        [style*="--primary"] { color: inherit !important; }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -83,7 +105,7 @@
     </style>
 </head>
 
-<body class="pb-32 antialiased selection:bg-orange-500 selection:text-white">
+<body class="pb-32 antialiased selection:bg-blue-300 selection:text-gray-900">
     <header id="main-header" class="relative w-full h-[500px] md:h-[600px] flex flex-col items-center justify-center text-center text-white overflow-hidden shadow-2xl">
         <div id="header-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-[3000ms] transform hover:scale-105"
             style="background-image: url('{% if tenant.background_image %}{{ tenant.background_image.url }}{% else %}https://blog.connectplug.com.br/wp-content/uploads/2024/06/4016-1-e1718285827136.jpg{% endif %}');">

@@ -183,13 +183,21 @@ def cardapio_mesa(request, slug, table_number):
     """
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Validar mesa
-    table = get_object_or_404(
-        Table, 
+    # Validar mesa com mensagem customizada
+    table = Table.objects.filter(
         tenant=tenant, 
         number=table_number,
         is_active=True
-    )
+    ).first()
+    
+    if not table:
+        # Retornar página customizada com erro
+        context = {
+            'tenant': tenant,
+            'error': f'Mesa {table_number} não encontrada ou inativa',
+            'table_number': table_number
+        }
+        return render(request, 'tenants/error_table.html', context, status=404)
     
     # 1. Carrega todos os horários para o JS
     db_days = OperatingDay.objects.filter(tenant=tenant).order_by('day')
@@ -956,9 +964,13 @@ def custom_logout(request):
     return redirect('custom_login')
 
 # ROTA PARA CRIAR EMPRESA
+
 def signup(request):
     if request.method == 'POST':
         store_name = request.POST.get('store_name', '').strip()
+        # Novo campo para o slug (opcional no form, mas tratado aqui)
+        slug_input = request.POST.get('slug', '').strip()
+        
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
         
@@ -971,33 +983,44 @@ def signup(request):
         if not password or len(password) < 8:
             return render(request, 'tenants/signup.html', {'error': 'A senha deve ter pelo menos 8 caracteres.'})
             
-        slug = slugify(store_name)
+        # Lógica do Slug: Se o usuário digitou, usa o dele. Se não, usa o nome da loja.
+        # O slugify garante que "Rafa Burguer" vire "rafa-burguer"
+        if slug_input:
+            final_slug = slugify(slug_input)
+        else:
+            final_slug = slugify(store_name)
+            
+        # Validação extra: Slug vazio após slugify (ex: usuário digitou só simbolos)
+        if not final_slug:
+            return render(request, 'tenants/signup.html', {'error': 'Link da loja inválido.'})
         
-        if Tenant.objects.filter(slug=slug).exists():
-            return render(request, 'tenants/signup.html', {'error': 'Essa loja já existe. Tente outro nome.'})
+        # Verifica duplicidade
+        if Tenant.objects.filter(slug=final_slug).exists():
+            return render(request, 'tenants/signup.html', {'error': f'O link "{final_slug}" já está em uso. Escolha outro.'})
             
         if User.objects.filter(username=email).exists():
             return render(request, 'tenants/signup.html', {'error': 'Este email já está cadastrado.'})
 
         try:
-            user = User.objects.create_user(username=email, email=email, password=password)
-            logger.info(f"Novo usuário criado: ID {user.id}")
+            with transaction.atomic(): # Garante que cria tudo ou nada
+                user = User.objects.create_user(username=email, email=email, password=password)
+                logger.info(f"Novo usuário criado: ID {user.id}")
 
-            chosen_color = request.POST.get('primary_color', '#ea580c')
-            
-            tenant = Tenant.objects.create(
-                owner=user,
-                name=store_name,
-                slug=slug,
-                primary_color=chosen_color
-            )
-            logger.info(f"Nova loja criada: {tenant.name} (slug: {tenant.slug})")
-            
-            Category.objects.create(tenant=tenant, name="Destaques", order=1)
-            Category.objects.create(tenant=tenant, name="Bebidas", order=2)
+                chosen_color = request.POST.get('primary_color', '#ea580c')
+                
+                tenant = Tenant.objects.create(
+                    owner=user,
+                    name=store_name, # Ex: Hamburguer do Rafael
+                    slug=final_slug, # Ex: rafaburguer
+                    primary_color=chosen_color
+                )
+                
+                # Categorias Padrão
+                Category.objects.create(tenant=tenant, name="Destaques", order=1)
+                Category.objects.create(tenant=tenant, name="Bebidas", order=2)
 
-            login(request, user)
-            return redirect('painel_lojista', slug=tenant.slug)
+                login(request, user)
+                return redirect('painel_lojista', slug=tenant.slug)
 
         except Exception as e:
             logger.error(f"Erro ao criar conta: {e}")
