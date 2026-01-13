@@ -666,16 +666,92 @@ window.closeHistory = () => {
 };
 
 window.buscarCep = () => {
-    const cep = document.getElementById("cep").value.replace(/\D/g, "");
-    if (cep.length !== 8) return;
-    fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r => r.json()).then(d => {
-        if(!d.erro) {
-            document.getElementById("address").value = d.logradouro;
-            document.getElementById("neighborhood").value = d.bairro;
+    const cepInput = document.getElementById("cep");
+    const cep = cepInput.value.replace(/\D/g, "");
+    
+    // VALIDAÇÃO RIGOROSA DE CEP
+    if (!cep) {
+        Toastify({ 
+            text: "CEP vazio. Digite um CEP válido (8 dígitos).", 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        return;
+    }
+    
+    if (cep.length !== 8) {
+        Toastify({ 
+            text: `CEP inválido! Deve ter exatamente 8 dígitos (digitados: ${cep.length})`, 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        cepInput.value = "";
+        cepInput.focus();
+        return;
+    }
+    
+    // Verifica se é tudo zero (CEP inválido)
+    if (cep === "00000000") {
+        Toastify({ 
+            text: "CEP inválido! Digite um CEP real.", 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        cepInput.value = "";
+        cepInput.focus();
+        return;
+    }
+    
+    // CHAMADA À API COM TRATAMENTO COMPLETO
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then(r => {
+            if (!r.ok) throw new Error(`Erro HTTP: ${r.status}`);
+            return r.json();
+        })
+        .then(d => {
+            // Verifica se retornou erro (campo 'erro' da ViaCEP)
+            if (d.erro === true || !d.logradouro) {
+                throw new Error("CEP não encontrado. Verifique e tente novamente.");
+            }
+            
+            // SUCESSO: Preenche os campos
+            document.getElementById("address").value = d.logradouro || "";
+            document.getElementById("neighborhood").value = d.bairro || "";
+            
+            // Libera campo de número para edição
+            document.getElementById("number").removeAttribute("readonly");
+            document.getElementById("number").value = "";
             document.getElementById("number").focus();
+            
+            // Calcula frete baseado no bairro
             window.calcularTaxaEntrega(d.bairro);
-        }
-    });
+            
+            Toastify({ 
+                text: "CEP encontrado com sucesso!", 
+                duration: 2000,
+                style: { background: "#10b981" } 
+            }).showToast();
+        })
+        .catch(erro => {
+            // ERRO: Mostra mensagem amigável
+            console.error("Erro ao buscar CEP:", erro);
+            let mensagem = "CEP inválido ou não encontrado. Digite manualmente.";
+            
+            if (erro.message.includes("HTTP")) {
+                mensagem = "Falha na conexão com o servidor de CEP. Tente novamente.";
+            }
+            
+            Toastify({ 
+                text: mensagem, 
+                duration: 4000,
+                style: { background: "#ef4444" } 
+            }).showToast();
+            
+            // LIBERA OS CAMPOS PARA EDIÇÃO MANUAL
+            window.habilitarEnderecoManual();
+            cepInput.value = cep; // Mantém o CEP digitado para referência
+            cepInput.focus();
+        });
 };
 
 window.habilitarEnderecoManual = () => {

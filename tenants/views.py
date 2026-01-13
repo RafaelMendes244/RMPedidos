@@ -11,6 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum, Prefetch, Count, Q
 from django.utils import timezone
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 import logging
 import qrcode
 import base64
@@ -33,6 +34,8 @@ from .models import (
     CouponUsage,
     Table,
 )
+
+from .validators import validate_cep, validate_phone, validate_order_data
 
 # CORRIGIDO: Usar logger ao invés de print
 logger = logging.getLogger(__name__)
@@ -328,7 +331,9 @@ def create_order(request, slug):
             
             data = json.loads(request.body)
             
-            # ========================
+            # Validação básica de dados
+            if not data:
+                return JsonResponse({'status': 'error', 'message': 'Dados vazios'}, status=400)
             # DETECTAR TIPO DE PEDIDO (NOVO)
             # ========================
             table_number = data.get('table_number')
@@ -353,6 +358,51 @@ def create_order(request, slug):
                         'message': 'Mesa não encontrada ou inativa. Peça atendimento.'
                     }, status=400)
             
+            # --- VALIDAÇÃO DE DADOS (NOVO) ---
+            # Validar dados do cliente
+            nome = data.get('nome', '').strip()
+            phone = data.get('phone', '').strip()
+            
+            # SANITIZAÇÃO: remover caracteres perigosos do nome
+            nome = ''.join(c for c in nome if c.isalnum() or c.isspace() or c in '-,.\'')
+            
+            if not nome or len(nome) < 2:
+                return JsonResponse({'status': 'error', 'message': 'Nome deve ter no mínimo 2 caracteres.'}, status=400)
+            
+            try:
+                phone_clean = validate_phone(phone)
+            except ValidationError as e:
+                return JsonResponse({'status': 'error', 'message': f'Telefone: {e.message}'}, status=400)
+            
+            # Validar endereço para entregas
+            if order_type == 'delivery':
+                address_data = data.get('address', {})
+                
+                # Validar CEP
+                cep = address_data.get('cep', '').strip()
+                try:
+                    cep_clean = validate_cep(cep)
+                except ValidationError as e:
+                    return JsonResponse({'status': 'error', 'message': f'CEP: {e.message}'}, status=400)
+                
+                # Validar rua
+                street = address_data.get('street', '').strip()
+                street = ''.join(c for c in street if c.isalnum() or c.isspace() or c in '-,./°ª')
+                if not street or len(street) < 3:
+                    return JsonResponse({'status': 'error', 'message': 'Rua deve ter no mínimo 3 caracteres.'}, status=400)
+                
+                # Validar número
+                number = address_data.get('number', '').strip()
+                number = ''.join(c for c in number if c.isalnum() or c in '/-')
+                if not number:
+                    return JsonResponse({'status': 'error', 'message': 'Número é obrigatório.'}, status=400)
+                
+                # Validar bairro
+                neighborhood = address_data.get('neighborhood', '').strip()
+                neighborhood = ''.join(c for c in neighborhood if c.isalnum() or c.isspace() or c in '-.')
+                if not neighborhood or len(neighborhood) < 2:
+                    return JsonResponse({'status': 'error', 'message': 'Bairro deve ter no mínimo 2 caracteres.'}, status=400)
+            
             # --- INICIO DA BLINDAGEM DE PREÇO ---
             
             # A. Calcular total dos ITENS consultando o Banco de Dados
@@ -367,9 +417,17 @@ def create_order(request, slug):
                 except Product.DoesNotExist:
                     return JsonResponse({'status': 'error', 'message': f"Produto ID {item['id']} não existe ou foi removido."}, status=400)
                 
-                # Valida disponibilidade
+                # Validar disponibilidade
                 if not product.is_available:
                     return JsonResponse({'status': 'error', 'message': f"O produto {product.name} acabou de ficar indisponível."}, status=400)
+                
+                # Validar quantidade
+                try:
+                    qty = int(item.get('qtd', 0))
+                    if qty <= 0 or qty > 999:
+                        return JsonResponse({'status': 'error', 'message': 'Quantidade inválida no carrinho.'}, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({'status': 'error', 'message': 'Dados de quantidade inválidos.'}, status=400)
 
                 # Preço base do produto
                 item_price = product.price
@@ -449,11 +507,13 @@ def create_order(request, slug):
                 status_inicial = 'concluido'
 
             # Criação do Pedido
+            obs = data.get('obs', '').strip()[:500]  # Limitar a 500 caracteres
+            
             order = Order.objects.create(
                 tenant=tenant,
-                customer_name=data.get('nome'),
+                customer_name=nome,
                 status=status_inicial,
-                customer_phone=data.get('phone'),
+                customer_phone=phone_clean,
                 
                 # VALORES BLINDADOS:
                 total_value=final_total,
@@ -462,11 +522,11 @@ def create_order(request, slug):
                 coupon=applied_coupon,
                 
                 payment_method=data.get('method'),
-                address_cep=data.get('address', {}).get('cep', ''),
-                address_street=data.get('address', {}).get('street', ''),
-                address_number=data.get('address', {}).get('number', ''),
-                address_neighborhood=neighborhood,
-                observation=data.get('obs', ''),
+                address_cep=cep_clean if order_type == 'delivery' else '',
+                address_street=street if order_type == 'delivery' else '',
+                address_number=number if order_type == 'delivery' else '',
+                address_neighborhood=neighborhood if order_type == 'delivery' else '',
+                observation=obs,
                 
                 # NOVOS CAMPOS (NOVO)
                 order_type=order_type,
@@ -499,10 +559,26 @@ def create_order(request, slug):
                 'order_type': order_type
             })
 
+        except ValidationError as e:
+            # Erros de validação (CEP, telefone, etc)
+            logger.warning(f"Erro de validação ao criar pedido: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e.message) if hasattr(e, 'message') else str(e)}, status=400)
+        
+        except Product.DoesNotExist as e:
+            logger.warning(f"Produto não encontrado ao criar pedido: {e}")
+            return JsonResponse({'status': 'error', 'message': 'Um ou mais produtos não foi encontrado ou foi removido.'}, status=400)
+        
+        except json.JSONDecodeError:
+            logger.error("Erro ao decodificar JSON na criação de pedido")
+            return JsonResponse({'status': 'error', 'message': 'Dados inválidos enviados. Tente novamente.'}, status=400)
+        
         except Exception as e:
-            # Em caso de erro, o transaction.atomic desfaz tudo
-            logger.error(f"Erro ao criar pedido: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            # Em caso de erro genérico, o transaction.atomic desfaz tudo
+            logger.error(f"Erro inesperado ao criar pedido: {type(e).__name__} - {str(e)}", exc_info=True)
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Erro ao processar seu pedido. Por favor, tente novamente mais tarde.'
+            }, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Método inválido'}, status=400)
 
@@ -1738,10 +1814,25 @@ def api_validate_coupon(request, slug):
                 }
             })
             
-        except Exception as e:
+        except json.JSONDecodeError:
+            logger.error("Erro ao decodificar JSON na validação de cupom")
             return JsonResponse({
                 'status': 'error',
-                'message': 'Erro ao validar cupom'
+                'message': 'Dados inválidos'
+            }, status=400)
+        
+        except ValueError as e:
+            logger.warning(f"Erro de valor ao validar cupom: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Valores inválidos'
+            }, status=400)
+        
+        except Exception as e:
+            logger.error(f"Erro inesperado ao validar cupom: {type(e).__name__} - {str(e)}", exc_info=True)
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Erro ao validar cupom. Tente novamente.'
             }, status=500)
     
     return JsonResponse({'status': 'error'}, status=400)

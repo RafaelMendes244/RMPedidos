@@ -53,13 +53,8 @@ window.TABLE_NUMBER = null;
 
 // --- FUNÇÃO DE CÁLCULO DE TAXA DE ENTREGA (CORRIGIDA) ---
 window.calcularTaxaEntrega = (bairroInput) => {
-    if (!bairroInput) return;
-
-    // Se já temos um valor válido e o bairro não mudou, não recalcular
-    if (ultimoValorFreteValido > 0 && valorFreteAtual === ultimoValorFreteValido) {
-        return;
-    }
-
+    if (!bairroInput) return; 
+    
     // Normaliza string (remove acentos e põe maiusculo)
     const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
     
@@ -71,11 +66,13 @@ window.calcularTaxaEntrega = (bairroInput) => {
     
     if (taxaEncontrada) {
         valorFreteAtual = parseFloat(taxaEncontrada.fee);
-        ultimoValorFreteValido = valorFreteAtual; // Salva o valor válido
+        ultimoValorFreteValido = valorFreteAtual; 
         Toastify({ text: `Frete para ${bairroInput}: R$ ${valorFreteAtual.toFixed(2)}`, style: { background: getPrimaryColor() } }).showToast();
     } else {
-        // Se não achar o bairro exato, taxa a combinar (mantém 0 mas marca flag)
+        // Se não achar o bairro, zera o frete
         valorFreteAtual = 0;
+        // Não atualizamos o ultimoValorFreteValido aqui para não travar lógicas futuras, 
+        // apenas zeramos o atual para mostrar "A combinar" ou sumir.
         Toastify({ text: `Bairro não tabelado. Taxa a combinar.`, style: { background: getPrimaryColor() } }).showToast();
     }
     
@@ -136,11 +133,17 @@ window.finalizeOrder = async () => {
         Toastify({ text: "A loja esta fechada no momento.", style: { background: "#ef4444" } }).showToast();
         return;
     }
+    
+    if (cart.length === 0) {
+        Toastify({ text: "Sua sacola está vazia!", style: { background: "#ef4444" } }).showToast();
+        return;
+    }
 
     const nome = document.getElementById("client-name").value.trim();
-    if (!nome) { Toastify({text: "Digite seu nome", style: {background: "#ef4444"}}).showToast(); return; }
+    if (!nome || nome.length < 2) { Toastify({text: "Digite seu nome completo", style: {background: "#ef4444"}}).showToast(); return; }
 
-    const phone = document.getElementById("client-phone").value;
+    const phone = document.getElementById("client-phone").value.trim();
+    if (!phone || phone.replace(/\D/g, "").length < 10) { Toastify({text: "Telefone inválido", style: {background: "#ef4444"}}).showToast(); return; }
     const btnFinalize = document.getElementById("btn-finalize");
     const textoOriginal = btnFinalize.innerText;
     
@@ -165,6 +168,31 @@ window.finalizeOrder = async () => {
     const method = methodEl ? methodEl.value : "Não Informado";
     let obs = document.getElementById("order-notes").value;
 
+    // Validar endereço para entregas ANTES de criar pedido
+    if (isDelivery) {
+        const cepVal = document.getElementById("cep").value.replace(/\D/g, "");
+        const addressVal = document.getElementById("address").value.trim();
+        const numberVal = document.getElementById("number").value.trim();
+        const neighborhoodVal = document.getElementById("neighborhood").value.trim();
+        
+        if (!cepVal || cepVal.length !== 8) {
+            Toastify({text: "CEP inválido ou incompleto", style: {background: "#ef4444"}}).showToast();
+            return;
+        }
+        if (!addressVal) {
+            Toastify({text: "Rua é obrigatória", style: {background: "#ef4444"}}).showToast();
+            return;
+        }
+        if (!numberVal) {
+            Toastify({text: "Número é obrigatório", style: {background: "#ef4444"}}).showToast();
+            return;
+        }
+        if (!neighborhoodVal) {
+            Toastify({text: "Bairro é obrigatório", style: {background: "#ef4444"}}).showToast();
+            return;
+        }
+    }
+    
     // Se for dinheiro, processa o troco ANTES de criar o pedido
     if (method === 'dinheiro') {
         const trocoInput = document.getElementById("troco-valor");
@@ -890,40 +918,152 @@ window.closeHistory = () => {
     document.body.classList.remove("overflow-hidden");
 };
 
+// Flag global para evitar múltiplas requisições simultâneas
+let cepFetching = false;
+
 window.buscarCep = () => {
-    const cep = document.getElementById("cep").value.replace(/\D/g, "");
-    if (cep.length !== 8) return;
-    fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r => r.json()).then(d => {
-        if(!d.erro) {
-            document.getElementById("address").value = d.logradouro;
-            document.getElementById("neighborhood").value = d.bairro;
+    // Evita múltiplas requisições simultâneas
+    if (cepFetching) return;
+    
+    const cepInput = document.getElementById("cep");
+    const cep = cepInput.value.replace(/\D/g, "");
+    
+    // VALIDAÇÃO RIGOROSA DE CEP
+    if (!cep) {
+        Toastify({ 
+            text: "CEP vazio. Digite um CEP válido (8 dígitos).", 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        return;
+    }
+    
+    if (cep.length !== 8) {
+        Toastify({ 
+            text: `CEP inválido! Deve ter exatamente 8 dígitos (digitados: ${cep.length})`, 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        cepInput.value = "";
+        cepInput.focus();
+        return;
+    }
+    
+    // Verifica se é tudo zero (CEP inválido)
+    if (cep === "00000000") {
+        Toastify({ 
+            text: "CEP inválido! Digite um CEP real.", 
+            duration: 3000,
+            style: { background: "#ef4444" } 
+        }).showToast();
+        cepInput.value = "";
+        cepInput.focus();
+        return;
+    }
+    
+    // Define flag de fetching
+    cepFetching = true;
+    
+    // CHAMADA À API COM TRATAMENTO COMPLETO
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then(r => {
+            if (!r.ok) throw new Error(`Erro HTTP: ${r.status}`);
+            return r.json();
+        })
+        .then(d => {
+            // Verifica se retornou erro (campo 'erro' da ViaCEP)
+            if (d.erro === true || !d.logradouro) {
+                throw new Error("CEP não encontrado. Verifique e tente novamente.");
+            }
+            
+            // SUCESSO: Preenche os campos
+            document.getElementById("address").value = d.logradouro || "";
+            document.getElementById("neighborhood").value = d.bairro || "";
+            
+            // Libera campo de número para edição
+            document.getElementById("number").removeAttribute("readonly");
+            document.getElementById("number").value = "";
             document.getElementById("number").focus();
+            
+            // Mostra mensagem de sucesso
+            Toastify({ 
+                text: "CEP encontrado com sucesso!", 
+                duration: 2000,
+                style: { background: "#10b981" } 
+            }).showToast();
+            
+            // Calcula frete baseado no bairro (esta função mostrará a mensagem de taxa)
             window.calcularTaxaEntrega(d.bairro);
-        }
-    });
+        })
+        .catch(erro => {
+            // ERRO: Mostra mensagem amigável UMA ÚNICA VEZ
+            console.error("Erro ao buscar CEP:", erro);
+            let mensagem = "CEP inválido ou não encontrado. Digite manualmente.";
+            
+            if (erro.message.includes("HTTP")) {
+                mensagem = "Falha na conexão com o servidor de CEP. Tente novamente.";
+            }
+            
+            Toastify({ 
+                text: mensagem, 
+                duration: 4000,
+                style: { background: "#ef4444" } 
+            }).showToast();
+            
+            // LIBERA OS CAMPOS PARA EDIÇÃO MANUAL
+            window.habilitarEnderecoManual();
+            cepInput.value = cep; // Mantém o CEP digitado para referência
+            cepInput.focus();
+        })
+        .finally(() => {
+            // Libera flag para próximas requisições
+            cepFetching = false;
+        });
 };
 
 window.habilitarEnderecoManual = () => {
-    document.getElementById("address").removeAttribute("readonly");
-    document.getElementById("neighborhood").removeAttribute("readonly");
-    document.getElementById("address").focus();
-    
+    const addressInput = document.getElementById("address");
     const neighborhoodInput = document.getElementById("neighborhood");
-    neighborhoodInput.addEventListener('blur', () => {
-        if (neighborhoodInput.value) {
-            window.calcularTaxaEntrega(neighborhoodInput.value);
-        }
-    });
+    
+    addressInput.removeAttribute("readonly");
+    neighborhoodInput.removeAttribute("readonly");
+    addressInput.focus();
+    
+    // Remove qualquer listener anterior para evitar duplicatas
+    neighborhoodInput.removeEventListener('blur', window.handleNeighborhoodBlur);
+    
+    // Define a função uma única vez e a reutiliza
+    if (!window.handleNeighborhoodBlur) {
+        window.handleNeighborhoodBlur = function() {
+            if (this.value) {
+                window.calcularTaxaEntrega(this.value);
+            }
+        };
+    }
+    
+    // Adiciona o listener
+    neighborhoodInput.addEventListener('blur', window.handleNeighborhoodBlur);
 };
 
 function setupEventListeners() {
     const phone = document.getElementById("client-phone");
-    if (phone) phone.addEventListener("input", (e) => {
-        let v = e.target.value.replace(/\D/g,"");
-        v = v.replace(/^(\d{2})(\d)/g,"($1) $2");
-        v = v.replace(/(\d)(\d{4})$/,"$1-$2");
-        e.target.value = v.substring(0, 15);
-    });
+    if (phone) {
+        // Remove listener anterior para evitar duplicatas
+        phone.removeEventListener("input", window.handlePhoneInput);
+        
+        // Define a função se não existir
+        if (!window.handlePhoneInput) {
+            window.handlePhoneInput = function(e) {
+                let v = e.target.value.replace(/\D/g,"");
+                v = v.replace(/^(\d{2})(\d)/g,"($1) $2");
+                v = v.replace(/(\d)(\d{4})$/,"$1-$2");
+                e.target.value = v.substring(0, 15);
+            };
+        }
+        
+        // Adiciona o listener
+        phone.addEventListener("input", window.handlePhoneInput);
+    }
 }
 
 // Verifica se a loja esta aberta AGORA
@@ -1113,8 +1253,10 @@ window.applyCoupon = async () => {
 
 window.removeCoupon = () => {
     appliedCoupon = null;
-    document.getElementById("coupon-applied").classList.add("hidden");
-    document.getElementById("coupon-code").value = '';
+    const appliedEl = document.getElementById("coupon-applied");
+    const codeEl = document.getElementById("coupon-code");
+    if (appliedEl) appliedEl.classList.add("hidden");
+    if (codeEl) codeEl.value = '';
     updateCartTotal();
 };
 

@@ -368,11 +368,11 @@
                             <button type="button" onclick="usarLocalizacao()" id="btn-geo" class="w-full py-2 mb-2 flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold uppercase hover:bg-blue-100 transition">
                                 <i class="fas fa-location-arrow"></i> Usar minha localização atual
                             </button>
-                            <input type="tel" id="cep" placeholder="CEP" onblur="buscarCep()" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
-                            <input type="text" id="address" placeholder="Rua" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white">
+                            <input type="tel" id="cep" placeholder="CEP" maxlength="9" inputmode="numeric" onblur="buscarCep()" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white" aria-label="Campo de CEP - Digite 8 dígitos">
+                            <input type="text" id="address" placeholder="Rua" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white" aria-label="Campo de rua">
                             <div class="flex gap-2">
-                                <input type="text" id="number" placeholder="Nº" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
-                                <input type="text" id="neighborhood" placeholder="Bairro" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white">
+                                <input type="text" id="number" placeholder="Nº" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white" aria-label="Campo de número">
+                                <input type="text" id="neighborhood" placeholder="Bairro" readonly class="w-full p-3 border rounded-xl bg-gray-100 dark:bg-gray-700 dark:text-white" aria-label="Campo de bairro">
                             </div>
                             <p onclick="habilitarEnderecoManual()" class="text-[10px] text-orange-600 font-bold cursor-pointer text-right">Digitar endereço manualmente</p>
                         </div>
