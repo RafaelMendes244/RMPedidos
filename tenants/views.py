@@ -714,37 +714,60 @@ def api_update_settings(request, slug):
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            # Agora usamos request.POST e request.FILES (FormData)
+            data = request.POST
+            files = request.FILES
             
             # Configurações de Tempo de Entrega
             if 'delivery_time' in data:
-                tenant.delivery_time = int(data.get('delivery_time', 45))
+                tenant.delivery_time = int(data.get('delivery_time'))
             if 'pickup_time' in data:
-                tenant.pickup_time = int(data.get('pickup_time', 25))
+                tenant.pickup_time = int(data.get('pickup_time'))
+            
+            # Checkbox vem como string 'true'/'false' ou 'on' no FormData
             if 'show_delivery_time' in data:
-                tenant.show_delivery_time = bool(data.get('show_delivery_time', True))
+                val = data.get('show_delivery_time')
+                tenant.show_delivery_time = val == 'true' or val == 'on' or val == True
+                
             if 'show_pickup_time' in data:
-                tenant.show_pickup_time = bool(data.get('show_pickup_time', True))
+                val = data.get('show_pickup_time')
+                tenant.show_pickup_time = val == 'true' or val == 'on' or val == True
             
             # Configurações de PIX
-            tenant.pix_key = data.get('pix_key')
-            tenant.pix_name = data.get('pix_name')
-            tenant.pix_city = data.get('pix_city')
+            if 'pix_key' in data: tenant.pix_key = data.get('pix_key')
+            if 'pix_name' in data: tenant.pix_name = data.get('pix_name')
+            if 'pix_city' in data: tenant.pix_city = data.get('pix_city')
             
             # Endereço e Contato
-            tenant.address = data.get('address')
-            if 'phone_whatsapp' in data:
-                tenant.phone_whatsapp = data.get('phone_whatsapp')
+            if 'address' in data: tenant.address = data.get('address')
+            if 'phone_whatsapp' in data: tenant.phone_whatsapp = data.get('phone_whatsapp')
             
-            # Personalização Visual
-            if data.get('primary_color'):
+            # Personalização Visual (Texto)
+            if 'primary_color' in data:
                 tenant.primary_color = data.get('primary_color')
+            
+            if 'store_name' in data:
+                tenant.name = data.get('store_name')
+
+            # === SALVAMENTO DAS IMAGENS ===
+            
+            # Logo
+            if 'logo' in files:
+                # Se já tiver logo, o django substitui, mas é boa prática deletar a antiga se quiser economizar espaço
+                # mas o comportamento padrão funciona bem.
+                tenant.logo = files['logo']
+            
+            # Capa / Background
+            if 'background_image' in files:
+                tenant.background_image = files['background_image']
                 
             tenant.save()
             return JsonResponse({'status': 'success', 'message': 'Configurações salvas com sucesso'})
+            
         except Exception as e:
             logger.error(f"Erro ao salvar configurações: {e}")
-            return JsonResponse({'status': 'error', 'message': 'Erro ao salvar configurações'}, status=500)
+            return JsonResponse({'status': 'error', 'message': f'Erro ao salvar configurações: {str(e)}'}, status=500)
+            
     return JsonResponse({'status': 'error'}, status=400)
 
 # --- APIs DE HISTORICO DO CLIENTE ---
@@ -1116,7 +1139,8 @@ def api_get_financials(request, slug):
     if not tenant.can_access_reports:
         return JsonResponse({'orders': [], 'plan_block': True, 'message': 'Faça upgrade para ver pedidos em tempo real.'})
     
-    today = timezone.now().date()
+    # Usa localtime para garantir que o "hoje" seja o hoje do Brasil, não o do UTC
+    today = timezone.localtime(timezone.now()).date()
     
     sales_today = Order.objects.filter(
         tenant=tenant, 
@@ -1137,13 +1161,18 @@ def api_get_financials(request, slug):
     
     history_data = []
     for order in history_orders:
+        # CORREÇÃO AQUI: Converter para o horário local antes de formatar
+        local_dt = timezone.localtime(order.created_at)
+        
         history_data.append({
             'id': order.id,
             'customer': order.customer_name,
             'total': float(order.total_value),
             'status': order.status,
-            'date': order.created_at.strftime('%Y-%m-%d'),
-            'date_display': order.created_at.strftime('%d/%m %H:%M'),
+            # Mantemos o date puro para filtros, mas corrigido
+            'date': local_dt.strftime('%Y-%m-%d'),
+            # O date_display é o que aparece na tabela (estava com +3h antes)
+            'date_display': local_dt.strftime('%d/%m %H:%M'),
             'payment': order.payment_method or ''
         })
 
