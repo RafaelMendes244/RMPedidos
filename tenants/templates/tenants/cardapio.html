@@ -14,6 +14,13 @@
         <link rel="apple-touch-icon" href="{{ tenant.logo.url }}">
     {% endif %}
     
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="{{ tenant.name }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ tenant.name }}">
+    <link rel="manifest" href="{% url 'pwa_manifest' tenant.slug %}">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     
     <meta name="description" content="Cardápio digital de {{ tenant.name }}. Peça pelo WhatsApp com entrega rápida.">
@@ -156,39 +163,6 @@
             </a>
         </div>
     </header>
-
-    {% if not tenant.is_open or not store_is_open %}
-    <div class="max-w-6xl mx-auto px-4 -mt-8 relative z-20">
-        <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-center gap-3 text-red-700">
-            <i class="fas fa-clock text-red-500"></i>
-            <div class="flex-1">
-                <p class="font-bold text-sm">
-                    {% if not tenant.is_open %}
-                        Loja Temporariamente Fechada
-                    {% else %}
-                        Fora do Horário de Funcionamento
-                    {% endif %}
-                </p>
-                <p class="text-xs text-red-600">
-                    {% if not tenant.is_open %}
-                        No momento não estamos aceitando pedidos.
-                    {% elif store_closed_message %}
-                        {{ store_closed_message }}
-                    {% else %}
-                        {% if day_today and not day_today.is_closed and day_today.open_time %}
-                            Hoje: {{ day_today.open_time|date:"H:i" }} às {{ day_today.close_time|date:"H:i" }}
-                        {% else %}
-                            Consulte os horários de funcionamento.
-                        {% endif %}
-                    {% endif %}
-                </p>
-            </div>
-            <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg font-bold transition">
-                Atualizar
-            </button>
-        </div>
-    </div>
-    {% endif %}
 
     <div class="max-w-6xl mx-auto px-4 -mt-8 relative z-20 grid grid-cols-2 gap-4 max-w-sm sm:max-w-md">
         <button onclick="openStoreInfo()" class="bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition border border-orange-100 dark:border-gray-700">
@@ -472,16 +446,16 @@
                 
                 <button id="btn-next-step" onclick="goToAddress()" 
                     class="w-full py-3 text-white font-bold rounded-xl transition shadow-lg 
-                    {% if not tenant.is_open or not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-orange-600 hover:bg-orange-700{% endif %}" 
-                    {% if not tenant.is_open or not store_is_open %}disabled{% endif %}>
-                    {% if not tenant.is_open or not store_is_open %}Loja Fechada{% else %}Continuar{% endif %}
+                    {% if not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-orange-600 hover:bg-orange-700{% endif %}" 
+                    {% if not store_is_open %}disabled{% endif %}>
+                    {% if not store_is_open %}Loja Fechada{% else %}Continuar{% endif %}
                 </button>
 
                 <button id="btn-finalize" onclick="finalizeOrder()" 
                     class="hidden w-full py-3 text-white font-bold rounded-xl transition shadow-lg 
-                    {% if not tenant.is_open or not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-green-600 hover:bg-green-700{% endif %}" 
-                    {% if not tenant.is_open or not store_is_open %}disabled{% endif %}>
-                    {% if not tenant.is_open or not store_is_open %}Loja Fechada{% else %}Finalizar Pedido no WhatsApp{% endif %}
+                    {% if not store_is_open %}bg-gray-400 cursor-not-allowed{% else %}bg-green-600 hover:bg-green-700{% endif %}" 
+                    {% if not store_is_open %}disabled{% endif %}>
+                    {% if not store_is_open %}Loja Fechada{% else %}Finalizar Pedido no WhatsApp{% endif %}
                 </button>
             </div>
         </div>
@@ -649,7 +623,7 @@
             pixKey: "{{ tenant.pix_key|default:'' }}",
             pixName: "{{ tenant.pix_name|default:'' }}",
             pixCity: "{{ tenant.pix_city|default:'' }}",
-            manualOpen: {{ tenant.is_open|yesno:"true,false" }},
+            storeIsOpen: {{ store_is_open|yesno:"true,false" }},
             schedule: JSON.parse('{{ schedule_json|safe }}'),
             deliveryFees: JSON.parse('{{ delivery_fees_json|safe }}'),
             isOpen: true,
@@ -788,6 +762,34 @@
             document.querySelectorAll('.category-section').forEach(section => {
                 observer.observe(section);
             });
+        });
+
+        // Registrar Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('{% static "service-worker.js" %}')
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Erro ao registrar Service Worker:', error);
+                    });
+            });
+        }
+
+        // Permitir instalação do PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Mostrar botão de instalação se desejar
+            console.log('PWA pode ser instalada');
+        });
+
+        // Detectar quando a aplicação é instalada
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA foi instalada com sucesso');
+            deferredPrompt = null;
         });
     </script>
 

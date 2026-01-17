@@ -144,6 +144,10 @@
                 <i class="fas fa-utensils text-lg"></i> Cardápio
             </button>
 
+            <button onclick="switchTab('groups'); toggleMobileMenu();" id="mob-nav-groups" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-layer-group text-lg"></i> Grupos de Adicionais
+            </button>
+
             <button onclick="switchTab('tables'); toggleMobileMenu();" id="mob-nav-tables" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-chair text-lg"></i> Mesas & QR Code
             </button>
@@ -219,6 +223,10 @@
                 <i class="fas fa-utensils text-lg"></i> Cardápio
             </button>
 
+            <button onclick="switchTab('groups')" id="nav-groups" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-layer-group text-lg"></i> Grupos de Adicionais
+            </button>
+
             <button onclick="switchTab('tables')" id="nav-tables" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-chair text-lg"></i> Mesas & QR Code
             </button>
@@ -271,14 +279,19 @@
             
             <div id="header-actions" class="flex items-center gap-2 md:gap-4">
                 
-                <div class="flex items-center gap-2 md:gap-3 bg-gray-100 rounded-full px-3 md:px-4 py-1.5 border border-gray-200">
-                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-gray-500 hidden sm:block" id="store-status-text">
-                        {% if tenant.is_open %}ABERTA{% else %}FECHADA{% endif %}
-                    </span>
-                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="toggle" id="store-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 {% if tenant.is_open %}right-0 border-green-400{% else %}left-0 border-gray-300{% endif %}" onclick="toggleStoreStatus()" {% if tenant.is_open %}checked{% endif %}/>
-                        <label for="store-toggle" class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 {% if tenant.is_open %}bg-green-400{% else %}bg-gray-300{% endif %}"></label>
+                <div class="flex flex-col items-start gap-1 md:gap-3">
+                    <div class="flex items-center gap-2 md:gap-3 bg-gray-100 rounded-full px-3 md:px-4 py-1.5 border border-gray-200">
+                        <span class="text-[8px] md:text-[10px] font-bold uppercase text-gray-500 hidden sm:block" id="store-status-text">
+                            {% if not tenant.manual_override %}ABERTA{% else %}FECHADA{% endif %}
+                        </span>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="toggle" id="store-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 {% if not tenant.manual_override %}right-0 border-green-400{% else %}left-0 border-gray-300{% endif %}" onclick="toggleStoreStatus()" {% if not tenant.manual_override %}checked{% endif %}/>
+                            <label for="store-toggle" class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 {% if not tenant.manual_override %}bg-green-400{% else %}bg-gray-300{% endif %}"></label>
+                        </div>
                     </div>
+                    {% if tenant.manual_override %}
+                    <span class="text-[9px] font-bold text-red-500 px-3">⚠️ Loja fechada manualmente</span>
+                    {% endif %}
                 </div>
 
                 <div id="status-connected" class="hidden md:flex items-center gap-2">
@@ -439,6 +452,29 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DE GRUPOS REUTILIZÁVEIS -->
+        <div id="section-groups" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div class="max-w-5xl mx-auto space-y-6">
+                
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-xl text-gray-800">Grupos de Adicionais</h3>
+                        <p class="text-sm text-gray-500">Crie grupos reutilizáveis para economizar tempo. Ex: "Adicionais de Carne", "Bebidas", etc.</p>
+                    </div>
+                    <button onclick="openGroupModal()" class="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Novo Grupo
+                    </button>
+                </div>
+
+                <div id="groups-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-center col-span-full py-10 opacity-50">
+                        <i class="fas fa-spinner fa-spin text-3xl text-orange-400"></i>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -769,11 +805,16 @@
                         <input type="hidden" id="prod-image-clear" name="clear_image" value="false">
                     </div>
                     <div class="border-t border-gray-100 pt-4 mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Adicionais e Opções</label>
-                            <button type="button" onclick="addOptionGroup()" class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold hover:bg-orange-200">+ Grupo</button>
+                        <div class="flex gap-2 mt-4">
+                            <button type="button" onclick="openNewGroupModal()" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition border border-gray-200">
+                                <i class="fas fa-plus mr-1"></i> Criar Novo Grupo
+                            </button>
+                            
+                            <button type="button" onclick="openImportModal()" class="flex-1 bg-orange-50 text-orange-600 py-2 rounded-xl text-sm font-bold hover:bg-orange-100 transition border border-orange-200">
+                                <i class="fas fa-download mr-1"></i> Importar de Outro
+                            </button>
                         </div>
-                        <div id="options-container" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                            <div id="options-container" class="space-y-3 max-h-60 overflow-y-auto pr-1">
                             </div>
                     </div>
                 </form>
@@ -946,6 +987,14 @@
     
     <script>
         const TENANT_SLUG = "{{ tenant.slug }}";
+        const CURRENT_USER = "{{ request.user.username }}";
+        const TENANT_OWNER = "{{ tenant.owner.username }}";
+        
+        console.log(`[DEBUG] TENANT_SLUG: ${TENANT_SLUG}`);
+        console.log(`[DEBUG] CURRENT_USER: ${CURRENT_USER}`);
+        console.log(`[DEBUG] TENANT_OWNER: ${TENANT_OWNER}`);
+        console.log(`[DEBUG] User is owner?: ${CURRENT_USER === TENANT_OWNER}`);
+        
         const API_ORDERS = `/${TENANT_SLUG}/api/orders/`;
         const API_PRODUCTS = `/${TENANT_SLUG}/api/products/`;
         const API_FINANCIALS = `/${TENANT_SLUG}/api/financials/`;
@@ -956,7 +1005,6 @@
         
         let knownOrders = new Set();
         let categoriesCache = [];
-        let isManualToggle = false;
         let isNotificationActive = false;
         let notificationInterval = null;
 
@@ -1099,8 +1147,6 @@
 
         // --- SINCRONIZAR STATUS COM HORÁRIOS ---
         async function syncStoreStatus() {
-            if (isManualToggle) return;
-            
             try {
                 const response = await fetch(API_STORE_SYNC, {
                     method: 'POST',
@@ -1112,18 +1158,10 @@
                     const checkbox = document.getElementById('store-toggle');
                     const label = document.getElementById('store-status-text');
                     
+                    // Atualizar visual se mudou
                     if (checkbox.checked !== data.is_open) {
-                        console.log(`Sincronizando status: ${data.reason} - Aberto: ${data.is_open}`);
                         checkbox.checked = data.is_open;
                         updateStoreVisual(data.is_open, label, checkbox);
-                        
-                        if (!data.is_open && data.reason === 'horario_funcionamento') {
-                            Toastify({ 
-                                text: `Loja fechada automaticamente: ${data.reason}`, 
-                                style: { background: "#ef4444" },
-                                duration: 5000
-                            }).showToast();
-                        }
                     }
                 }
             } catch (e) {
@@ -1133,33 +1171,44 @@
 
         // --- TOGGLE LOJA ---
         async function toggleStoreStatus() {
-            isManualToggle = true;
             const checkbox = document.getElementById('store-toggle');
             const label = document.getElementById('store-status-text');
-            const isOpen = checkbox.checked;
+            const isOpen = checkbox.checked;  // TRUE = toggle marcado (loja aberta/automática)
+            
+            console.log(`[toggleStoreStatus] Chamando ${API_STORE_TOGGLE}`);
+            console.log(`[toggleStoreStatus] Enviando is_open: ${isOpen}`);
             
             updateStoreVisual(isOpen, label, checkbox);
 
             try {
-                await fetch(API_STORE_TOGGLE, {
+                const response = await fetch(API_STORE_TOGGLE, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCookie('csrftoken') },
                     body: JSON.stringify({ is_open: isOpen })
                 });
-                Toastify({ 
-                    text: isOpen ? "Loja Aberta!" : "Loja Fechada! (Não abrirá automaticamente)", 
-                    style: { background: isOpen ? "#10b981" : "#ef4444" },
-                    duration: isOpen ? 3000 : 5000
-                }).showToast();
+                console.log(`[toggleStoreStatus] Status da resposta: ${response.status}`);
+                const data = await response.json();
+                console.log(`[toggleStoreStatus] Dados da resposta:`, data);
                 
-                setTimeout(() => { isManualToggle = false; }, 120000);
+                if (!response.ok) {
+                    console.error(`[toggleStoreStatus] Erro ${response.status}: ${data.message || 'Erro desconhecido'}`);
+                    return;
+                }
+                
+                Toastify({ 
+                    text: isOpen ? "Loja retorna ao automático ✅" : "Loja fechada manualmente ⏸️", 
+                    style: { background: isOpen ? "#10b981" : "#ef4444" },
+                    duration: 3000
+                }).showToast();
             } catch (e) {
-                console.error(e);
+                console.error('[toggleStoreStatus] Erro na requisição:', e);
                 Toastify({ text: "Erro ao atualizar status", style: { background: "#ef4444" } }).showToast();
             }
         }
 
         function updateStoreVisual(isOpen, label, checkbox) {
+            // isOpen = TRUE significa toggle marcado = loja aberta (ou automática)
+            // isOpen = FALSE significa toggle desmarcado = loja fechada manualmente
             if(label) label.innerText = isOpen ? "ABERTA" : "FECHADA";
             const labelEl = checkbox.nextElementSibling;
             if(isOpen) {
@@ -1195,7 +1244,7 @@
             // Mobile nav
             document.querySelectorAll('#mobile-sidebar nav button').forEach(b => b.classList.remove('active-nav'));
             
-            ['orders', 'menu', 'history', 'delivery', 'coupons', 'tables'].forEach(s => {
+            ['orders', 'menu', 'groups', 'history', 'delivery', 'coupons', 'tables'].forEach(s => {
                 const el = document.getElementById(`section-${s}`);
                 if(el) el.classList.add('hidden-section');
             });
@@ -1218,6 +1267,12 @@
                 document.getElementById('btn-new-product').classList.remove('hidden');
                 document.getElementById('btn-new-product').classList.add('flex');
                 fetchProducts(); 
+            } else if (tab === 'groups') {
+                document.getElementById('nav-groups')?.classList.add('active-nav');
+                document.getElementById('mob-nav-groups')?.classList.add('active-nav');
+                document.getElementById('section-groups').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Grupos de Adicionais";
+                fetchProductGroups();
             } else if (tab === 'history') {
                 document.getElementById('nav-history')?.classList.add('active-nav');
                 document.getElementById('mob-nav-history')?.classList.add('active-nav');
@@ -2066,11 +2121,15 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                     document.getElementById('image-preview').src = product.image;
                     document.getElementById('image-preview-container').classList.remove('hidden');
                 }
+                
+                // Render grupos/opções após carregar os dados
+                setTimeout(renderOptions, 100);
             } else {
                 title.innerText = "Novo Produto";
                 currentOptions = [];
                 form.reset();
                 document.getElementById('prod-id').value = "";
+                renderOptions();
             }
             modal.classList.remove('hidden');
         }
@@ -2352,37 +2411,49 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
             const container = document.getElementById('options-container');
             container.innerHTML = '';
             
+            if (currentOptions.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">Nenhum grupo adicionado</div>';
+            }
+            
             currentOptions.forEach((opt, idx) => {
                 let itemsHtml = '';
                 opt.items.forEach((item, iIdx) => {
                     itemsHtml += `
                         <div class="flex gap-2 mb-1">
-                            <input type="text" placeholder="Nome (Ex: Bacon)" value="${item.name}" onchange="updateOptionItem(${idx}, ${iIdx}, 'name', this.value)" class="flex-1 p-1 border rounded text-xs">
-                            <input type="number" placeholder="R$" value="${item.price}" onchange="updateOptionItem(${idx}, ${iIdx}, 'price', this.value)" class="w-16 p-1 border rounded text-xs">
-                            <button type="button" onclick="removeOptionItem(${idx}, ${iIdx})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                            <input type="text" placeholder="Nome (Ex: Bacon)" value="${item.name}" onchange="updateOptionItem(${idx}, ${iIdx}, 'name', this.value)" class="flex-1 p-1 border rounded text-xs" ${opt.group_id ? 'disabled' : ''}>
+                            <input type="number" placeholder="R$" value="${item.price}" onchange="updateOptionItem(${idx}, ${iIdx}, 'price', this.value)" class="w-16 p-1 border rounded text-xs" ${opt.group_id ? 'disabled' : ''}>
+                            ${!opt.group_id ? `<button type="button" onclick="removeOptionItem(${idx}, ${iIdx})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>` : '<div style="width: 24px;"></div>'}
                         </div>
                     `;
                 });
 
+                // Se tem group_id, é importado; se não, é novo
+                const isImported = opt.group_id ? true : false;
+                const importedBadge = isImported ? '<span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Importado</span>' : '';
+
                 container.innerHTML += `
                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
-                        <button type="button" onclick="removeOptionGroup(${idx})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button>
-                        
-                        <div class="grid grid-cols-2 gap-2 mb-2 pr-6">
-                            <input type="text" value="${opt.title}" onchange="updateOptionGroup(${idx}, 'title', this.value)" class="p-1 border rounded text-xs font-bold w-full" placeholder="Título (Ex: Adicionais)">
-                            <select onchange="updateOptionGroup(${idx}, 'type', this.value)" class="p-1 border rounded text-xs w-full">
-                                <option value="checkbox" ${opt.type === 'checkbox' ? 'selected' : ''}>Múltipla Escolha</option>
-                                <option value="radio" ${opt.type === 'radio' ? 'selected' : ''}>Escolha Única</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-4 mb-2">
-                            <label class="flex items-center gap-1 text-[10px]"><input type="checkbox" ${opt.required ? 'checked' : ''} onchange="updateOptionGroup(${idx}, 'required', this.checked)"> Obrigatório</label>
-                            ${opt.type === 'checkbox' ? `<label class="flex items-center gap-1 text-[10px]">Máx: <input type="number" value="${opt.max}" onchange="updateOptionGroup(${idx}, 'max', this.value)" class="w-10 p-0.5 border rounded text-center"></label>` : ''}
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1 pr-6">
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <input type="text" value="${opt.title}" onchange="updateOptionGroup(${idx}, 'title', this.value)" class="p-1 border rounded text-xs font-bold w-full" placeholder="Título (Ex: Adicionais)" ${isImported ? 'disabled' : ''}>
+                                    <select onchange="updateOptionGroup(${idx}, 'type', this.value)" class="p-1 border rounded text-xs w-full" ${isImported ? 'disabled' : ''}>
+                                        <option value="checkbox" ${opt.type === 'checkbox' ? 'selected' : ''}>Múltipla Escolha</option>
+                                        <option value="radio" ${opt.type === 'radio' ? 'selected' : ''}>Escolha Única</option>
+                                    </select>
+                                </div>
+                                <div class="flex gap-4 mb-2 items-center flex-wrap">
+                                    <label class="flex items-center gap-1 text-[10px]"><input type="checkbox" ${opt.required ? 'checked' : ''} onchange="updateOptionGroup(${idx}, 'required', this.checked)" ${isImported ? 'disabled' : ''}> Obrigatório</label>
+                                    ${opt.type === 'checkbox' ? `<label class="flex items-center gap-1 text-[10px]">Máx: <input type="number" value="${opt.max}" onchange="updateOptionGroup(${idx}, 'max', this.value)" class="w-10 p-0.5 border rounded text-center" ${isImported ? 'disabled' : ''}></label>` : ''}
+                                    ${importedBadge}
+                                </div>
+                            </div>
+                            <button type="button" onclick="removeOptionGroup(${idx})" class="text-gray-400 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button>
                         </div>
                         
                         <div class="pl-2 border-l-2 border-gray-200">
                             ${itemsHtml}
-                            <button type="button" onclick="addOptionItem(${idx})" class="text-[10px] text-blue-500 font-bold mt-1">+ Adicionar Opção</button>
+                            ${!isImported ? `<button type="button" onclick="addOptionItem(${idx})" class="text-[10px] text-blue-500 font-bold mt-1">+ Adicionar Opção</button>` : '<div class="text-[10px] text-gray-400">Itens importados (não editáveis)</div>'}
                         </div>
                     </div>
                 `;
@@ -2438,6 +2509,204 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
         }
         function updateOptionItem(idx, iIdx, field, val) {
             currentOptions[idx].items[iIdx][field] = field === 'price' ? parseFloat(val) : val;
+        }
+
+        // ========================
+        // FUNÇÕES DE GRUPOS DO PRODUTO
+        // ========================
+
+        // Novo Grupo (criar direto no modal do produto)
+        function openNewGroupModal() {
+            Swal.fire({
+                title: 'Novo Grupo de Adicionais',
+                html: `
+                    <div class="text-left space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-600 block mb-1">Nome do Grupo</label>
+                            <input type="text" id="newGroupName" placeholder="Ex: Adicionais de Carne" class="w-full p-2 border rounded-lg text-sm">
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs font-bold text-gray-600 block mb-1">Tipo de Seleção</label>
+                            <select id="newGroupType" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="checkbox">Múltipla Escolha (Ex: Adicionais)</option>
+                                <option value="radio">Escolha Única (Ex: Ponto)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="newGroupRequired"> Obrigatório?
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs font-bold text-gray-600 block mb-2">Itens</label>
+                            <div id="newGroupItems" class="space-y-2"></div>
+                            <button type="button" onclick="addNewGroupItemInput()" class="mt-2 text-sm text-orange-600 font-bold hover:text-orange-700">
+                                <i class="fas fa-plus"></i> Adicionar Item
+                            </button>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Criar',
+                confirmButtonColor: '#ea580c',
+                didOpen: () => {
+                    addNewGroupItemInput();
+                },
+                preConfirm: async () => {
+                    const name = document.getElementById('newGroupName').value.trim();
+                    const type = document.getElementById('newGroupType').value;
+                    const required = document.getElementById('newGroupRequired').checked;
+                    
+                    if (!name) {
+                        Swal.showValidationMessage('Nome é obrigatório');
+                        return false;
+                    }
+                    
+                    const items = [];
+                    document.querySelectorAll('#newGroupItems .group-item').forEach(item => {
+                        const itemName = item.querySelector('.item-name').value.trim();
+                        const itemPrice = parseFloat(item.querySelector('.item-price').value) || 0;
+                        if (itemName) {
+                            items.push({ name: itemName, price: itemPrice });
+                        }
+                    });
+                    
+                    if (items.length === 0) {
+                        Swal.showValidationMessage('Adicione pelo menos 1 item');
+                        return false;
+                    }
+                    
+                    // Adiciona como novo option no currentOptions
+                    currentOptions.push({
+                        title: name,
+                        type: type,
+                        required: required,
+                        max: 10,
+                        items: items
+                    });
+                    
+                    renderOptions();
+                    Toastify({ text: "Grupo criado!", style: { background: "#10b981" } }).showToast();
+                    return true;
+                }
+            });
+        }
+
+        function addNewGroupItemInput() {
+            const container = document.getElementById('newGroupItems');
+            const html = `
+                <div class="flex gap-2 group-item">
+                    <input type="text" placeholder="Nome" class="flex-1 p-2 border rounded text-sm item-name">
+                    <input type="number" step="0.01" placeholder="Preço (R$)" class="w-24 p-2 border rounded text-sm item-price">
+                    <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        // Importar Grupo de Outro Produto
+        function openImportModal() {
+            const productId = document.getElementById('prod-id').value;
+            
+            if (!productId) {
+                Toastify({ text: "Salve o produto primeiro", style: { background: "#ef4444" } }).showToast();
+                return;
+            }
+            
+            Swal.fire({
+                title: 'Importar Grupo',
+                html: `
+                    <div class="text-left">
+                        <p class="text-sm text-gray-600 mb-3">Carregando grupos disponíveis...</p>
+                        <div id="availableGroupsList" class="space-y-2"></div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Importar',
+                confirmButtonColor: '#ea580c',
+                didOpen: async () => {
+                    try {
+                        const res = await fetch(`/${TENANT_SLUG}/api/groups/`);
+                        const data = await res.json();
+                        
+                        const container = document.getElementById('availableGroupsList');
+                        container.innerHTML = '';
+                        
+                        if (!data.groups || data.groups.length === 0) {
+                            container.innerHTML = '<p class="text-gray-400 text-sm">Nenhum grupo disponível</p>';
+                            return;
+                        }
+                        
+                        data.groups.forEach(group => {
+                            const html = `
+                                <label class="flex items-start gap-3 p-2 border rounded-lg cursor-pointer hover:bg-orange-50 transition">
+                                    <input type="radio" name="selectedGroup" value="${group.id}" class="mt-1">
+                                    <div class="flex-1 text-left">
+                                        <p class="font-bold text-sm text-gray-800">${group.name}</p>
+                                        <p class="text-xs text-gray-500">${group.type === 'radio' ? 'Escolha Única' : 'Múltipla'} • ${group.items.length} itens</p>
+                                    </div>
+                                </label>
+                            `;
+                            container.insertAdjacentHTML('beforeend', html);
+                        });
+                    } catch (err) {
+                        document.getElementById('availableGroupsList').innerHTML = '<p class="text-red-500 text-sm">Erro ao carregar grupos</p>';
+                    }
+                },
+                preConfirm: async () => {
+                    const selected = document.querySelector('input[name="selectedGroup"]:checked');
+                    if (!selected) {
+                        Swal.showValidationMessage('Selecione um grupo');
+                        return false;
+                    }
+                    
+                    const groupId = selected.value;
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('group_id', groupId);
+                        
+                        const res = await fetch(`/${TENANT_SLUG}/api/products/${productId}/import-group/`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                            body: formData
+                        });
+                        const data = await res.json();
+                        
+                        if (data.status === 'success') {
+                            // Recarregar os dados do produto
+                            const prodRes = await fetch(API_PRODUCTS);
+                            const prodData = await prodRes.json();
+                            const product = findProductInCategories(productId, prodData.categories);
+                            if (product) {
+                                currentOptions = JSON.parse(JSON.stringify(product.options || []));
+                                renderOptions();
+                            }
+                            Toastify({ text: "Grupo importado!", style: { background: "#10b981" } }).showToast();
+                            return true;
+                        } else {
+                            Swal.showValidationMessage(data.message || 'Erro ao importar');
+                        }
+                    } catch (err) {
+                        Swal.showValidationMessage('Erro ao importar grupo');
+                    }
+                    
+                    return false;
+                }
+            });
+        }
+        
+        function findProductInCategories(productId, categories) {
+            for (let cat of categories) {
+                const found = cat.products.find(p => p.id === parseInt(productId));
+                if (found) return found;
+            }
+            return null;
         }
 
         // ========================
@@ -2860,6 +3129,251 @@ function printQRCode() {
         </html>
     `);
     win.document.close();
+}
+
+// ========================
+// GERENCIAMENTO DE GRUPOS
+// ========================
+
+async function fetchProductGroups() {
+    try {
+        const res = await fetch(`/{{ tenant.slug }}/api/groups/`);
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            renderGroups(data.groups);
+        }
+    } catch (err) {
+        console.error('Erro ao buscar grupos:', err);
+    }
+}
+
+function renderGroups(groups) {
+    const container = document.getElementById('groups-container');
+    
+    if (groups.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-10 opacity-50">
+                <i class="fas fa-layer-group text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-500">Nenhum grupo criado ainda. Crie o seu primeiro grupo!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = groups.map(group => `
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h4 class="font-bold text-gray-800">${group.name}</h4>
+                    <p class="text-xs text-gray-500">${group.type === 'radio' ? 'Escolha Única' : 'Múltipla Escolha'}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editGroup(${group.id})" class="text-blue-500 hover:text-blue-700 text-sm"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteGroup(${group.id})" class="text-red-500 hover:text-red-700 text-sm"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            
+            <div class="space-y-1 mb-3">
+                ${group.items.map(item => `
+                    <div class="text-xs text-gray-600 flex justify-between">
+                        <span>${item.name}</span>
+                        <span class="text-green-600 font-bold">+R$ ${parseFloat(item.price).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <p class="text-xs text-gray-400 border-t pt-2">${group.items.length} item(ns)</p>
+        </div>
+    `).join('');
+}
+
+function openGroupModal(groupId = null) {
+    const isEditing = groupId !== null;
+    
+    Swal.fire({
+        title: isEditing ? 'Editar Grupo' : 'Novo Grupo de Adicionais',
+        html: `
+            <div class="text-left space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Nome do Grupo</label>
+                    <input type="text" id="groupName" placeholder="Ex: Adicionais de Carne" class="w-full p-2 border rounded-lg text-sm">
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Tipo de Seleção</label>
+                    <select id="groupType" class="w-full p-2 border rounded-lg text-sm">
+                        <option value="checkbox">Múltipla Escolha (Ex: Adicionais)</option>
+                        <option value="radio">Escolha Única (Ex: Ponto da Carne)</option>
+                    </select>
+                </div>
+                
+                <div class="flex gap-2">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="groupRequired"> Obrigatório?
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-2">Itens do Grupo</label>
+                    <div id="groupItems" class="space-y-2"></div>
+                    <button type="button" onclick="addGroupItemInput()" class="mt-2 text-sm text-orange-600 font-bold hover:text-orange-700">
+                        <i class="fas fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: isEditing ? 'Atualizar' : 'Criar',
+        confirmButtonColor: '#ea580c',
+        didOpen: () => {
+            if (isEditing) {
+                // Carregar dados do grupo
+                loadGroupData(groupId);
+            } else {
+                addGroupItemInput();
+            }
+        },
+        preConfirm: () => {
+            return saveGroup(groupId);
+        }
+    });
+}
+
+function addGroupItemInput() {
+    const container = document.getElementById('groupItems');
+    const html = `
+        <div class="flex gap-2 group-item">
+            <input type="text" placeholder="Nome" class="flex-1 p-2 border rounded text-sm item-name">
+            <input type="number" step="0.01" placeholder="Preço (R$)" class="w-24 p-2 border rounded text-sm item-price">
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function editGroup(groupId) {
+    openGroupModal(groupId);
+}
+
+async function loadGroupData(groupId) {
+    try {
+        // Buscar todos os grupos
+        const res = await fetch(`/{{ tenant.slug }}/api/groups/`);
+        const data = await res.json();
+        
+        // Encontrar o grupo específico
+        const group = data.groups.find(g => g.id === groupId);
+        if (!group) {
+            Swal.showValidationMessage('Grupo não encontrado');
+            return;
+        }
+        
+        // Preencher os dados no modal
+        document.getElementById('groupName').value = group.name;
+        document.getElementById('groupType').value = group.type;
+        document.getElementById('groupRequired').checked = group.required;
+        
+        // Limpar itens antigos
+        const container = document.getElementById('groupItems');
+        container.innerHTML = '';
+        
+        // Adicionar itens do grupo
+        group.items.forEach(item => {
+            const html = `
+                <div class="flex gap-2 group-item">
+                    <input type="text" placeholder="Nome" value="${item.name}" class="flex-1 p-2 border rounded text-sm item-name">
+                    <input type="number" step="0.01" placeholder="Preço (R$)" value="${item.price}" class="w-24 p-2 border rounded text-sm item-price">
+                    <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+        
+    } catch (err) {
+        Swal.showValidationMessage('Erro ao carregar dados do grupo');
+    }
+}
+
+async function saveGroup(groupId) {
+    const name = document.getElementById('groupName').value.trim();
+    const type = document.getElementById('groupType').value;
+    const required = document.getElementById('groupRequired').checked;
+    
+    if (!name) {
+        Swal.showValidationMessage('Nome é obrigatório');
+        return false;
+    }
+    
+    const items = [];
+    document.querySelectorAll('.group-item').forEach(item => {
+        const itemName = item.querySelector('.item-name').value.trim();
+        const itemPrice = parseFloat(item.querySelector('.item-price').value) || 0;
+        if (itemName) {
+            items.push({ name: itemName, price: itemPrice });
+        }
+    });
+    
+    const formData = new FormData();
+    formData.append('id', groupId || '');
+    formData.append('name', name);
+    formData.append('type', type);
+    formData.append('required', required);
+    formData.append('max_quantity', 10);
+    formData.append('items_json', JSON.stringify(items));
+    
+    try {
+        const res = await fetch(`/{{ tenant.slug }}/api/groups/save/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            Swal.fire('Sucesso!', groupId ? 'Grupo atualizado' : 'Grupo criado', 'success');
+            fetchProductGroups();
+            return true;
+        } else {
+            Swal.showValidationMessage(data.message || 'Erro ao salvar');
+        }
+    } catch (err) {
+        Swal.showValidationMessage('Erro ao salvar grupo');
+    }
+    
+    return false;
+}
+
+async function deleteGroup(groupId) {
+    Swal.fire({
+        title: 'Confirmar Exclusão',
+        text: 'Tem certeza? Isso não afetará grupos já importados para produtos.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, deletar',
+        confirmButtonColor: '#dc2626'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/{{ tenant.slug }}/api/groups/${groupId}/delete/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    Swal.fire('Deletado!', 'Grupo removido', 'success');
+                    fetchProductGroups();
+                }
+            } catch (err) {
+                Swal.fire('Erro', 'Não foi possível deletar o grupo', 'error');
+            }
+        }
+    });
 }
 
 // MODAL UPGRADE PRO

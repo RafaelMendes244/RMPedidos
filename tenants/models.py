@@ -308,6 +308,47 @@ class DeliveryFee(models.Model):
         # Garante que não haja bairros duplicados na mesma loja
         unique_together = ('tenant', 'neighborhood')
 
+# GRUPOS REUTILIZÁVEIS DE ADICIONAIS
+class ProductGroup(models.Model):
+    """
+    Agrupa um conjunto de opções (adicionais) que podem ser reutilizados em múltiplos produtos.
+    Ex: Grupo "Adicionais de Carne" pode ser usado em Hambúrguer, Espetinho, Sanduíche, etc.
+    """
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='product_groups')
+    name = models.CharField(max_length=100, verbose_name="Nome do Grupo") # Ex: Adicionais de Carne
+    type = models.CharField(
+        max_length=20,
+        choices=[
+            ('radio', 'Escolha Única (Ex: Ponto da carne)'),
+            ('checkbox', 'Múltipla Escolha (Ex: Adicionais)'),
+        ],
+        default='checkbox',
+        verbose_name="Tipo de Seleção"
+    )
+    required = models.BooleanField(default=False, verbose_name="Obrigatório?")
+    max_quantity = models.IntegerField(default=10, verbose_name="Máximo de itens", help_text="Para múltipla escolha")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('tenant', 'name')
+        verbose_name = "Grupo de Produtos"
+        verbose_name_plural = "Grupos de Produtos"
+    
+    def __str__(self):
+        return f"{self.name} ({self.tenant.name})"
+
+class GroupItem(models.Model):
+    """Item individual dentro de um grupo reutilizável"""
+    group = models.ForeignKey(ProductGroup, on_delete=models.CASCADE, related_name='items')
+    name = models.CharField(max_length=100, verbose_name="Nome da Opção") # Ex: Bacon
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Preço Adicional")
+    
+    class Meta:
+        unique_together = ('group', 'name')
+    
+    def __str__(self):
+        return f"{self.name} (+R${self.price})"
+
 # CONFIGURAÇAO DE ADICIONAIS
 class ProductOption(models.Model):
     TYPE_CHOICES = [
@@ -315,6 +356,7 @@ class ProductOption(models.Model):
         ('checkbox', 'Múltipla Escolha (Ex: Adicionais)'),
     ]
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='options')
+    group = models.ForeignKey(ProductGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='product_options', verbose_name="Grupo Origem")
     title = models.CharField(max_length=100, verbose_name="Título do Grupo") # Ex: Adicionais
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='checkbox')
     required = models.BooleanField(default=False, verbose_name="Obrigatório?")
@@ -327,6 +369,7 @@ class OptionItem(models.Model):
     option = models.ForeignKey(ProductOption, on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=100, verbose_name="Nome da Opção") # Ex: Bacon
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Preço Adicional")
+
 
     def __str__(self):
         return f"{self.name} (+R${self.price})"

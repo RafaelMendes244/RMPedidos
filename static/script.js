@@ -1067,17 +1067,32 @@ function setupEventListeners() {
 }
 
 // Verifica se a loja esta aberta AGORA
-function checkRestaurantOpen() {
+async function checkRestaurantOpen() {
     const statusEl = document.getElementById("status-text");
     const iconEl = document.getElementById("status-icon");
     const container = document.getElementById("status-loja-container");
 
-    if (!window.STORE_CONFIG?.manualOpen) {
-        setStatusClosed("FECHADO TEMPORARIAMENTE");
-        updateCheckoutButtons(false);
-        return false;
+    // PRIORIDADE 1: Verificar status via API pública (não requer autenticação)
+    try {
+        const response = await fetch(`/${window.TENANT_SLUG}/api/store/status/`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            if (data.is_open) {
+                setStatusOpen(data.message);
+                updateCheckoutButtons(true);
+                return true;
+            } else {
+                setStatusClosed(data.message);
+                updateCheckoutButtons(false);
+                return false;
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao verificar status da loja:", e);
     }
 
+    // Fallback: Se a API falhar, faz verificação local com os horários
     const schedule = window.STORE_CONFIG?.schedule;
     if (!schedule || Object.keys(schedule).length === 0) {
         setStatusOpen("ABERTO (Sem horario definido)");
@@ -1086,7 +1101,7 @@ function checkRestaurantOpen() {
     }
 
     const now = new Date();
-    const diaHoje = now.getDay(); 
+    const diaHoje = now.getDay();
     const diaOntem = diaHoje === 0 ? 6 : diaHoje - 1;
     const horaAtualMin = now.getHours() * 60 + now.getMinutes();
 
@@ -1098,10 +1113,10 @@ function checkRestaurantOpen() {
 
     function verificarRegra(regra) {
         if (!regra || regra.closed) return false;
-        
+
         const openMin = getMinutes(regra.open);
         const closeMin = getMinutes(regra.close);
-        
+
         if (closeMin < openMin) {
             return horaAtualMin >= openMin || horaAtualMin < closeMin;
         } else {
@@ -1113,7 +1128,7 @@ function checkRestaurantOpen() {
     if (regraOntem && !regraOntem.closed) {
         const ontemOpen = getMinutes(regraOntem.open);
         const ontemClose = getMinutes(regraOntem.close);
-        
+
         if (ontemClose < ontemOpen) {
             if (verificarRegra(regraOntem)) {
                 let closeTime = regraOntem.close;
@@ -1134,13 +1149,17 @@ function checkRestaurantOpen() {
         return true;
     }
 
+    // PRIORIDADE 3: Determinar motivo do fechamento
     let msg = "FECHADO HOJE";
     if (regraHoje && !regraHoje.closed && regraHoje.open) {
         const openMin = getMinutes(regraHoje.open);
         if (horaAtualMin < openMin) {
             msg = `FECHADO AGORA - ABRE AS ${regraHoje.open}`;
         }
+    } else if (regraHoje && regraHoje.closed) {
+        msg = "FECHADO HOJE";
     }
+
     setStatusClosed(msg);
     updateCheckoutButtons(false);
     return false;

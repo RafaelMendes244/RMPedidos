@@ -30,6 +30,8 @@ from .models import (
     DeliveryFee,
     ProductOption,
     OptionItem,
+    ProductGroup,
+    GroupItem,
     Coupon,
     CouponUsage,
     Table,
@@ -43,12 +45,16 @@ logger = logging.getLogger(__name__)
 def is_store_open_by_hours(tenant):
     """
     Verifica se a loja está aberto baseado no horário de funcionamento.
-    Suporta horários de madrugada (ex: abre 18:00, fecha 02:00).
-    Retorna (True, None) se estiver aberto, (False, mensagem) se fechado.
+    Retorna (True, 'ABERTO - Fecha as XX:XX') se aberto,
+    (False, 'FECHADO HOJE') se fechado hoje,
+    (False, 'FECHADO AGORA - ABRE AS XX:XX') se fora do horário mas abre hoje,
+    (False, 'FECHADO HOJE') se não abre hoje
     """
     from datetime import datetime
+    from django.utils import timezone
     
-    now = datetime.now()
+    # Usar timezone.localtime para garantir horário do Brasil
+    now = timezone.localtime(timezone.now())
     current_minutes = now.hour * 60 + now.minute
     current_weekday = now.weekday()  # 0=Segunda, 6=Domingo
     
@@ -81,27 +87,44 @@ def is_store_open_by_hours(tenant):
     today_rule = OperatingDay.objects.filter(tenant=tenant, day=model_today).first()
     
     if today_rule:
+        if today_rule.is_closed:
+            # HOJE está marcado como fechado
+            return (False, 'FECHADO HOJE')
+        
         today_check = check_rule(today_rule)
         if today_check is True:
-            return (True, None)
+            # Está aberto, retorna mensagem com horário de fechamento
+            close_time = today_rule.close_time.strftime('%H:%M') if today_rule.close_time else '23:59'
+            return (True, f'ABERTO - Fecha as {close_time}')
+        
+        # HOJE tem horário definido mas está FORA do horário
+        if today_rule.open_time and today_rule.close_time:
+            # Verificar se ainda não chegou na hora de abrir
+            open_min = today_rule.open_time.hour * 60 + today_rule.open_time.minute
+            if current_minutes < open_min:
+                return (False, f'FECHADO AGORA - ABRE AS {today_rule.open_time.strftime("%H:%M")}')
+            else:
+                # Passou do horário de fechamento
+                return (False, 'FECHADO HOJE')
     
-    # 2. Se hoje está fechada ou fora do horário, verificar DIA ANTERIOR
-    model_yesterday = (current_weekday) % 7
-    yesterday_rule = OperatingDay.objects.filter(tenant=tenant, day=model_yesterday).first()
+    # Se não tem configuração para hoje, procurar quando abre
+    # 2. Procurar próximo dia que abre
+    for i in range(1, 7):  # Verificar próximos 6 dias
+        next_day = (model_today + i) % 7
+        next_rule = OperatingDay.objects.filter(tenant=tenant, day=next_day).first()
+        
+        if next_rule and not next_rule.is_closed and next_rule.open_time:
+            # Encontrou um dia que abre
+            day_names = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+            # Converter Python weekday (0=Segunda...6=Domingo) para array (0=Domingo...6=Sábado)
+            model_weekday = (now.weekday() + 1) % 7
+            day_name = day_names[(model_weekday + i) % 7]
+            return (False, f'FECHADO - ABRE {day_name} às {next_rule.open_time.strftime("%H:%M")}')
     
-    if yesterday_rule:
-        yesterday_check = check_rule(yesterday_rule)
-        if yesterday_check is True:
-            return (True, None)
-    
-    # 3. Loja está fechada - gerar mensagem amigável
-    if today_rule and not today_rule.is_closed and today_rule.open_time:
-        open_min = today_rule.open_time.hour * 60 + today_rule.open_time.minute
-        if current_minutes < open_min:
-            opens_at = f"{today_rule.open_time.hour:02d}:{today_rule.open_time.minute:02d}"
-            return (False, f"Abre às {opens_at}")
-    
-    return (False, "Fora do horário de funcionamento")
+    # Se não encontrou nenhum dia configurado
+    return (False, 'FECHADO HOJE')
+
+
 
 
 # ROTA INICIAL HOME
@@ -149,14 +172,33 @@ def cardapio_publico(request, slug):
         Prefetch('products', queryset=produtos_ativos)
     ).distinct().order_by('order')
 
-    # 4. Determinar se a loja está aberta
+    # 4. Determinar se a loja está aberta (NOVA LÓGICA PROFISSIONAL)
+    # Padrão: SEMPRE ABERTA. Só fecha se:
+    # (a) Não for hora de abrir (por horário) OU
+    # (b) Dono ativou fechamento manual (manual_override)
+    
+    store_is_open = True  # Por padrão: sempre aberta
+    store_closed_message = None
+    
+    is_open_by_hours, status = is_store_open_by_hours(tenant)
+    
+    if not is_open_by_hours:
+        store_is_open = False
+        if status == 'CLOSED_TODAY':
+            store_closed_message = "Fechado HOJE"
+        elif status == 'SCHEDULE_CLOSED_TIME':
+            today_rule = OperatingDay.objects.filter(tenant=tenant, day=today_index).first()
+            if today_rule and today_rule.open_time:
+                opens_at = f"{today_rule.open_time.hour:02d}:{today_rule.open_time.minute:02d}"
+                store_closed_message = f"Fechado - Abre às {opens_at}"
+            else:
+                store_closed_message = "Fechado - Abre amanhã"
+        else:
+            store_closed_message = "Fechado - Abre amanhã"
+    
     if tenant.manual_override:
         store_is_open = False
-        store_closed_message = "Loja temporariamente fechada pelo lojista"
-    else:
-        is_open, message = is_store_open_by_hours(tenant)
-        store_is_open = tenant.is_open and is_open
-        store_closed_message = None if store_is_open else f"Fora do horário! {message or 'Volte mais tarde'}"
+        store_closed_message = "FECHADO TEMPORARIAMENTE"
 
     context = {
         'tenant': tenant,
@@ -230,14 +272,33 @@ def cardapio_mesa(request, slug, table_number):
         Prefetch('products', queryset=produtos_ativos)
     ).distinct().order_by('order')
 
-    # 4. Determinar se a loja está aberta
+    # 4. Determinar se a loja está aberta (NOVA LÓGICA PROFISSIONAL)
+    # Padrão: SEMPRE ABERTA. Só fecha se:
+    # (a) Não for hora de abrir (por horário) OU
+    # (b) Dono ativou fechamento manual (manual_override)
+    
+    store_is_open = True  # Por padrão: sempre aberta
+    store_closed_message = None
+    
+    is_open_by_hours, status = is_store_open_by_hours(tenant)
+    
+    if not is_open_by_hours:
+        store_is_open = False
+        if status == 'CLOSED_TODAY':
+            store_closed_message = "Fechado HOJE"
+        elif status == 'SCHEDULE_CLOSED_TIME':
+            today_rule = OperatingDay.objects.filter(tenant=tenant, day=today_index).first()
+            if today_rule and today_rule.open_time:
+                opens_at = f"{today_rule.open_time.hour:02d}:{today_rule.open_time.minute:02d}"
+                store_closed_message = f"Fechado - Abre às {opens_at}"
+            else:
+                store_closed_message = "Fechado - Abre amanhã"
+        else:
+            store_closed_message = "Fechado - Abre amanhã"
+    
     if tenant.manual_override:
         store_is_open = False
-        store_closed_message = "Loja temporariamente fechada pelo lojista"
-    else:
-        is_open, message = is_store_open_by_hours(tenant)
-        store_is_open = tenant.is_open and is_open
-        store_closed_message = None if store_is_open else f"Fora do horário! {message or 'Volte mais tarde'}"
+        store_closed_message = "FECHADO TEMPORARIAMENTE"
 
     context = {
         'tenant': tenant,
@@ -845,6 +906,7 @@ def api_get_products(request, slug):
                     'type': opt.type,
                     'required': opt.required,
                     'max': opt.max_quantity,
+                    'group_id': opt.group_id,  # ADICIONADO: ID do grupo importado
                     'items': items_list
                 })
 
@@ -973,6 +1035,43 @@ def api_save_product(request, slug):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error'}, status=400)
 
+@login_required
+def api_get_product_options(request, slug, product_id):
+    """
+    Retorna os grupos de adicionais de um produto específico para importação.
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    # Verifica permissão
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+
+    try:
+        source_product = Product.objects.get(id=product_id, tenant=tenant)
+        
+        options_data = []
+        for opt in source_product.options.all():
+            items = []
+            for item in opt.items.all():
+                items.append({
+                    'name': item.name,
+                    'price': float(item.price)
+                })
+            
+            options_data.append({
+                'title': opt.title,
+                'type': opt.type,
+                'required': opt.required,
+                'max': opt.max_quantity,
+                'items': items
+            })
+            
+        return JsonResponse({'status': 'success', 'options': options_data})
+    except Product.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Produto não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
 
 @login_required
 def api_delete_product(request, slug, product_id):
@@ -1011,6 +1110,164 @@ def api_toggle_product(request, slug, product_id):
             return JsonResponse({'status': 'error', 'message': 'Erro ao alternar disponibilidade'}, status=400)
     return JsonResponse({'status': 'error'}, status=400)
 
+# ========================
+# GERENCIAMENTO DE GRUPOS REUTILIZÁVEIS
+# ========================
+
+@login_required
+def api_get_product_groups(request, slug):
+    """Retorna todos os grupos de adicionais reutilizáveis da loja"""
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    from .models import ProductGroup
+    
+    groups = ProductGroup.objects.filter(tenant=tenant).values('id', 'name', 'type', 'required', 'max_quantity')
+    
+    groups_data = []
+    for group in groups:
+        items = list(GroupItem.objects.filter(group_id=group['id']).values('id', 'name', 'price'))
+        group['items'] = items
+        groups_data.append(group)
+    
+    return JsonResponse({'status': 'success', 'groups': groups_data})
+
+@login_required
+def api_save_product_group(request, slug):
+    """Cria ou atualiza um grupo de adicionais reutilizável"""
+    from .models import ProductGroup, GroupItem
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            group_id = request.POST.get('id')
+            name = request.POST.get('name')
+            group_type = request.POST.get('type')
+            required = request.POST.get('required', 'false') == 'true'
+            max_qty = int(request.POST.get('max_quantity', 10))
+            items_json = request.POST.get('items_json')
+            
+            if not name:
+                return JsonResponse({'status': 'error', 'message': 'Nome do grupo é obrigatório'}, status=400)
+            
+            if group_id:
+                group = ProductGroup.objects.get(id=group_id, tenant=tenant)
+                group.name = name
+                group.type = group_type
+                group.required = required
+                group.max_quantity = max_qty
+                group.save()
+            else:
+                group, created = ProductGroup.objects.get_or_create(
+                    tenant=tenant,
+                    name=name,
+                    defaults={
+                        'type': group_type,
+                        'required': required,
+                        'max_quantity': max_qty
+                    }
+                )
+                if not created:
+                    return JsonResponse({'status': 'error', 'message': 'Este grupo já existe'}, status=400)
+            
+            # Salvar itens
+            if items_json:
+                items_data = json.loads(items_json)
+                group.items.all().delete()
+                
+                for item_data in items_data:
+                    GroupItem.objects.create(
+                        group=group,
+                        name=item_data['name'],
+                        price=item_data.get('price', 0)
+                    )
+            
+            return JsonResponse({'status': 'success', 'id': group.id})
+        except ProductGroup.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Grupo não encontrado'}, status=404)
+        except Exception as e:
+            logger.error(f"Erro ao salvar grupo: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+@login_required
+def api_delete_product_group(request, slug, group_id):
+    """Deleta um grupo de adicionais reutilizável"""
+    from .models import ProductGroup
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            group = ProductGroup.objects.get(id=group_id, tenant=tenant)
+            group.delete()
+            return JsonResponse({'status': 'success'})
+        except ProductGroup.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Grupo não encontrado'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+@login_required
+def api_import_product_group(request, slug, product_id):
+    """Importa um grupo reutilizável para um produto específico"""
+    from .models import ProductOption, ProductGroup
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            product = Product.objects.get(id=product_id, tenant=tenant)
+            group_id = request.POST.get('group_id')
+            
+            if not group_id:
+                return JsonResponse({'status': 'error', 'message': 'ID do grupo é obrigatório'}, status=400)
+            
+            group = ProductGroup.objects.get(id=group_id, tenant=tenant)
+            
+            # Criar uma ProductOption baseada no ProductGroup
+            option = ProductOption.objects.create(
+                product=product,
+                group=group,
+                title=group.name,
+                type=group.type,
+                required=group.required,
+                max_quantity=group.max_quantity
+            )
+            
+            # Copiar os itens do grupo para a opção do produto
+            for group_item in group.items.all():
+                OptionItem.objects.create(
+                    option=option,
+                    name=group_item.name,
+                    price=group_item.price
+                )
+            
+            return JsonResponse({'status': 'success', 'option_id': option.id})
+        except Product.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Produto não encontrado'}, status=404)
+        except ProductGroup.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Grupo não encontrado'}, status=404)
+        except Exception as e:
+            logger.error(f"Erro ao importar grupo: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
 def _limpar_categorias_vazias(tenant, category_id_to_protect=None):
     # Pega todas as categorias vazias dessa loja
     cats_to_delete = Category.objects.filter(tenant=tenant, products__isnull=True)
@@ -1024,36 +1281,35 @@ def _limpar_categorias_vazias(tenant, category_id_to_protect=None):
 # ROTAS DE LOGIN E LOGOUT
 @ratelimit(key='ip', rate='5/m', block=False)
 def custom_login(request):
-
+    # (Opcional) Lógica de rate limit
     was_limited = getattr(request, 'limited', False)
     if was_limited:
-        return render(request, 'login.html', {
+        return render(request, 'tenants/login.html', {
             'error': 'Muitas tentativas de login. Aguarde 1 minuto.'
         })
 
     if request.method == 'POST':
         username = request.POST.get('username', '').strip().lower()
         passw = request.POST.get('password', '')
-        
-        logger.info(f"Tentativa de login para: {username}")
+        remember_me = request.POST.get('remember_me') # Captura o checkbox
         
         user = authenticate(request, username=username, password=passw)
         
         if user is not None:
             login(request, user)
-            logger.info(f"Login sucesso para usuário ID: {user.id}")
             
+            if remember_me:
+                request.session.set_expiry(1209600) # 2 semanas
+            else:
+                request.session.set_expiry(0) # Fecha ao fechar o navegador
+            
+            # Redirecionamento
             user_tenants = Tenant.objects.filter(owner=user).order_by('-id')
-            tenant_count = user_tenants.count()
-            
-            if tenant_count == 0:
-                return redirect('signup')
-            elif tenant_count == 1:
+            if user_tenants.exists():
                 return redirect('painel_lojista', slug=user_tenants.first().slug)
             else:
-                return redirect('painel_lojista', slug=user_tenants.first().slug)
+                return redirect('signup') # Ou criar loja
         else:
-            logger.warning(f"Login falhou para: {username}")
             return render(request, 'tenants/login.html', {'error': 'Usuário ou senha incorretos'})
 
     return render(request, 'tenants/login.html')
@@ -1187,30 +1443,47 @@ def api_get_financials(request, slug):
 def api_toggle_store_open(request, slug):
     tenant = get_object_or_404(Tenant, slug=slug)
     
+    # Permitir owner da loja OU superuser
     if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
-    
+        
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            is_open = data.get('is_open')
+            is_open = data.get('is_open', False)
             
-            tenant.is_open = is_open
+            # Lógica Nova (baseada em manual_override):
+            # is_open=True (checkbox marcado) → Loja em modo AUTOMÁTICO (sem bloqueio manual)
+            # is_open=False (checkbox desmarcado) → Loja em modo MANUAL FECHADO (com bloqueio)
             
-            if not is_open:
-                tenant.manual_override = True
-            else:
+            if is_open:
+                # QUER ABRIR: Removemos o bloqueio manual
                 tenant.manual_override = False
+            else:
+                # QUER FECHAR: Ativamos o bloqueio manual
+                tenant.manual_override = True
             
             tenant.save()
-            return JsonResponse({'status': 'success', 'is_open': tenant.is_open})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Erro ao atualizar status da loja'}, status=500)
+            
+            return JsonResponse({
+                'status': 'success', 
+                'is_open': not tenant.manual_override,
+                'manual_override': tenant.manual_override
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Dados inválidos'}, status=400)
+        
     return JsonResponse({'status': 'error'}, status=400)
 
 # --- API SINCRONIZAR STATUS COM HORÁRIOS ---
 @login_required
 def api_sync_store_status(request, slug):
+    """Sincroniza o estado da loja com os horários.
+    
+    NOVA LÓGICA PROFISSIONAL:
+    - Se manual_override está ativado, mantém fechado (dono quer fechar manualmente)
+    - Se manual_override está desativado, sincroniza com os horários
+    """
     tenant = get_object_or_404(Tenant, slug=slug)
     
     if tenant.owner != request.user and not request.user.is_superuser:
@@ -1218,26 +1491,58 @@ def api_sync_store_status(request, slug):
     
     if request.method == 'POST':
         try:
+            # Se manual_override está ativado, RESPEITA (dono quer fechar manualmente)
             if tenant.manual_override:
                 return JsonResponse({
-                    'status': 'success', 
+                    'status': 'success',
                     'is_open': False,
                     'reason': 'fechamento_manual'
                 })
             
-            is_open, message = is_store_open_by_hours(tenant)
+            # Caso contrário, sincroniza com os horários
+            is_open_by_hours, status = is_store_open_by_hours(tenant)
             
-            if is_open != tenant.is_open:
-                tenant.is_open = is_open
-                tenant.save()
+            return JsonResponse({
+                'status': 'success',
+                'is_open': is_open_by_hours,
+                'reason': 'horario_funcionamento'
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error'}, status=400)
+
+# --- API PÚBLICA PARA STATUS DA LOJA (ACESSO PELO CLIENTE) ---
+def api_public_store_status(request, slug):
+    """
+    API pública para verificar o status da loja.
+    Usada pelo cardápio do cliente para exibir a mensagem correta.
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if request.method == 'GET':
+        try:
+            # PRIORIDADE 1: Fechamento manual pelo dono
+            if tenant.manual_override:
+                return JsonResponse({
+                    'status': 'success',
+                    'is_open': False,
+                    'reason': 'fechamento_manual',
+                    'message': 'FECHADO TEMPORARIAMENTE'
+                })
+            
+            # PRIORIDADE 2: Verificar horário de funcionamento
+            is_open, message = is_store_open_by_hours(tenant)
             
             return JsonResponse({
                 'status': 'success',
                 'is_open': is_open,
-                'reason': message or 'horario_funcionamento'
+                'reason': 'horario_funcionamento',
+                'message': message
             })
+                
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Erro ao sincronizar status'}, status=500)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
     return JsonResponse({'status': 'error'}, status=400)
 
 # ROTA PARA HORARIO DE FUNCIONAMENTO/FOLGAS
@@ -1888,3 +2193,87 @@ def politica_privacidade(request):
         }
     }
     return render(request, 'tenants/privacidade.html', context)
+
+
+# ========================
+# PWA - MANIFEST.JSON DINÂMICO
+# ========================
+def pwa_manifest(request, slug):
+    """Retorna manifest.json customizado para cada loja (PWA)"""
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    # Determinar a cor primária
+    primary_color = tenant.primary_color if tenant.primary_color else '#ea580c'
+    
+    # URL da logo se existir
+    logo_url = tenant.logo.url if tenant.logo else '/static/images/icon-192x192.png'
+    
+    manifest = {
+        'name': tenant.name,
+        'short_name': tenant.name[:12],
+        'description': f'Cardápio Digital - {tenant.name}',
+        'start_url': f'/{slug}/',
+        'scope': f'/{slug}/',
+        'display': 'standalone',
+        'orientation': 'portrait-primary',
+        'background_color': '#ffffff',
+        'theme_color': primary_color,
+        'icons': [
+            {
+                'src': logo_url,
+                'sizes': '72x72',
+                'type': 'image/png',
+                'purpose': 'any'
+            },
+            {
+                'src': logo_url,
+                'sizes': '96x96',
+                'type': 'image/png',
+                'purpose': 'any'
+            },
+            {
+                'src': logo_url,
+                'sizes': '128x128',
+                'type': 'image/png',
+                'purpose': 'any'
+            },
+            {
+                'src': logo_url,
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'any'
+            },
+            {
+                'src': logo_url,
+                'sizes': '384x384',
+                'type': 'image/png',
+                'purpose': 'any'
+            },
+            {
+                'src': logo_url,
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'any'
+            }
+        ],
+        'screenshots': [
+            {
+                'src': logo_url,
+                'sizes': '540x720',
+                'type': 'image/png',
+                'form_factor': 'narrow'
+            }
+        ],
+        'categories': ['shopping', 'food'],
+        'shortcuts': [
+            {
+                'name': 'Ver Cardápio',
+                'short_name': 'Cardápio',
+                'description': 'Abrir o cardápio da loja',
+                'url': f'/{slug}/',
+                'icons': [{'src': logo_url, 'sizes': '96x96', 'type': 'image/png'}]
+            }
+        ]
+    }
+    
+    return JsonResponse(manifest)

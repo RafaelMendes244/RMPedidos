@@ -28,6 +28,9 @@ urlpatterns = [
     # ROTA DO PAINEL DO LOJISTA
     path('<slug:slug>/painel/', views.painel_lojista, name='painel_lojista'),
 
+    # PWA MANIFEST
+    path('<slug:slug>/manifest.json', views.pwa_manifest, name='pwa_manifest'),
+
     # ROTA PARA CRIAÇÃO DE PEDIDOS
     path('<slug:slug>/api/create_order/', views.create_order, name='api_create_order'),
 
@@ -43,6 +46,8 @@ urlpatterns = [
     path('<slug:slug>/api/financials/', views.api_get_financials, name='api_get_financials'),
     path('<slug:slug>/api/store/toggle/', views.api_toggle_store_open, name='api_toggle_store_open'),
     path('<slug:slug>/api/store/sync/', views.api_sync_store_status, name='api_sync_store_status'),
+    # API PÚBLICA para status da loja (para o cardápio do cliente)
+    path('<slug:slug>/api/store/status/', views.api_public_store_status, name='api_public_store_status'),
     path('<slug:slug>/api/hours/', views.api_save_hours, name='api_save_hours'),
 
     # ROTAS PARA TAXAS DE ENTREGA
@@ -54,6 +59,13 @@ urlpatterns = [
     path('<slug:slug>/api/products/save/', views.api_save_product, name='api_save_product'),
     path('<slug:slug>/api/products/<int:product_id>/delete/', views.api_delete_product, name='api_delete_product'),
     path('<slug:slug>/api/products/<int:product_id>/toggle/', views.api_toggle_product, name='api_toggle_product'),
+    path('loja/<slug:slug>/api/product/<int:product_id>/options/', views.api_get_product_options, name='api_get_product_options'),
+
+    # ROTAS PARA GRUPOS REUTILIZÁVEIS
+    path('<slug:slug>/api/groups/', views.api_get_product_groups, name='api_get_product_groups'),
+    path('<slug:slug>/api/groups/save/', views.api_save_product_group, name='api_save_product_group'),
+    path('<slug:slug>/api/groups/<int:group_id>/delete/', views.api_delete_product_group, name='api_delete_product_group'),
+    path('<slug:slug>/api/products/<int:product_id>/import-group/', views.api_import_product_group, name='api_import_product_group'),
 
     # ROTA PARA VER HISTORICO DE PEDIDOS
     path('<slug:slug>/api/my-orders/', views.api_customer_history, name='api_customer_history'),
