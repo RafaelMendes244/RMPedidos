@@ -58,10 +58,10 @@
         .bg-primary { background-color: var(--primary); }
         .border-primary { border-color: var(--primary); }
         
-        /* Ensure buttons with primary background have white/readable text */
+        /* Ensure buttons with primary background have readable text based on contrast */
         button[style*="background-color"],
         [style*="background-color"] { color: inherit !important; }
-        .bg-primary { color: white !important; }
+        .bg-primary { color: inherit !important; }
         [style*="--primary"] { color: inherit !important; }
 
         body {
@@ -79,6 +79,19 @@
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 10px; }
+
+        /* Botões com cor primária - texto adaptativo */
+        .btn-primary-contrast {
+            color: #ffffff !important;
+        }
+        
+        .btn-primary-contrast.adaptive-light-text {
+            color: #ffffff !important;
+        }
+        
+        .btn-primary-contrast.adaptive-dark-text {
+            color: #1f2937 !important;
+        }
 
         .animate-fadeIn { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -168,7 +181,7 @@
         <button onclick="openStoreInfo()" class="bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition border border-orange-100 dark:border-gray-700">
             <i class="fas fa-store" style="color: {{ tenant.primary_color }}"></i> Info & Local
         </button>
-        <button onclick="openHistory()" class="text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition" style="background-color: {{ tenant.primary_color }}">
+        <button onclick="openHistory()" class="py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition" style="background-color: {{ tenant.primary_color }}">
             <i class="fas fa-history"></i> Meus Pedidos
         </button>
     </div>
@@ -537,6 +550,167 @@
         window.CSRF_TOKEN = "{{ csrf_token }}";
         window.TENANT_SLUG = "{{ tenant.slug }}";
 
+        // ============================================
+        // CONTRASTE AUTOMÁTICO PARA BOTÕES
+        // ============================================
+        
+        /**
+         * Calcula a luminosidade relativa de uma cor (0-1)
+         * Retorna true se a cor for escura (precisa de texto branco)
+         * Retorna false se a cor for clara (precisa de texto preto)
+         */
+        function isColorDark(hexColor) {
+            // Remove o # se existir
+            hexColor = hexColor.replace('#', '');
+            
+            // Converte para RGB
+            let r, g, b;
+            if (hexColor.length === 3) {
+                r = parseInt(hexColor[0] + hexColor[0], 16);
+                g = parseInt(hexColor[1] + hexColor[1], 16);
+                b = parseInt(hexColor[2] + hexColor[2], 16);
+            } else {
+                r = parseInt(hexColor.substring(0, 2), 16);
+                g = parseInt(hexColor.substring(2, 4), 16);
+                b = parseInt(hexColor.substring(4, 6), 16);
+            }
+            
+            // Calcula luminosidade usando a fórmula YIQ
+            // Esta fórmula é amplamente utilizada para determinar contraste
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            
+            // Retorna true se a cor for escura (contrast < 128)
+            return yiq < 128;
+        }
+        
+        /**
+         * Ajusta a cor do texto de todos os botões com base na cor de fundo
+         */
+        function applyButtonContrast() {
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+            
+            if (!primaryColor) return;
+            
+            const needsWhiteText = isColorDark(primaryColor);
+            const textColor = needsWhiteText ? '#ffffff' : '#1f2937'; // white ou gray-800
+            
+            console.log(`Cor primária: ${primaryColor} (${needsWhiteText ? 'escuro' : 'claro'}) - Texto: ${textColor}`);
+            
+            // 1. Botões com estilo inline background-color (produtos, histórico)
+            document.querySelectorAll('button[style*="background-color"]').forEach(btn => {
+                const bgColor = btn.style.backgroundColor;
+                // Verifica se o botão usa a cor primária
+                if (bgColor && (bgColor.includes('var(--primary)') || bgColor.includes(primaryColor) || bgColor.includes('rgb'))) {
+                    // Remove classes de texto que possam conflitar
+                    btn.classList.remove('text-white');
+                    btn.style.color = textColor;
+                    
+                    // Remove text-white de elementos filhos
+                    btn.querySelectorAll('.text-white').forEach(el => {
+                        el.classList.remove('text-white');
+                        el.style.color = textColor;
+                    });
+                    
+                    // Remove text-white de spans internos
+                    btn.querySelectorAll('span').forEach(span => {
+                        if (span.classList.contains('text-white')) {
+                            span.classList.remove('text-white');
+                            span.style.color = textColor;
+                        }
+                        span.style.color = textColor;
+                    });
+                    
+                    // Ajusta ícones
+                    btn.querySelectorAll('i').forEach(icon => {
+                        icon.style.color = textColor;
+                    });
+                }
+            });
+            
+            // 2. Footer cart - elemento principal
+            const footerCart = document.getElementById('footer-cart');
+            if (footerCart) {
+                footerCart.style.color = textColor;
+                
+                // Remove text-white de todos os elementos do footer
+                footerCart.querySelectorAll('.text-white').forEach(el => {
+                    el.classList.remove('text-white');
+                    el.style.color = textColor;
+                });
+                
+                // Ícone do carrinho (exceto o badge de contador)
+                const cartIcon = footerCart.querySelector('.fa-shopping-bag');
+                if (cartIcon) cartIcon.style.color = textColor;
+                
+                // Texto do total estimado
+                const cartText = footerCart.querySelector('#cart-total-preview');
+                if (cartText) cartText.style.color = textColor;
+                
+                // Labels com opacidade
+                footerCart.querySelectorAll('span[class*="text-white"]').forEach(span => {
+                    span.style.color = needsWhiteText ? 'rgba(255,255,255,0.8)' : 'rgba(31,41,55,0.8)';
+                });
+                
+                // Botão "Ver Sacola"
+                const verSacolaBtn = footerCart.querySelector('.bg-white');
+                if (verSacolaBtn) {
+                    verSacolaBtn.style.backgroundColor = textColor;
+                    verSacolaBtn.style.color = needsWhiteText ? '#1f2937' : '#ffffff';
+                    // Remove classes de texto hardcoded
+                    verSacolaBtn.classList.remove('text-white', 'text-orange-600');
+                }
+            }
+            
+            // 3. Botões de entrega/retirada ativos
+            const deliveryActiveBtn = document.getElementById('btn-delivery');
+            if (deliveryActiveBtn && deliveryActiveBtn.classList.contains('bg-white')) {
+                deliveryActiveBtn.style.color = primaryColor;
+            }
+            
+            const pickupActiveBtn = document.getElementById('btn-pickup');
+            if (pickupActiveBtn && pickupActiveBtn.classList.contains('bg-white')) {
+                pickupActiveBtn.style.color = primaryColor;
+            }
+        }
+        
+        // Executar após o DOM carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pequeno delay para garantir que as variáveis CSS foram carregadas
+            setTimeout(applyButtonContrast, 100);
+            
+            // Adicionar MutationObserver para detectar novos elementos adicionados
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        applyButtonContrast();
+                    }
+                });
+            });
+            
+            // Observar o body para mudanças
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+        
+        // Reaplicar quando o modal do carrinho abrir (pois pode ter elementos dinâmicos)
+        window.openCart = function() { 
+            document.getElementById("cart-modal").classList.remove("hidden"); 
+            document.body.classList.add("overflow-hidden"); 
+            window.renderCartItems(); 
+            document.getElementById("step-1-cart").classList.remove("hidden"); 
+            document.getElementById("step-2-address").classList.add("hidden"); 
+            document.getElementById("btn-finalize").classList.add("hidden"); 
+            document.getElementById("btn-next-step").classList.remove("hidden"); 
+            
+            // Atualiza estado dos botões de entrega/retirada ao abrir carrinho
+            updateDeliveryButtons();
+            
+            // Reaplicar contraste
+            setTimeout(applyButtonContrast, 100);
+        };
+        
         // ============================================
         // LÓGICA DE MESA (QR CODE) - DEVE VIR ANTES DE QUALQUER USO
         // ============================================
