@@ -5,6 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Gestor | {{ tenant.name }}</title>
+    
+    <!-- Favicon Dinâmico -->
+    {% if tenant.logo %}
+        <link rel="icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon">
+        <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon-shortcut">
+        <link rel="apple-touch-icon" href="{{ tenant.logo.url }}" id="dynamic-apple-icon">
+    {% else %}
+        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍊</text></svg>" id="dynamic-favicon">
+    {% endif %}
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -140,6 +150,10 @@
             </button>
             {% endif %}
 
+            <button onclick="switchTab('notifications'); toggleMobileMenu();" id="mob-nav-notifications" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-bell text-lg"></i> Notificações Push
+            </button>
+
             <button onclick="switchTab('menu'); toggleMobileMenu();" id="mob-nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
             </button>
@@ -218,6 +232,10 @@
                 <i class="fas fa-lock text-lg"></i> Relatórios <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
             </button>
             {% endif %}
+
+            <button onclick="switchTab('notifications')" id="nav-notifications" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
+                <i class="fas fa-bell text-lg"></i> Notificações Push
+            </button>
 
             <button onclick="switchTab('menu')" id="nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
@@ -450,6 +468,81 @@
                             <tbody id="history-table-body" class="divide-y divide-gray-100">
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DE NOTIFICAÇÕES PUSH -->
+        <div id="section-notifications" class="flex-1 overflow-y-auto p-4 md:p-6 hidden-section">
+            <div class="max-w-4xl mx-auto space-y-6">
+                
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="font-bold text-xl text-gray-800">Enviar Notificação Push</h3>
+                            <p class="text-sm text-gray-500">Avise seus clientes sobre novidades, promoções ou Status da loja</p>
+                        </div>
+                        <div class="text-right">
+                            <span id="push-subscribers-count" class="text-2xl font-bold text-orange-600">0</span>
+                            <p class="text-xs text-gray-400">assinantes ativos</p>
+                        </div>
+                    </div>
+                    
+                    <form id="push-notification-form" class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo de Mensagem</label>
+                            <select id="push-template" class="w-full p-3 border rounded-lg text-sm bg-gray-50 focus:border-orange-500 outline-none" onchange="applyPushTemplate()">
+                                <option value="custom">Mensagem Personalizada</option>
+                                <option value="store_open">🗺️ Loja Aberta</option>
+                                <option value="promo">🔥 Promoção</option>
+                                <option value="coupon">🎁 Novo Cupom</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Título da Notificação</label>
+                            <input type="text" id="push-title" placeholder="Ex: Hoje tem promoção!" maxlength="100" class="w-full p-3 border rounded-lg text-sm outline-none focus:border-orange-500">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Corpo da Mensagem</label>
+                            <textarea id="push-body" rows="3" placeholder="Sua mensagem para o cliente..." maxlength="200" class="w-full p-3 border rounded-lg text-sm outline-none focus:border-orange-500 resize-none"></textarea>
+                            <p class="text-xs text-gray-400 text-right mt-1"><span id="push-body-count">0</span>/200 caracteres</p>
+                        </div>
+                        
+                        <button type="button" onclick="sendPushNotification()" id="push-send-btn" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold uppercase text-xs hover:bg-orange-700 transition shadow-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i> Enviar Notificação
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Status das Notificações -->
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100">
+                    <h4 class="font-bold text-gray-800 mb-4">Status das Notificações Automáticas</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-green-50 border border-green-100 p-4 rounded-xl">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                    <i class="fas fa-bicycle"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-gray-800">Saiu para Entrega</p>
+                                    <p class="text-xs text-gray-500">Enviado automaticamente quando o pedido sai para entrega</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-100 p-4 rounded-xl">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-gray-800">Pedido Concluído</p>
+                                    <p class="text-xs text-gray-500">Em breve: confirmação automática de entrega</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -996,6 +1089,8 @@
         console.log(`[DEBUG] User is owner?: ${CURRENT_USER === TENANT_OWNER}`);
         
         const API_ORDERS = `/${TENANT_SLUG}/api/orders/`;
+        const API_PUSH_SEND = `/${TENANT_SLUG}/api/push/send/`;
+        const API_PUSH_COUNT = `/${TENANT_SLUG}/api/push/subscriptions/count/`;
         const API_PRODUCTS = `/${TENANT_SLUG}/api/products/`;
         const API_FINANCIALS = `/${TENANT_SLUG}/api/financials/`;
         const API_STORE_TOGGLE = `/${TENANT_SLUG}/api/store/toggle/`;
@@ -1123,6 +1218,12 @@
             setInterval(fetchOrders, 5000);
             syncStoreStatus();
             setInterval(syncStoreStatus, 30000);
+            fetchPushSubscribersCount();
+            
+            // Character counter for push body
+            document.getElementById('push-body').addEventListener('input', function() {
+                document.getElementById('push-body-count').textContent = this.value.length;
+            });
             
             // --- SINCRONIZAÇÃO DO SELETOR DE CORES ---
             const colorPicker = document.getElementById('conf-primary-color');
@@ -1244,7 +1345,7 @@
             // Mobile nav
             document.querySelectorAll('#mobile-sidebar nav button').forEach(b => b.classList.remove('active-nav'));
             
-            ['orders', 'menu', 'groups', 'history', 'delivery', 'coupons', 'tables'].forEach(s => {
+            ['orders', 'menu', 'groups', 'history', 'delivery', 'coupons', 'tables', 'notifications'].forEach(s => {
                 const el = document.getElementById(`section-${s}`);
                 if(el) el.classList.add('hidden-section');
             });
@@ -1298,6 +1399,13 @@
                 document.getElementById('section-tables').classList.remove('hidden-section');
                 document.getElementById('page-title').innerText = "Gestão de Mesas";
                 fetchTables();
+            } else if (tab === 'notifications') {
+                document.getElementById('nav-notifications')?.classList.add('active-nav');
+                document.getElementById('mob-nav-notifications')?.classList.add('active-nav');
+                document.getElementById('section-notifications').classList.remove('hidden-section');
+                document.getElementById('page-title').innerText = "Notificações Push";
+                fetchPushSubscribersCount();
+                document.getElementById('push-title').focus();
             }
         }
 
@@ -2236,6 +2344,17 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
         function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
         
+        // Função para atualizar todos os favicons
+        function updateAllFavicons(logoUrl) {
+            const favicon = document.getElementById('dynamic-favicon');
+            const faviconShortcut = document.getElementById('dynamic-favicon-shortcut');
+            const appleIcon = document.getElementById('dynamic-apple-icon');
+            
+            if (favicon) favicon.href = logoUrl;
+            if (faviconShortcut) faviconShortcut.href = logoUrl;
+            if (appleIcon) appleIcon.href = logoUrl;
+        }
+        
         async function saveSettings() {
             const btn = event.target;
             const originalText = btn.innerHTML;
@@ -2292,6 +2411,18 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                         text: "Configurações salvas com sucesso!",
                         style: { background: "#10b981" }
                     }).showToast();
+                    
+                    // Salvar URL da logo no localStorage para atualizar favicon dinamicamente
+                    const logoFile = document.getElementById('conf-logo').files[0];
+                    if (logoFile) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            localStorage.setItem('tenant_logo_url', e.target.result);
+                            updateAllFavicons(e.target.result);
+                        };
+                        reader.readAsDataURL(logoFile);
+                    }
+                    
                     closeSettings();
                     
                     // Recarregar página para atualizar as logos e cores visualmente
@@ -2573,6 +2704,12 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                             </label>
                         </div>
                         
+                        <div id="newGroupLimitContainer" class="flex gap-2 items-center">
+                            <label class="text-xs font-bold text-gray-600">Limite de escolhas:</label>
+                            <input type="number" id="newGroupLimit" value="10" min="1" max="99" class="w-20 p-2 border rounded-lg text-sm text-center">
+                            <span class="text-xs text-gray-500">(para múltipla escolha)</span>
+                        </div>
+                        
                         <div>
                             <label class="text-xs font-bold text-gray-600 block mb-2">Itens</label>
                             <div id="newGroupItems" class="space-y-2"></div>
@@ -2612,12 +2749,15 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                         return false;
                     }
                     
+                    // Lê o limite de escolhas
+                    const newGroupLimit = parseInt(document.getElementById('newGroupLimit').value) || 10;
+                    
                     // Adiciona como novo option no currentOptions
                     currentOptions.push({
                         title: name,
                         type: type,
                         required: required,
-                        max: 10,
+                        max: newGroupLimit,
                         items: items
                     });
                     
@@ -3270,6 +3410,12 @@ function openGroupModal(groupId = null) {
                     </label>
                 </div>
                 
+                <div id="groupLimitContainer" class="flex gap-2 items-center">
+                    <label class="text-xs font-bold text-gray-600">Limite de escolhas:</label>
+                    <input type="number" id="groupLimit" value="10" min="1" max="99" class="w-20 p-2 border rounded-lg text-sm text-center">
+                    <span class="text-xs text-gray-500">(para múltipla escolha)</span>
+                </div>
+                
                 <div>
                     <label class="text-xs font-bold text-gray-600 block mb-2">Itens do Grupo</label>
                     <div id="groupItems" class="space-y-2"></div>
@@ -3359,6 +3505,7 @@ async function saveGroup(groupId) {
     const name = document.getElementById('groupName').value.trim();
     const type = document.getElementById('groupType').value;
     const required = document.getElementById('groupRequired').checked;
+    const maxQuantity = parseInt(document.getElementById('groupLimit').value) || 10;
     
     if (!name) {
         Swal.showValidationMessage('Nome é obrigatório');
@@ -3379,7 +3526,7 @@ async function saveGroup(groupId) {
     formData.append('name', name);
     formData.append('type', type);
     formData.append('required', required);
-    formData.append('max_quantity', 10);
+    formData.append('max_quantity', maxQuantity);
     formData.append('items_json', JSON.stringify(items));
     
     try {
@@ -3458,6 +3605,122 @@ function showUpgradeModal() {
             window.open('https://wa.me/5583920006113?text=Quero assinar o Plano PRO do RM Pedidos', '_blank');
         }
     });
+}
+
+// ========================
+// FUNÇÕES DE PUSH NOTIFICATIONS
+// ========================
+
+async function fetchPushSubscribersCount() {
+    try {
+        const response = await fetch(API_PUSH_COUNT);
+        const data = await response.json();
+        const count = data.count || 0;
+        document.getElementById('push-subscribers-count').textContent = count;
+        
+        if (count === 0) {
+            document.getElementById('push-send-btn').classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('push-send-btn').disabled = true;
+        } else {
+            document.getElementById('push-send-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('push-send-btn').disabled = false;
+        }
+    } catch (error) {
+        console.error('Erro ao buscar contagem de assinantes:', error);
+        document.getElementById('push-subscribers-count').textContent = '0';
+    }
+}
+
+function applyPushTemplate() {
+    const template = document.getElementById('push-template').value;
+    const titleInput = document.getElementById('push-title');
+    const bodyInput = document.getElementById('push-body');
+    
+    const templates = {
+        'store_open': {
+            title: '🗺️ Loja Aberta!',
+            body: 'Já estamos funcionando. Faça já o seu pedido!'
+        },
+        'promo': {
+            title: '🔥 Promoção do Dia',
+            body: 'Confira nossas ofertas especiais de hoje!'
+        },
+        'coupon': {
+            title: '🎁 Novo Cupom Disponível',
+            body: 'Use o cupom e ganhe desconto no seu próximo pedido!'
+        }
+    };
+    
+    if (templates[template]) {
+        titleInput.value = templates[template].title;
+        bodyInput.value = templates[template].body;
+        // Update character count
+        document.getElementById('push-body-count').textContent = bodyInput.value.length;
+    }
+}
+
+async function sendPushNotification() {
+    const title = document.getElementById('push-title').value.trim();
+    const body = document.getElementById('push-body').value.trim();
+    const template = document.getElementById('push-template').value;
+    
+    if (!title || !body) {
+        Toastify({
+            text: "Preencha título e mensagem",
+            style: { background: "#ef4444" }
+        }).showToast();
+        return;
+    }
+    
+    const btn = document.getElementById('push-send-btn');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    
+    try {
+        const response = await fetch(API_PUSH_SEND, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                body: body,
+                template: template
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            Toastify({
+                text: `Notificação enviada para ${data.sent} cliente(s)!`,
+                style: { background: "#10b981" },
+                duration: 4000
+            }).showToast();
+            
+            // Clear form
+            document.getElementById('push-title').value = '';
+            document.getElementById('push-body').value = '';
+            document.getElementById('push-body-count').textContent = '0';
+            document.getElementById('push-template').value = 'custom';
+        } else {
+            Toastify({
+                text: data.message || "Erro ao enviar notificação",
+                style: { background: "#ef4444" }
+            }).showToast();
+        }
+    } catch (error) {
+        console.error('Erro ao enviar notificação:', error);
+        Toastify({
+            text: "Erro de conexão",
+            style: { background: "#ef4444" }
+        }).showToast();
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    }
 }
     </script>
 </body>

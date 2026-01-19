@@ -42,6 +42,137 @@ from .validators import validate_cep, validate_phone, validate_order_data
 # CORRIGIDO: Usar logger ao invés de print
 logger = logging.getLogger(__name__)
 
+def normalizar_texto(texto):
+    """
+    Normaliza uma string para comparação de bairros.
+    Remove acentos, converte para maiúsculas e remove espaços extras.
+    Ex: 'São José' -> 'SAO JOSE'
+    """
+    import unicodedata
+    if not texto:
+        return ''
+    # Normalizaunicode para remover acentos
+    texto_normalizado = unicodedata.normalize('NFD', texto)
+    # Remove os diacríticos (acentos)
+    texto_sem_acentos = ''.join(c for c in texto_normalizado if not unicodedata.combining(c))
+    # Converte para maiúsculas e remove espaços extras
+    return texto_sem_acentos.upper().strip()
+
+def send_push_notification(order, tenant, custom_title=None, custom_body=None):
+    """
+    Envia notificação push para o cliente quando o status do pedido muda.
+    Ou para notificações manuais (promoções, cupons, etc.)
+    
+    Args:
+        order: O pedido (opcional, para notificações de status)
+        tenant: O tenant/loja
+        custom_title: Título customizado (para notificações manuais)
+        custom_body: Corpo da mensagem customizado (para notificações manuais)
+    """
+    from .models import PushSubscription
+    
+    # Configurar web-push com VAPID
+    try:
+        from django.conf import settings
+        from pywebpush import webpush
+        
+        VAPID_PRIVATE_KEY = getattr(settings, 'VAPID_PRIVATE_KEY', None)
+        VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto:contato@rmpedidos.com.br')
+        
+        if not VAPID_PRIVATE_KEY:
+            logger.warning('[PUSH] VAPID private key not configured - push notifications disabled')
+            return {'success': False, 'error': 'VAPID key not configured'}
+        
+        # Nota: A nova API do pywebpush não usa set_vapid_details()
+        # Os dados VAPID são passados diretamente para webpush()
+        
+        # Criar a mensagem da notificação
+        title = custom_title or f"🍊 {tenant.name}"
+        
+        if custom_body:
+            # Notificação manual
+            body = custom_body
+            url = f"/{tenant.slug}/"
+        elif order:
+            # Notificação de status de pedido
+            if order.order_type == 'delivery':
+                body = f"🚚 Seu pedido #{order.id} saiu para entrega!"
+                url = f"/{tenant.slug}/meus-pedidos/"
+            elif order.order_type == 'pickup':
+                body = f"📦 Seu pedido #{order.id} está pronto para retirada!"
+                url = f"/{tenant.slug}/meus-pedidos/"
+            else:
+                body = f"📋 Status do pedido #{order.id} atualizado!"
+                url = f"/{tenant.slug}/meus-pedidos/"
+        else:
+            body = "Você tem uma nova notificação!"
+            url = f"/{tenant.slug}/"
+        
+        # Obter ícone da loja
+        icon_url = tenant.logo.url if tenant.logo else '/static/img/icon-192.svg'
+        
+        logger.info(f'[PUSH] Enviando para tenant {tenant.name}: {title} - {body}')
+        
+        # Buscar subscribers do tenant
+        subscriptions = PushSubscription.objects.filter(tenant=tenant, is_active=True)
+        logger.info(f'[PUSH] Total de subscriptions ativas: {subscriptions.count()}')
+        
+        sent_count = 0
+        failed_count = 0
+        error_messages = []
+        
+        for sub in subscriptions:
+            try:
+                subscription = sub.to_json()
+                webpush(
+                    subscription_info=subscription,
+                    data=json.dumps({
+                        'title': title,
+                        'body': body,
+                        'icon': icon_url,
+                        'badge': '/static/img/badge-72.png',
+                        'url': url,
+                        'tag': f'push-{tenant.slug}-{int(timezone.now().timestamp())}',
+                        'extra': {
+                            'order_id': order.id if order else None,
+                            'type': 'order_status' if order else 'promotion'
+                        }
+                    }),
+                    vapid_private_key=VAPID_PRIVATE_KEY,
+                    vapid_claims={
+                        'sub': VAPID_CLAIM_EMAIL
+                    }
+                )
+                sent_count += 1
+                logger.info(f'[PUSH] Enviado com sucesso para subscription {sub.id}')
+            except Exception as e:
+                error_str = str(e)
+                error_messages.append(f'Sub {sub.id}: {error_str}')
+                
+                # Se o subscription expirou ou foi desinscrito
+                if '410' in error_str or 'unsubscribed' in error_str or 'expired' in error_str or 'not found' in error_str.lower():
+                    sub.is_active = False
+                    sub.save()
+                    logger.info(f'[PUSH] Subscription {sub.id} marcada como inativa')
+                failed_count += 1
+                logger.warning(f'[PUSH] Falha ao enviar para sub {sub.id}: {e}')
+        
+        result = {
+            'success': True,
+            'sent': sent_count,
+            'failed': failed_count
+        }
+        logger.info(f'[PUSH] Concluído: {sent_count} enviados, {failed_count} falharam')
+        
+        return result
+        
+    except ImportError:
+        logger.warning('[PUSH] web-push library not installed - push notifications disabled')
+        return {'success': False, 'error': 'web-push library not installed'}
+    except Exception as e:
+        logger.error(f'[PUSH] Erro geral ao enviar push notification: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
 def is_store_open_by_hours(tenant):
     """
     Verifica se a loja está aberto baseado no horário de funcionamento.
@@ -538,8 +669,17 @@ def create_order(request, slug):
             if order_type == 'table':
                 delivery_fee = Decimal('0.00')
             elif neighborhood:
-                # Busca exata ou 'iexact' (case insensitive)
-                fee_obj = DeliveryFee.objects.filter(tenant=tenant, neighborhood__iexact=neighborhood).first()
+                # Normaliza o bairro do cliente para busca
+                neighborhood_normalized = normalizar_texto(neighborhood)
+                
+                # Busca todas as taxas e compara com versão normalizada
+                fees = DeliveryFee.objects.filter(tenant=tenant)
+                fee_obj = None
+                for fee in fees:
+                    if normalizar_texto(fee.neighborhood) == neighborhood_normalized:
+                        fee_obj = fee
+                        break
+                
                 if fee_obj:
                     delivery_fee = fee_obj.fee
 
@@ -744,6 +884,10 @@ def api_update_order(request, slug, order_id):
             order = Order.objects.get(id=order_id, tenant__slug=slug)
             order.status = new_status
             order.save()
+            
+            # Enviar notificação push se o pedido saiu para entrega
+            if new_status == 'saiu para entrega':
+                send_push_notification(order, tenant)
             
             return JsonResponse({'status': 'success'})
         except Order.DoesNotExist:
@@ -1598,16 +1742,228 @@ def api_delivery_fees(request, slug):
             if not neighborhood or fee is None:
                 return JsonResponse({'status': 'error', 'message': 'Dados inválidos'}, status=400)
 
+            # Normaliza o bairro para manter consistência
+            neighborhood_normalized = normalizar_texto(neighborhood)
+
             DeliveryFee.objects.update_or_create(
                 tenant=tenant,
                 neighborhood__iexact=neighborhood,
-                defaults={'neighborhood': neighborhood, 'fee': fee}
+                defaults={'neighborhood': neighborhood_normalized, 'fee': fee}
             )
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'Erro ao salvar taxa de entrega'}, status=500)
 
     return JsonResponse({'status': 'error'}, status=400)
+
+# ========================
+# APIs DE NOTIFICAÇÕES PUSH
+# ========================
+
+def api_push_subscribe(request, slug):
+    """
+    Salva a subscription de push notifications do cliente.
+    Não requer login - qualquer visitante pode se inscrever.
+    """
+    from .models import PushSubscription
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if request.method == 'POST':
+        try:
+            # Log do body raw para debug
+            logger.info(f'[PUSH] Recebendo subscription para tenant: {slug}')
+            logger.info(f'[PUSH] Raw body: {request.body[:500]}')
+            
+            data = json.loads(request.body)
+            logger.info(f'[PUSH] Data parsed keys: {data.keys()}')
+            
+            subscription_data = data.get('subscription')
+            logger.info(f'[PUSH] Subscription data: {subscription_data}')
+            
+            if not subscription_data:
+                logger.warning('[PUSH] Subscription inválida - dados não encontrados')
+                return JsonResponse({'status': 'error', 'message': 'Subscription inválida'}, status=400)
+            
+            endpoint = subscription_data.get('endpoint')
+            keys = subscription_data.get('keys', {})
+            p256dh = keys.get('p256dh', '')
+            auth = keys.get('auth', '')
+            
+            logger.info(f'[PUSH] Endpoint: {endpoint}')
+            logger.info(f'[PUSH] Keys p256dh: {p256dh[:50] if p256dh else None}...')
+            logger.info(f'[PUSH] Keys auth: {auth[:50] if auth else None}...')
+            
+            if not endpoint:
+                logger.warning('[PUSH] Endpoint obrigatório não encontrado')
+                return JsonResponse({'status': 'error', 'message': 'Endpoint obrigatório'}, status=400)
+            
+            # Verificar se já existe
+            existing = PushSubscription.objects.filter(tenant=tenant, endpoint=endpoint).first()
+            if existing:
+                logger.info(f'[PUSH] Subscription já existe, atualizando')
+                existing.is_active = True
+                existing.save()
+                return JsonResponse({'status': 'success', 'message': 'Subscription atualizada'})
+            
+            # Criar nova subscription
+            subscription = PushSubscription.objects.create(
+                tenant=tenant,
+                endpoint=endpoint,
+                p256dh=p256dh,
+                auth=auth
+            )
+            logger.info(f'[PUSH] Subscription criada com ID: {subscription.id}')
+            
+            return JsonResponse({'status': 'success', 'message': 'Subscription salva'})
+        except json.JSONDecodeError as e:
+            logger.error(f'[PUSH] Erro ao fazer parse do JSON: {e}')
+            logger.error(f'[PUSH] Raw body: {request.body}')
+            return JsonResponse({'status': 'error', 'message': 'JSON inválido'}, status=400)
+        except Exception as e:
+            logger.error(f'[PUSH] Erro ao salvar push subscription: {e}', exc_info=True)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+@login_required
+
+@login_required
+def api_push_subscriptions_count(request, slug):
+    """
+    Retorna a quantidade de assinantes de push notifications ativos de uma loja.
+    Usado para exibir no painel do lojista antes de enviar notificações.
+    """
+    from .models import PushSubscription
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'GET':
+        try:
+            count = PushSubscription.objects.filter(tenant=tenant, is_active=True).count()
+            return JsonResponse({'status': 'success', 'count': count})
+        except Exception as e:
+            logger.error(f'[PUSH] Erro ao contar subscriptions: {e}', exc_info=True)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error'}, status=400)
+
+def api_push_send(request, slug):
+    """
+    Envia uma notificação push para todos os subscribers de uma loja.
+    Usado para notificar promoções, cupons, status da loja, etc.
+    Requer autenticação do dono da loja.
+    """
+    from .models import PushSubscription
+    from django.conf import settings
+    
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Tipo de notificação
+            notification_type = data.get('type', 'custom')
+            
+            # Templates de notificação
+            if notification_type == 'promotion':
+                title = f"🔥 {tenant.name}"
+                body = data.get('message', ' Temos uma promoção especial para você!')
+            elif notification_type == 'coupon':
+                title = f"🎁 {tenant.name}"
+                coupon_code = data.get('coupon_code', '')
+                body = f"Use o cupom {coupon_code} e ganhe desconto!"
+            elif notification_type == 'store_open':
+                title = f"🟢 {tenant.name}"
+                body = data.get('message', 'Agora estamos abertos! Faça seu pedido.')
+            elif notification_type == 'new_product':
+                title = f"✨ {tenant.name}"
+                body = data.get('message', 'Novo produto disponível! Venha conferir.')
+            else:
+                # Custom message - usa title e body enviados pelo frontend
+                title = data.get('title', f'📢 {tenant.name}')
+                body = data.get('body', data.get('message', 'Você tem uma nova notificação!'))
+            
+            url = data.get('url', f'/{slug}/')
+            
+            # Configurar web-push com VAPID do settings
+            VAPID_PRIVATE_KEY = getattr(settings, 'VAPID_PRIVATE_KEY', None)
+            VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto:contato@rmpedidos.com.br')
+            
+            if not VAPID_PRIVATE_KEY:
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'VAPID private key não configurada no settings.py'
+                }, status=500)
+            
+            from django.conf import settings
+            from pywebpush import webpush
+            # Nota: A nova API do pywebpush não usa set_vapid_details()
+            # Os dados VAPID são passados diretamente para webpush()
+            
+            subscriptions = PushSubscription.objects.filter(tenant=tenant, is_active=True)
+            sent_count = 0
+            failed_count = 0
+            
+            icon_url = tenant.logo.url if tenant.logo else '/static/img/icon-192.svg'
+            
+            logger.info(f'[PUSH MANUAL] Enviando "{notification_type}" para {subscriptions.count()} subscribers')
+            
+            for sub in subscriptions:
+                try:
+                    subscription = sub.to_json()
+                    webpush(
+                        subscription_info=subscription,
+                        data=json.dumps({
+                            'title': title,
+                            'body': body,
+                            'icon': icon_url,
+                            'badge': '/static/img/badge-72.png',
+                            'url': url,
+                            'tag': f'push-manual-{notification_type}-{int(timezone.now().timestamp())}',
+                            'extra': {
+                                'type': notification_type,
+                                'tenant_slug': slug
+                            }
+                        }),
+                        vapid_private_key=VAPID_PRIVATE_KEY,
+                        vapid_claims={
+                            'sub': VAPID_CLAIM_EMAIL
+                        }
+                    )
+                    sent_count += 1
+                except Exception as e:
+                    error_str = str(e)
+                    # Se o subscription expirou, marcar como inativo
+                    if '410' in error_str or 'unsubscribed' in error_str.lower() or 'not found' in error_str.lower():
+                        sub.is_active = False
+                        sub.save()
+                        logger.info(f'[PUSH MANUAL] Subscription {sub.id} marcada como inativa')
+                    failed_count += 1
+                    logger.warning(f'[PUSH MANUAL] Falha para sub {sub.id}: {error_str}')
+            
+            logger.info(f'[PUSH MANUAL] Concluído: {sent_count} enviados, {failed_count} falharam')
+            
+            return JsonResponse({
+                'status': 'success', 
+                'sent': sent_count,
+                'failed': failed_count,
+                'message': f'Notificação enviada para {sent_count} clientes'
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'JSON inválido'}, status=400)
+        except Exception as e:
+            logger.error(f'[PUSH MANUAL] Erro: {e}', exc_info=True)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método não permitido'}, status=400)
 
 @login_required
 def api_delete_delivery_fee(request, slug, fee_id):

@@ -9,9 +9,11 @@
     <title>{{ tenant.name }} | Cardápio Digital</title>
 
     {% if tenant.logo %}
-        <link rel="icon" type="image/png" href="{{ tenant.logo.url }}">
-        <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}">
-        <link rel="apple-touch-icon" href="{{ tenant.logo.url }}">
+        <link rel="icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon">
+        <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon-shortcut">
+        <link rel="apple-touch-icon" href="{{ tenant.logo.url }}" id="dynamic-apple-icon">
+    {% else %}
+        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍊</text></svg>" id="dynamic-favicon">
     {% endif %}
     
     <!-- PWA Meta Tags -->
@@ -948,12 +950,12 @@
             });
         });
 
-        // Registrar Service Worker para PWA
+        // Registrar Service Worker UNIFICADO (Cache + Push)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('{% static "service-worker.js" %}')
+                navigator.serviceWorker.register('/static/sw.js')
                     .then(registration => {
-                        console.log('Service Worker registrado com sucesso:', registration);
+                        console.log('Service Worker unificado registrado com sucesso:', registration);
                     })
                     .catch(error => {
                         console.log('Erro ao registrar Service Worker:', error);
@@ -1096,6 +1098,342 @@
             closeInstallToast();
             deferredPrompt = null;
         });
+        
+        // ========================
+        // FAVICON DINÂMICO
+        // ========================
+        // Atualiza o favicon se houver uma logo salva no localStorage
+        function updateFaviconFromLogo() {
+            const savedLogo = localStorage.getItem('tenant_logo_url');
+            if (savedLogo) {
+                const favicon = document.getElementById('dynamic-favicon');
+                const faviconShortcut = document.getElementById('dynamic-favicon-shortcut');
+                const appleIcon = document.getElementById('dynamic-apple-icon');
+                
+                if (favicon) favicon.href = savedLogo;
+                if (faviconShortcut) faviconShortcut.href = savedLogo;
+                if (appleIcon) appleIcon.href = savedLogo;
+            }
+        }
+        
+        // Executar ao carregar
+        updateFaviconFromLogo();
+        
+        // ========================
+        // NOTIFICAÇÕES PUSH
+        // ========================
+        
+        // Função para mostrar o toast de permissão de notificações
+        function showPushNotificationToast() {
+            // Não mostrar se já foi recusado ou aceito antes
+            const pushStatus = localStorage.getItem('push_notification_status');
+            if (pushStatus === 'denied' || pushStatus === 'granted') return;
+            
+            // Não mostrar se não suporta notificações
+            if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+                return;
+            }
+            
+            // Verificar se já estamos registrados
+            if (localStorage.getItem('push_subscribed') === 'true') return;
+            
+            // Criar o toast
+            const toastId = 'push-notification-toast';
+            if (document.getElementById(toastId)) return;
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.innerHTML = `
+                <div style="
+                    position: fixed;
+                    bottom: 140px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: white;
+                    padding: 20px;
+                    border-radius: 16px;
+                    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+                    z-index: 9999;
+                    max-width: 90%;
+                    width: 320px;
+                    animation: slideUpFade 0.4s ease-out;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                ">
+                    <div style="
+                        width: 56px;
+                        height: 56px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, var(--primary, #ea580c), #f97316);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-bottom: 12px;
+                    ">
+                        <i class="fas fa-bell" style="color: white; font-size: 24px;"></i>
+                    </div>
+                    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #1f2937;">
+                        Fique por dentro!
+                    </p>
+                    <p style="margin: 0 0 16px 0; font-size: 14px; color: #6b7280; line-height: 1.5;">
+                        Deseja receber notificações sobre o status do seu pedido?
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                        <button id="push-accept-btn" style="
+                            padding: 12px 20px;
+                            background: linear-gradient(135deg, var(--primary, #ea580c), #f97316);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                            width: 100%;
+                        ">🔔 Ativar Notificações</button>
+                        <button id="push-deny-btn" style="
+                            padding: 10px;
+                            background: transparent;
+                            color: #9ca3af;
+                            border: none;
+                            font-size: 13px;
+                            cursor: pointer;
+                            width: 100%;
+                        ">Agora não</button>
+                    </div>
+                    <button onclick="closePushToast()" style="
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        background: none;
+                        border: none;
+                        color: #d1d5db;
+                        cursor: pointer;
+                        padding: 6px;
+                        border-radius: 50%;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.background='#f3f4f6';this.style.color='#6b7280'" onmouseout="this.style.background='transparent';this.style.color='#d1d5db'">
+                        <i class="fas fa-times" style="font-size: 14px;"></i>
+                    </button>
+                </div>
+                <style>
+                    @keyframes slideUpFade {
+                        from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+                        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    }
+                    @keyframes fadeOut {
+                        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        to { opacity: 0; transform: translateX(-50%) translateY(30px); }
+                    }
+                </style>
+            `;
+            document.body.appendChild(toast);
+            
+            // Event listeners
+            document.getElementById('push-accept-btn').addEventListener('click', requestPushPermission);
+            document.getElementById('push-deny-btn').addEventListener('click', () => closePushToast());
+        }
+        
+        function closePushToast() {
+            const toast = document.getElementById('push-notification-toast');
+            if (toast) {
+                toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+        
+        async function requestPushPermission() {
+            closePushToast();
+            
+            try {
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    localStorage.setItem('push_notification_status', 'granted');
+                    await registerServiceWorkerAndSubscribe();
+                    Toastify({
+                        text: "Notificações ativadas! Você será avisado sobre o status do seu pedido.",
+                        style: { background: "#10b981" },
+                        duration: 5000
+                    }).showToast();
+                } else if (permission === 'denied') {
+                    localStorage.setItem('push_notification_status', 'denied');
+                }
+            } catch (error) {
+                console.error('Erro ao solicitar permissão:', error);
+            }
+        }
+        
+        async function registerServiceWorkerAndSubscribe() {
+            try {
+                console.log('[PUSH] 1. Iniciando registro de Service Worker e subscription...');
+                
+                // Registrar Service Worker
+                console.log('[PUSH] 2. Registrando Service Worker...');
+                const registration = await navigator.serviceWorker.register('/static/sw.js')
+                    .catch((err) => {
+                        console.error('[PUSH] Erro no registro do SW:', err);
+                        return null;
+                    });
+                
+                if (!registration) {
+                    console.error('[PUSH] ERRO: Registration retornou null');
+                    return;
+                }
+                
+                console.log('[PUSH] 3. Service Worker registrado com sucesso');
+                console.log('[PUSH] Registration state:', registration.active ? 'active' : (registration.installing ? 'installing' : 'waiting'));
+                
+                // Função utilitária com timeout para aguardar.ready
+                const waitForReady = (registration) => {
+                    return new Promise((resolve, reject) => {
+                        // Timeout de 10 segundos
+                        const timeout = setTimeout(() => {
+                            console.warn('[PUSH] Timeout aguardando ready, usando registration diretamente');
+                            resolve(registration); // Resolve com o registration como fallback
+                        }, 10000);
+                        
+                        // Se já tem um SW ativo, resolver imediatamente
+                        if (registration.active) {
+                            clearTimeout(timeout);
+                            console.log('[PUSH] 4. SW já está ativo');
+                            resolve(registration);
+                            return;
+                        }
+                        
+                        // Aguardar mudança de estado
+                        const stateListener = (worker) => {
+                            console.log('[PUSH] SW state changed to:', worker.state);
+                            if (worker.state === 'activated') {
+                                clearTimeout(timeout);
+                                registration.removeEventListener('updatefound', stateListener);
+                                console.log('[PUSH] 4. SW ativado e pronto');
+                                resolve(registration);
+                            }
+                        };
+                        
+                        registration.addEventListener('updatefound', stateListener);
+                        
+                        // Se há um installing, aguardar
+                        if (registration.installing) {
+                            registration.installing.addEventListener('statechange', stateListener);
+                        }
+                    });
+                };
+                
+                // Aguardar o SW estar pronto
+                console.log('[PUSH] 4. Aguardando Service Worker estar pronto...');
+                const readyRegistration = await waitForReady(registration);
+                console.log('[PUSH] 5. Pronto para continuar, registration:', !!readyRegistration);
+                
+                // VAPID Public Key - DEVE ser a mesma do settings.py
+                const vapidPublicKey = 'BIvDGv1d-r5XxJG_6swAxyh700PSA6aJwpNqJ4Pr8tQAASzd_Y1omInNruoc9ob0JRU17guU5xQ_zZDxonSaDiY';
+                console.log('[PUSH] 6. Usando VAPID key configurada');
+                
+                // Verificar se já está inscrito
+                console.log('[PUSH] 7. Verificando subscription existente...');
+                let subscription = await readyRegistration.pushManager.getSubscription()
+                    .catch((err) => {
+                        console.error('[PUSH] ERRO ao getSubscription:', err);
+                        return null;
+                    });
+                
+                console.log('[PUSH] 8. Subscription atual:', subscription ? 'encontrada' : 'null');
+                
+                if (!subscription) {
+                    console.log('[PUSH] 9. Criando nova subscription...');
+                    try {
+                        subscription = await readyRegistration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                        });
+                        console.log('[PUSH] 10. Nova subscription criada com sucesso');
+                    } catch (subscribeErr) {
+                        console.error('[PUSH] ERRO ao criar subscription:', subscribeErr);
+                        console.error('[PUSH] Detalhes do erro:', subscribeErr.message);
+                        // Verificar se é erro de permissão
+                        if (subscribeErr.name === 'NotAllowedError') {
+                            console.error('[PUSH] O usuário bloqueou as notificações ou o site não tem permissão');
+                        }
+                        return;
+                    }
+                    
+                    // Converter subscription para JSON
+                    const subscriptionJson = subscription.toJSON();
+                    console.log('[PUSH] 11. Subscription JSON gerado');
+                    console.log('[PUSH] Endpoint:', subscriptionJson.endpoint ? 'OK' : 'FALTANDO');
+                    console.log('[PUSH] Keys:', subscriptionJson.keys ? 'OK' : 'FALTANDO');
+                    
+                    // Enviar subscription para o servidor
+                    const apiUrl = '/' + window.TENANT_SLUG + '/api/push/subscribe/';
+                    console.log('[PUSH] 12. Enviando para:', apiUrl);
+                    console.log('[PUSH] CSRF Token:', window.CSRF_TOKEN);
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': window.CSRF_TOKEN
+                        },
+                        body: JSON.stringify({ subscription: subscriptionJson })
+                    });
+                    
+                    console.log('[PUSH] 13. Response status:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('[PUSH] ERRO na response:', errorText);
+                        return;
+                    }
+                    
+                    const responseData = await response.json();
+                    console.log('[PUSH] 14. Response data:', responseData);
+                    
+                    if (responseData.status === 'success') {
+                        localStorage.setItem('push_subscribed', 'true');
+                        console.log('[PUSH] ✅ Subscription salva com sucesso!');
+                    } else {
+                        console.error('[PUSH] ERRO: Backend retornou status de erro:', responseData);
+                    }
+                } else {
+                    console.log('[PUSH] Usuário já está inscrito, verificando se precisa reenviar...');
+                    // Verificar se a subscription ainda é válida
+                    const subscriptionJson = subscription.toJSON();
+                    const apiUrl = '/' + window.TENANT_SLUG + '/api/push/subscribe/';
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': window.CSRF_TOKEN
+                        },
+                        body: JSON.stringify({ subscription: subscriptionJson })
+                    });
+                    
+                    if (response.ok) {
+                        const responseData = await response.json();
+                        console.log('[PUSH] Subscription verificada/atualizada:', responseData);
+                        localStorage.setItem('push_subscribed', 'true');
+                    }
+                }
+            } catch (error) {
+                console.error('[PUSH] ❌ Erro geral ao registrar para notificações:', error);
+                console.error('[PUSH] Stack trace:', error.stack);
+            }
+        }
+        
+        // Função utilitária para converter VAPID key
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+        }
+        
+        // Mostrar toast após 3 segundos
+        setTimeout(showPushNotificationToast, 3000);
     </script>
 
     <!-- Rodapé com Links Legais -->

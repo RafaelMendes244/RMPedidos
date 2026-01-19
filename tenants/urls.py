@@ -84,6 +84,13 @@ urlpatterns = [
     path('<slug:slug>/api/tables/<int:table_id>/toggle/', views.api_toggle_table, name='api_toggle_table'),
     path('<slug:slug>/api/tables/<int:table_id>/qrcode/', views.api_generate_qrcode, name='api_generate_qrcode'),
     path('<slug:slug>/api/tables/generate-all-qrcodes/', views.api_generate_all_qrcodes, name='api_generate_all_qrcodes'),
+
+    # ========================
+    # APIs DE NOTIFICAÇÕES PUSH
+    # ========================
+    path('<slug:slug>/api/push/subscribe/', views.api_push_subscribe, name='api_push_subscribe'),
+    path('<slug:slug>/api/push/subscriptions/count/', views.api_push_subscriptions_count, name='api_push_subscriptions_count'),
+    path('<slug:slug>/api/push/send/', views.api_push_send, name='api_push_send'),
 ]
 
 # Configuração para servir arquivos de mídia (imagens, logos, etc.)

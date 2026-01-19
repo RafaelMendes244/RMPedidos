@@ -463,3 +463,39 @@ class CouponUsage(models.Model):
 
     def __str__(self):
         return f"{self.coupon.code} usado em Pedido #{self.order.id}"
+
+
+# ========================
+# NOTIFICAÇÕES PUSH
+# ========================
+
+class PushSubscription(models.Model):
+    """
+    Armazena as subscriptions de notificações push dos clientes.
+    Cada subscription contém um endpoint único para envio de push notifications.
+    """
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='push_subscriptions', verbose_name="Loja")
+    endpoint = models.TextField(verbose_name="Endpoint")
+    p256dh = models.CharField(max_length=200, verbose_name="Chave P256dh")
+    auth = models.CharField(max_length=200, verbose_name="Chave Auth")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em", null=True, blank=True)
+    is_active = models.BooleanField(default=True, verbose_name="Ativo")
+    
+    class Meta:
+        verbose_name = "Subscription Push"
+        verbose_name_plural = "Subscriptions Push"
+        unique_together = ['tenant', 'endpoint']
+    
+    def __str__(self):
+        return f"Subscription de {self.tenant.name} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+    
+    def to_json(self):
+        """Converte para formato JSON do browser push manager"""
+        return {
+            'endpoint': self.endpoint,
+            'keys': {
+                'p256dh': self.p256dh,
+                'auth': self.auth
+            }
+        }

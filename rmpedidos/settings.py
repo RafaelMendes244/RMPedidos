@@ -223,3 +223,7 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'custom_login'
 
 SITE_ID = 1
+
+VAPID_PUBLIC_KEY = 'BIvDGv1d-r5XxJG_6swAxyh700PSA6aJwpNqJ4Pr8tQAASzd_Y1omInNruoc9ob0JRU17guU5xQ_zZDxonSaDiY'
+VAPID_PRIVATE_KEY = 'EAc3yFgaSEVKo9Y1pW_P7MPoix1cQsdDNwezIZv6RX4'
+VAPID_CLAIM_EMAIL = 'mailto: <gabriel.mito07@gmail.com>'
