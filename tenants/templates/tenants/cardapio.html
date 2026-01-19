@@ -181,8 +181,12 @@
         <button onclick="openStoreInfo()" class="bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition border border-orange-100 dark:border-gray-700">
             <i class="fas fa-store" style="color: {{ tenant.primary_color }}"></i> Info & Local
         </button>
-        <button onclick="openHistory()" class="py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition" style="background-color: {{ tenant.primary_color }}">
-            <i class="fas fa-history"></i> Meus Pedidos
+        <button 
+            onclick="openHistory()" 
+            class="adaptive-text-contrast py-4 rounded-2xl shadow-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:-translate-y-1 transition"
+            style="background-color: {{ tenant.primary_color }};">
+            <i class="fas fa-history"></i>
+            <span class="btn-text">Meus Pedidos</span>
         </button>
     </div>
 
@@ -201,7 +205,7 @@
                 </button>
                 
                 {% for category in categories %}
-                <button onclick="filterCategory('cat-{{ category.id }}', this)" class="category-btn px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 border flex-shrink-0 bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-600 hover:shadow-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                <button onclick="filterCategory('cat-{{ category.id }}', this)" class="category-btn px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 border flex-shrink-0 bg-white text-gray-600 border-gray-200 hover:border-orange-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
                     {{ category.name }}
                 </button>
                 {% endfor %}
@@ -212,15 +216,16 @@
     <main class="max-w-7xl mx-auto px-4 min-h-[400px]" id="menu-items">
         
         {% for category in categories %}
-            <div id="cat-{{ category.id }}" class="category-section flex items-center gap-4 mt-8 mb-6 w-full animate-fadeIn pt-4">
-                <span class="h-px w-8" style="background-color: {{ tenant.primary_color }}"></span>
-                <h2 class="text-3xl font-serif text-gray-800 dark:text-white capitalize italic tracking-wide">
-                    {{ category.name }}
-                </h2>
-                <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
-            </div>
+            <div id="cat-{{ category.id }}" class="category-section">
+                <div class="flex items-center gap-4 mt-8 mb-6 w-full animate-fadeIn pt-4">
+                    <span class="h-px w-8" style="background-color: {{ tenant.primary_color }}"></span>
+                    <h2 class="text-3xl font-serif text-gray-800 dark:text-white capitalize italic tracking-wide">
+                        {{ category.name }}
+                    </h2>
+                    <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
+                </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {% for product in category.products.all %}
                 <div class="group relative bg-white dark:bg-gray-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(234,88,12,0.15)] transition-all duration-300 border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full hover:-translate-y-1">
     
@@ -280,6 +285,7 @@
                     </div>
                 </div>
                 {% endfor %}
+                </div>
             </div>
         {% endfor %}
 
@@ -758,13 +764,17 @@
                 footerCart.querySelector('.flex').insertBefore(mesaBadge, footerCart.querySelector('.flex').lastElementChild);
             }
 
-            // Esconder completamente campos de endereço
+            // Esconder completamente campos de endereço e telefone para modo mesa
             if (addrCont) addrCont.style.display = 'none';
             if (geoBtn) geoBtn.style.display = 'none';
             if (cepInput) cepInput.style.display = 'none';
             if (addressInput) addressInput.style.display = 'none';
             if (numberInput) numberInput.style.display = 'none';
             if (neighborhoodInput) neighborhoodInput.style.display = 'none';
+            
+            // Ocultar campo de telefone quando pedido é na mesa
+            const phoneInput = document.getElementById('client-phone');
+            if (phoneInput) phoneInput.style.display = 'none';
 
             // Desabilitar visualmente o botão de entrega
             if (btnDelivery) {
@@ -859,7 +869,7 @@
             // Se for "all", mostra todos os produtos e rola para o topo
             if (categoryId === 'all') {
                 document.querySelectorAll('.category-section').forEach(section => {
-                    section.style.display = 'block';
+                    section.style.display = '';
                 });
                 window.scrollTo({
                     top: 0,
@@ -876,7 +886,7 @@
             // Mostra apenas a categoria selecionada
             const targetSection = document.getElementById(categoryId);
             if (targetSection) {
-                targetSection.style.display = 'block';
+                targetSection.style.display = '';
                 
                 // Scroll suave até a seção
                 const navHeight = document.getElementById('category-nav').offsetHeight;
@@ -951,18 +961,139 @@
             });
         }
 
-        // Permitir instalação do PWA
+        // ============================================
+        // TOAST DE INSTALAÇÃO DO PWA
+        // ============================================
         let deferredPrompt;
+        let pwaToastShown = false;
+        
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Mostrar botão de instalação se desejar
-            console.log('PWA pode ser instalada');
+            
+            // Mostra o toast apenas se ainda não foi mostrado
+            if (!pwaToastShown) {
+                showInstallToast();
+                pwaToastShown = true;
+            }
         });
-
+        
+        function showInstallToast() {
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#ea580c';
+            
+            // Criar o elemento do toast se não existir
+            if (!document.getElementById('pwa-install-toast')) {
+                const toastContainer = document.createElement('div');
+                toastContainer.id = 'pwa-install-toast';
+                toastContainer.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        bottom: 80px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+                        color: white;
+                        padding: 16px 20px;
+                        border-radius: 16px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        gap: 16px;
+                        z-index: 9999;
+                        max-width: 90%;
+                        width: 380px;
+                        animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                        font-family: 'Inter', sans-serif;
+                    " onmouseover="this.style.transform='translateX(-50%) scale(1.02)'" onmouseout="this.style.transform='translateX(-50%) scale(1)'">
+                        <div style="
+                            width: 48px;
+                            height: 48px;
+                            background: ${primaryColor};
+                            border-radius: 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                        ">
+                            <i class="fas fa-mobile-alt" style="font-size: 24px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-weight: 600; font-size: 14px; line-height: 1.4;">Peça no nosso aplicativo</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Mais rápido e prático!</p>
+                        </div>
+                        <button onclick="installPWA()" style="
+                            background: ${primaryColor};
+                            border: none;
+                            color: white;
+                            padding: 10px 20px;
+                            border-radius: 10px;
+                            font-weight: 600;
+                            font-size: 12px;
+                            cursor: pointer;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='brightness(1)'">
+                            INSTALAR
+                        </button>
+                        <button onclick="closeInstallToast()" style="
+                            background: transparent;
+                            border: none;
+                            color: rgba(255,255,255,0.6);
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.6)'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <style>
+                        @keyframes slideUpFade {
+                            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        }
+                        @keyframes fadeOut {
+                            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                        }
+                    </style>
+                `;
+                document.body.appendChild(toastContainer);
+            }
+        }
+        
+        function closeInstallToast() {
+            const toast = document.getElementById('pwa-install-toast');
+            if (toast) {
+                toast.querySelector('div').style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+        
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Resultado da instalação:', outcome);
+                
+                if (outcome === 'accepted') {
+                    closeInstallToast();
+                }
+                
+                deferredPrompt = null;
+            }
+        };
+        
         // Detectar quando a aplicação é instalada
         window.addEventListener('appinstalled', () => {
             console.log('PWA foi instalada com sucesso');
+            closeInstallToast();
             deferredPrompt = null;
         });
     </script>

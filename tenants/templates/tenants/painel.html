@@ -1548,6 +1548,25 @@
             } catch (error) { console.error("Erro orders:", error); }
         }
 
+        function getStatusDisplay(order) {
+            const status = order.status;
+            const type = order.order_type; // 'delivery', 'pickup', 'table'
+
+            if (status === 'pendente') return 'Pendente';
+            if (status === 'cancelado') return 'Cancelado';
+            if (status === 'concluido') return 'Concluído';
+            
+            if (status === 'em_preparo') return 'Em Preparo';
+
+            if (status === 'saiu_entrega') {
+                if (type === 'table') return 'Servido / Na Mesa';
+                if (type === 'pickup') return 'Pronto p/ Retirada';
+                return 'Saiu para Entrega'; // Delivery padrão
+            }
+
+            return status.replace('_', ' ');
+        }
+
         function renderOrders(orders) {
             const container = document.getElementById('orders-container');
             const badge = document.getElementById('badge-count');
@@ -1608,7 +1627,7 @@
                 const itemsHtml = order.items.map(i => {
                     const safeItemName = escapeHtml(i.name);
                     const safeItemObs = i.obs ? `<p class="text-[10px] text-orange-600 bg-orange-50 p-1 rounded">Obs: ${escapeHtml(i.obs)}</p>` : '';
-                    const safeOptions = i.options ? `<p class="text-[10px] text-blue-600 bg-blue-50 p-1 rounded mb-1">+ ${escapeHtml(i.options)}</p>` : '';
+                    const safeOptions = i.options ? `<p class="text-[10px] text-blue-600 bg-blue-50 p-1 rounded mb-1">+ ${groupOptions(i.options)}</p>` : '';
                     
                     return `<div class="flex justify-between">
                                 <span><b>${i.quantity}x</b> ${safeItemName}</span>
@@ -1658,7 +1677,7 @@
                             </div>
                             <p class="text-xs text-gray-500">${order.created_at}</p>
                         </div>
-                        <span class="px-2 md:px-3 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor}">${order.status.replace('_', ' ')}</span>
+                        <span class="px-2 md:px-3 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor}">${getStatusDisplay(order)}</span>
                     </div>
                     <div class="flex-1 bg-gray-50 rounded-xl p-3 mb-2 space-y-2 text-sm border border-gray-100">
                         ${itemsHtml}
@@ -1859,7 +1878,21 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
             itemsHtml = orderItems.map(item => {
                 const totalItem = item.price * item.quantity;
                 let optionsHtml = '';
-                if (item.options) optionsHtml = `<div class="item-options">+ ${item.options}</div>`;
+                if (item.options) {
+                    // Agrupar opcionais por nome e contar (ex: "Bacon (2x)")
+                    const optionsCount = {};
+                    item.options.split(',').forEach(opt => {
+                        const cleanOpt = opt.trim();
+                        if (cleanOpt) {
+                            const cleanName = cleanOpt.replace(/\s*\(\d+x\)$/, '').trim();
+                            optionsCount[cleanName] = (optionsCount[cleanName] || 0) + 1;
+                        }
+                    });
+                    const groupedOptions = Object.entries(optionsCount)
+                        .map(([name, count]) => count > 1 ? `${name} (${count}x)` : name)
+                        .join(', ');
+                    optionsHtml = `<div class="item-options">+ ${groupedOptions}</div>`;
+                }
                 if (item.obs) optionsHtml += `<div class="item-obs">Obs: ${item.obs}</div>`;
 
                 return `
@@ -2905,6 +2938,29 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
             } else {
                 label.innerText = "Valor do Desconto (R$)";
             }
+        }
+
+        // Função para agrupar opcionais por nome e contar (ex: "Bacon, Bacon" -> "Bacon (2x)")
+        function groupOptions(optionsText) {
+            if (!optionsText) return '';
+            
+            // Divide por vírgula e limpa espaços
+            const options = optionsText.split(',').map(opt => opt.trim()).filter(opt => opt);
+            
+            if (options.length === 0) return '';
+            
+            // Agrupa por nome e conta
+            const counts = {};
+            options.forEach(opt => {
+                // Remove sufixo de contagem se existir (ex: "Bacon (2x)" -> "Bacon")
+                const cleanName = opt.replace(/\s*\(\d+x\)$/, '').trim();
+                counts[cleanName] = (counts[cleanName] || 0) + 1;
+            });
+            
+            // Cria string agrupada
+            return Object.entries(counts)
+                .map(([name, count]) => count > 1 ? `${name} (${count}x)` : name)
+                .join(', ');
         }
 
         function escapeHtml(text) {

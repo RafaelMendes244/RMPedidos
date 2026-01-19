@@ -499,20 +499,24 @@ def create_order(request, slug):
                 valid_options_text = []
                 
                 for opt in options_list:
-                    # O front manda {name: 'Bacon', price: 2.00}. Ignoramos o price do front.
+                    # O front manda {name: 'Bacon', price: 2.00} ou {name: 'Bacon (3x)', price: 6.00}
+                    # Usamos o nome do front para preservar a quantidade se existir
                     opt_name = opt.get('name')
                     
                     # Busca complexa: OpçãoItem -> ProductOption -> Product
+                    # Primeiro tenta encontrar o item exato (para validar preço)
                     db_option_item = OptionItem.objects.filter(
-                        name=opt_name, 
+                        name__icontains=opt_name.split(' (')[0],  # Remove "(3x)" se existir
                         option__product=product
                     ).first()
                     
                     if db_option_item:
                         current_item_total += db_option_item.price
-                        valid_options_text.append(db_option_item.name)
+                        # Usa o nome do front (que pode ter "(3x)") em vez do nome do banco
+                        valid_options_text.append(opt_name)
                     else:
-                        pass
+                        # Se não encontrar, ainda assim salva o nome do front
+                        valid_options_text.append(opt_name)
 
                 quantity = int(item['qtd'])
                 items_total += current_item_total * quantity

@@ -380,7 +380,19 @@ function sendToWhatsApp(order) {
     order.items.forEach(i => {
         msg += `${i.qtd}x ${i.name} - R$ ${(i.price * i.qtd).toFixed(2)}\n`;
         if(i.options && i.options.length > 0) {
-            msg += `   + ${i.options.map(o => o.name).join(', ')}\n`;
+            // Agrupar opcionais por nome e contar (ex: "Bacon (2x)")
+            const optionsCount = {};
+            i.options.forEach(opt => {
+                const name = opt.name || opt;
+                optionsCount[name] = (optionsCount[name] || 0) + 1;
+            });
+            
+            // Criar string agrupada
+            const groupedOptions = Object.entries(optionsCount)
+                .map(([name, count]) => count > 1 ? `${name} (${count}x)` : name)
+                .join(', ');
+            
+            msg += `   + ${groupedOptions}\n`;
         }
         if(i.obs) msg += `   Obs: ${i.obs}\n`;
     });
@@ -436,29 +448,35 @@ window.showProductModal = (id) => {
     const product = window.PRODUCTS_DATA[id];
     if (!product) return;
     
-    // GERA O HTML DAS OPCOES
+    // GERA O HTML DAS OPCOES COM CONTADORES
     let optionsHtml = '';
     
     if (product.opcoes && product.opcoes.length > 0) {
         product.opcoes.forEach((opt, idx) => {
             let itemsHtml = '';
+            const isRadio = opt.type === 'radio';
+            const effectiveMax = isRadio ? 1 : (opt.max || 99);
+            
             opt.items.forEach((item, iIdx) => {
-                const inputType = opt.type === 'radio' ? 'radio' : 'checkbox';
-                const inputName = opt.type === 'radio' ? `opt_${idx}` : `opt_${idx}[]`;
-                
                 const priceText = item.price > 0 ? `+ R$ ${item.price.toFixed(2)}` : '';
                 
                 itemsHtml += `
-                    <label class="flex items-center justify-between p-3 border border-gray-100 rounded-lg mb-2 cursor-pointer hover:bg-orange-50 transition">
+                    <div class="flex items-center justify-between p-3 border border-gray-100 rounded-lg mb-2 bg-white ${isRadio ? 'cursor-pointer' : ''}" 
+                        data-opt-idx="${idx}" 
+                        data-item-idx="${iIdx}" 
+                        data-item-name="${item.name}" 
+                        data-item-price="${item.price}"
+                        data-opt-type="${opt.type}">
                         <div class="flex items-center gap-3">
-                            <input type="${inputType}" name="${inputName}" value="${item.name}::${item.price}" 
-                                class="w-4 h-4 accent-orange-600" 
-                                ${opt.required && iIdx === 0 && opt.type === 'radio' ? 'checked' : ''}
-                                onchange="calculateModalTotal()">
                             <span class="text-sm text-gray-700 font-medium">${item.name}</span>
                         </div>
-                        <span class="text-xs font-bold text-orange-600">${priceText}</span>
-                    </label>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="decreaseOptionQty(${idx}, ${iIdx})" class="w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold flex items-center justify-center transition-opacity hover:opacity-80">-</button>
+                            <span id="opt-qty-${idx}-${iIdx}" class="w-6 text-center font-bold text-gray-900 text-base">0</span>
+                            <button type="button" onclick="increaseOptionQty(${idx}, ${iIdx}, ${effectiveMax})" class="w-8 h-8 rounded-full bg-orange-500 text-white font-bold flex items-center justify-center transition-opacity hover:opacity-80">+</button>
+                            <span class="text-sm font-bold text-orange-600 min-w-[60px] text-right">${priceText}</span>
+                        </div>
+                    </div>
                 `;
             });
 
@@ -468,7 +486,8 @@ window.showProductModal = (id) => {
                         <h4 class="font-bold text-gray-800">${opt.title}</h4>
                         ${opt.required ? '<span class="text-[10px] bg-gray-800 text-white px-2 py-0.5 rounded">OBRIGATORIO</span>' : '<span class="text-[10px] text-gray-400">OPCIONAL</span>'}
                     </div>
-                    ${opt.type === 'checkbox' && opt.max > 1 ? `<p class="text-xs text-gray-400 mb-2">Escolha ate ${opt.max} opcoes</p>` : ''}
+                    ${!isRadio && opt.max ? `<p class="text-xs text-gray-400 mb-2">Maximo ${opt.max} opcoes</p>` : ''}
+                    ${isRadio ? `<p class="text-xs text-gray-400 mb-2">Escolha 1 opcao</p>` : ''}
                     <div class="space-y-1">${itemsHtml}</div>
                 </div>
             `;
@@ -476,6 +495,7 @@ window.showProductModal = (id) => {
     } else { 
         optionsHtml = '<p class="text-xs text-gray-400 italic mb-4">Sem opcoes adicionais.</p>'; 
     }
+    
     Swal.fire({
         title: `<span class="font-serif text-2xl text-gray-900 dark:text-white">${product.name}</span>`,
         html: `
@@ -508,17 +528,94 @@ window.showProductModal = (id) => {
             const selectedOptions = [];
             let extraPrice = 0;
             
-            const checkedInputs = document.querySelectorAll('.swal2-popup input[type="radio"]:checked, .swal2-popup input[type="checkbox"]:checked');
-            checkedInputs.forEach(input => {
-                const [name, price] = input.value.split('::');
-                const priceNum = parseFloat(price) || 0;
-                selectedOptions.push({ name, price: priceNum });
-                extraPrice += priceNum;
+            // Coletar opções com quantidade > 0 (mantém repetidos para contar no total)
+            const optionContainers = document.querySelectorAll('[data-opt-idx]');
+            optionContainers.forEach(container => {
+                const optIdx = parseInt(container.dataset.optIdx);
+                const itemIdx = parseInt(container.dataset.itemIdx);
+                const qtySpan = document.getElementById(`opt-qty-${optIdx}-${itemIdx}`);
+                const qty = parseInt(qtySpan.innerText) || 0;
+                
+                if (qty > 0) {
+                    const name = container.dataset.itemName;
+                    const price = parseFloat(container.dataset.itemPrice) || 0;
+                    // Adicionar item qty vezes (mantém repetidos para lógica de preço)
+                    for (let i = 0; i < qty; i++) {
+                        selectedOptions.push({ name, price: price });
+                        extraPrice += price;
+                    }
+                }
             });
             
             return { obs, options: selectedOptions, extraPrice }; 
         }
     }).then(r => { if (r.isConfirmed) addToCart(product, r.value.obs, r.value.options, r.value.extraPrice); });
+};
+
+// Função para aumentar quantidade da opção (com limite TOTAL do grupo)
+window.increaseOptionQty = (optIdx, itemIdx, maxGroup) => {
+    // Pegar o container do item para verificar o tipo
+    const itemContainer = document.querySelector(`[data-opt-idx="${optIdx}"][data-item-idx="${itemIdx}"]`);
+    const optType = itemContainer?.dataset.optType || 'checkbox';
+    const isRadio = optType === 'radio';
+    
+    // Se for radio e já estiver selecionado (qty = 1), mostra mensagem
+    if (isRadio) {
+        const currentQtySpan = document.getElementById(`opt-qty-${optIdx}-${itemIdx}`);
+        const currentQty = parseInt(currentQtySpan.innerText) || 0;
+        if (currentQty >= 1) {
+            Toastify({ text: "Esta opcao ja esta selecionada", style: { background: "#3b82f6" } }).showToast();
+            return;
+        }
+    }
+    
+    // Primeiro, calcular total atual de todas as opções deste grupo
+    const allOptionsInGroup = document.querySelectorAll(`[data-opt-idx="${optIdx}"]`);
+    let currentTotal = 0;
+    allOptionsInGroup.forEach(container => {
+        const idx = parseInt(container.dataset.itemIdx);
+        const qtySpan = document.getElementById(`opt-qty-${optIdx}-${idx}`);
+        currentTotal += parseInt(qtySpan.innerText) || 0;
+    });
+    
+    // Se há limite definido e já foi atingido, não permite aumentar mais
+    if (maxGroup && currentTotal >= maxGroup) {
+        Toastify({ text: `Maximo de ${maxGroup} opcoes`, style: { background: "#ef4444" } }).showToast();
+        return;
+    }
+    
+    // Se for radio, zerar todos os outros antes de aumentar este
+    if (isRadio) {
+        allOptionsInGroup.forEach(container => {
+            const idx = parseInt(container.dataset.itemIdx);
+            const qtySpan = document.getElementById(`opt-qty-${optIdx}-${idx}`);
+            qtySpan.innerText = '0';
+            qtySpan.classList.remove('text-orange-600');
+        });
+    }
+    
+    const qtySpan = document.getElementById(`opt-qty-${optIdx}-${itemIdx}`);
+    let currentQty = parseInt(qtySpan.innerText) || 0;
+    
+    currentQty++;
+    qtySpan.innerText = currentQty;
+    qtySpan.classList.add('text-orange-600');
+    window.calculateModalTotal();
+};
+
+// Função para diminuir quantidade da opção
+window.decreaseOptionQty = (optIdx, itemIdx) => {
+    const qtySpan = document.getElementById(`opt-qty-${optIdx}-${itemIdx}`);
+    let currentQty = parseInt(qtySpan.innerText) || 0;
+    
+    if (currentQty > 0) {
+        currentQty--;
+        qtySpan.innerText = currentQty;
+        if (currentQty === 0) {
+            qtySpan.classList.remove('text-orange-600');
+        }
+        window.calculateModalTotal();
+    }
 };
 
 function addToCart(product, obs, options, extraPrice) {
@@ -569,9 +666,21 @@ window.renderCartItems = () => {
     container.classList.remove("hidden"); emptyMsg.classList.add("hidden"); if(btnNext) btnNext.classList.remove("hidden"); if(cartHeader) cartHeader.classList.remove("hidden");
 
     cart.forEach((item, idx) => {
-        let optionsHtml = '';
+        let optionsDisplay = '';
         if (item.options && item.options.length > 0) {
-            optionsHtml = `<p class="text-[10px] text-orange-600 truncate">+ ${item.options.map(o => o.name).join(', ')}</p>`;
+            // Agrupar opções por nome e contar quantidade (igual ao WhatsApp)
+            const optionsCount = {};
+            item.options.forEach(opt => {
+                const name = opt.name || opt;
+                optionsCount[name] = (optionsCount[name] || 0) + 1;
+            });
+            
+            // Criar string agrupada: "Frango 2, Queijo 1, Ovos 2"
+            optionsDisplay = Object.entries(optionsCount)
+                .map(([name, count]) => count > 1 ? `${name} ${count}` : name)
+                .join(', ');
+            
+            optionsDisplay = `<p class="text-[10px] text-orange-600 truncate">+ ${optionsDisplay}</p>`;
         }
         
         const hasRealImage = item.image && !item.image.startsWith('data:image');
@@ -588,7 +697,7 @@ window.renderCartItems = () => {
             <div class="flex-1 min-w-0 flex flex-col justify-between py-1">
                 <div>
                     <h4 class="font-medium text-sm text-gray-900 dark:text-white truncate">${item.name}</h4>
-                    ${optionsHtml}
+                    ${optionsDisplay}
                     ${item.obs ? `<p class="text-[10px] text-gray-400 italic truncate">"${item.obs}"</p>` : ''}
                 </div>
                 <div class="flex justify-between items-end">
@@ -835,29 +944,45 @@ window.openHistory = async () => {
             data.orders.forEach(order => {
                 let statusClass = "bg-gray-100 text-gray-600";
                 let iconClass = "fa-clock";
-                let statusText = order.status;
+                let statusText = order.status; // Valor padrão do backend
 
+                // --- LÓGICA DE STATUS PROFISSIONAL ---
                 if(order.status_key === 'pendente') {
                     statusClass = "bg-orange-100 text-orange-600";
                     iconClass = "fa-circle-notch fa-spin";
+                    statusText = "Aguardando Confirmação";
                 }
                 else if(order.status_key === 'em_preparo') {
                     statusClass = "bg-blue-100 text-blue-600";
                     iconClass = "fa-fire"; 
+                    statusText = "Em Preparo";
                 }
                 else if(order.status_key === 'saiu_entrega') {
+                    // AQUI ESTÁ A MÁGICA
                     statusClass = "bg-yellow-100 text-yellow-700";
-                    iconClass = "fa-motorcycle";
+                    
+                    if (order.table_number) {
+                        iconClass = "fa-utensils";
+                        statusText = "Servido / Na Mesa";
+                    } else if (!order.is_delivery) { // Retirada
+                        iconClass = "fa-shopping-bag";
+                        statusText = "Pronto p/ Retirada";
+                    } else { // Delivery
+                        iconClass = "fa-motorcycle";
+                        statusText = "Saiu para Entrega";
+                    }
                 }
                 else if(order.status_key === 'concluido') {
                     statusClass = "bg-green-100 text-green-600";
                     iconClass = "fa-check-circle";
+                    statusText = "Concluído";
                 }
                 else if(order.status_key === 'cancelado') {
                     statusClass = "bg-red-100 text-red-600";
                     iconClass = "fa-times-circle";
+                    statusText = "Cancelado";
                 }
-
+                
                 let typeIcon = '';
                 if (order.table_number) {
                     typeIcon = `<div class="bg-orange-100 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-orange-600">
@@ -872,10 +997,10 @@ window.openHistory = async () => {
                         <i class="fas fa-store text-gray-800"></i> Retirada
                         </div>`;
                 }
-
+                
+                // Inserção no HTML (igual você já tinha)
                 content.innerHTML += `
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 dark:border-gray-700 relative overflow-hidden">
-                        
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 dark:border-gray-700 relative overflow-hidden mb-3">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <span class="text-xs font-bold text-gray-400 tracking-wider">#${order.id}</span>
@@ -886,7 +1011,7 @@ window.openHistory = async () => {
                                 <i class="fas ${iconClass}"></i> ${statusText}
                             </div>
                         </div>
-
+                        
                         <div class="mb-5">
                             <p class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
                                 ${formatItemsList(order.items_summary)}
@@ -1344,7 +1469,7 @@ window.clearCart = () => {
     });
 }
 
-// --- FUNÇÂO PARA CALCULAR TOTAL DO MODAL ---
+// --- FUNÇÂO PARA CALCULAR TOTAL DO MODAL (ATUALIZADA PARA CONTADORES) ---
 window.calculateModalTotal = () => {
     // 1. Pega o elemento que mostra o preço
     const priceEl = document.getElementById('modal-total-display');
@@ -1353,15 +1478,19 @@ window.calculateModalTotal = () => {
     // 2. Pega o preço base que salvamos no atributo data-base
     let total = parseFloat(priceEl.dataset.base);
 
-    // 3. Pega todos os inputs MARCADOS dentro do modal do SweetAlert
-    const checkedInputs = document.querySelectorAll('.swal2-popup input:checked');
-
-    // 4. Soma os valores
-    checkedInputs.forEach(input => {
-        // O value é "Nome::Preco", então damos split
-        const parts = input.value.split('::');
-        if (parts.length === 2) {
-            total += parseFloat(parts[1]);
+    // 3. Pega todos os containers de opção e calcula baseado na quantidade
+    const optionContainers = document.querySelectorAll('[data-opt-idx]');
+    
+    // 4. Soma os valores multiplicados pela quantidade
+    optionContainers.forEach(container => {
+        const itemIdx = parseInt(container.dataset.itemIdx);
+        const optIdx = parseInt(container.dataset.optIdx);
+        const qtySpan = document.getElementById(`opt-qty-${optIdx}-${itemIdx}`);
+        const qty = parseInt(qtySpan.innerText) || 0;
+        
+        if (qty > 0) {
+            const price = parseFloat(container.dataset.itemPrice) || 0;
+            total += (price * qty);
         }
     });
 
