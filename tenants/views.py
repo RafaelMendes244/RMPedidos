@@ -12,10 +12,14 @@ from django.db.models import Sum, Prefetch, Count, Q
 from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 import logging
 import qrcode
 import base64
 from io import BytesIO
+
+from django.conf import settings
+from pywebpush import webpush
 
 from django_ratelimit.decorators import ratelimit
 from django.views.decorators.cache import never_cache
@@ -59,118 +63,85 @@ def normalizar_texto(texto):
     return texto_sem_acentos.upper().strip()
 
 def send_push_notification(order, tenant, custom_title=None, custom_body=None):
-    """
-    Envia notificação push para o cliente quando o status do pedido muda.
-    Ou para notificações manuais (promoções, cupons, etc.)
-    
-    Args:
-        order: O pedido (opcional, para notificações de status)
-        tenant: O tenant/loja
-        custom_title: Título customizado (para notificações manuais)
-        custom_body: Corpo da mensagem customizado (para notificações manuais)
-    """
     from .models import PushSubscription
     
-    # Configurar web-push com VAPID
     try:
-        from django.conf import settings
-        from pywebpush import webpush
-        
         VAPID_PRIVATE_KEY = getattr(settings, 'VAPID_PRIVATE_KEY', None)
-        VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto:contato@rmpedidos.com.br')
+        VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto:admin@admin.com')
         
         if not VAPID_PRIVATE_KEY:
-            logger.warning('[PUSH] VAPID private key not configured - push notifications disabled')
             return {'success': False, 'error': 'VAPID key not configured'}
-        
-        # Nota: A nova API do pywebpush não usa set_vapid_details()
-        # Os dados VAPID são passados diretamente para webpush()
-        
-        # Criar a mensagem da notificação
-        title = custom_title or f"🍊 {tenant.name}"
+
+        # Lógica de Mensagem
+        subscriptions = []
         
         if custom_body:
-            # Notificação manual
+            # Notificação Manual (Promoção/Aviso) -> Envia para TODOS
+            title = custom_title or tenant.name
             body = custom_body
             url = f"/{tenant.slug}/"
+            subscriptions = PushSubscription.objects.filter(tenant=tenant, is_active=True)
+            
         elif order:
-            # Notificação de status de pedido
-            if order.order_type == 'delivery':
-                body = f"🚚 Seu pedido #{order.id} saiu para entrega!"
-                url = f"/{tenant.slug}/meus-pedidos/"
-            elif order.order_type == 'pickup':
-                body = f"📦 Seu pedido #{order.id} está pronto para retirada!"
-                url = f"/{tenant.slug}/meus-pedidos/"
+            # Notificação de Pedido -> Envia APENAS para o CLIENTE ESPECÍFICO
+            title = f"🔔 Atualização do Pedido #{order.id}"
+            url = f"/{tenant.slug}/meus-pedidos/"
+            
+            if order.status == 'saiu_entrega':
+                body = f"🏍️ Seu pedido saiu para entrega! Acompanhe."
             else:
-                body = f"📋 Status do pedido #{order.id} atualizado!"
-                url = f"/{tenant.slug}/meus-pedidos/"
+                body = f"Status atualizado para: {order.get_status_display()}"
+            
+            # CORREÇÃO: Filtrar pelo telefone
+            if order.customer_phone:
+                # Garante que só temos números para comparar
+                target_phone = ''.join(filter(str.isdigit, order.customer_phone))
+                
+                subscriptions = PushSubscription.objects.filter(
+                    tenant=tenant, 
+                    is_active=True, 
+                    customer_phone=target_phone
+                )
+                
+                if not subscriptions.exists():
+                    logger.warning(f"[PUSH] Nenhuma inscrição encontrada para o telefone {target_phone}")
+                    return {'success': False, 'error': 'Cliente não inscrito no push'}
+            else:
+                logger.warning("[PUSH] Pedido sem telefone, impossível notificar.")
+                return {'success': False, 'error': 'Pedido sem telefone'}
+        
         else:
-            body = "Você tem uma nova notificação!"
-            url = f"/{tenant.slug}/"
-        
-        # Obter ícone da loja
-        icon_url = tenant.logo.url if tenant.logo else '/static/img/icon-192.svg'
-        
-        logger.info(f'[PUSH] Enviando para tenant {tenant.name}: {title} - {body}')
-        
-        # Buscar subscribers do tenant
-        subscriptions = PushSubscription.objects.filter(tenant=tenant, is_active=True)
-        logger.info(f'[PUSH] Total de subscriptions ativas: {subscriptions.count()}')
-        
+            return {'success': False, 'error': 'Sem contexto'}
+
+        # Envio
         sent_count = 0
-        failed_count = 0
-        error_messages = []
+        icon_url = tenant.logo.url if tenant.logo else '/static/img/icon-192.svg'
         
         for sub in subscriptions:
             try:
-                subscription = sub.to_json()
                 webpush(
-                    subscription_info=subscription,
+                    subscription_info=sub.to_json(),
                     data=json.dumps({
                         'title': title,
                         'body': body,
                         'icon': icon_url,
-                        'badge': '/static/img/badge-72.png',
-                        'url': url,
-                        'tag': f'push-{tenant.slug}-{int(timezone.now().timestamp())}',
-                        'extra': {
-                            'order_id': order.id if order else None,
-                            'type': 'order_status' if order else 'promotion'
-                        }
+                        'url': url
                     }),
                     vapid_private_key=VAPID_PRIVATE_KEY,
-                    vapid_claims={
-                        'sub': VAPID_CLAIM_EMAIL
-                    }
+                    vapid_claims={'sub': VAPID_CLAIM_EMAIL}
                 )
                 sent_count += 1
-                logger.info(f'[PUSH] Enviado com sucesso para subscription {sub.id}')
             except Exception as e:
-                error_str = str(e)
-                error_messages.append(f'Sub {sub.id}: {error_str}')
-                
-                # Se o subscription expirou ou foi desinscrito
-                if '410' in error_str or 'unsubscribed' in error_str or 'expired' in error_str or 'not found' in error_str.lower():
-                    sub.is_active = False
+                if '410' in str(e) or 'not found' in str(e).lower():
+                    sub.is_active = False # Marca como inativo se falhar permanentemente
                     sub.save()
-                    logger.info(f'[PUSH] Subscription {sub.id} marcada como inativa')
-                failed_count += 1
-                logger.warning(f'[PUSH] Falha ao enviar para sub {sub.id}: {e}')
-        
-        result = {
-            'success': True,
-            'sent': sent_count,
-            'failed': failed_count
-        }
-        logger.info(f'[PUSH] Concluído: {sent_count} enviados, {failed_count} falharam')
-        
-        return result
-        
-    except ImportError:
-        logger.warning('[PUSH] web-push library not installed - push notifications disabled')
-        return {'success': False, 'error': 'web-push library not installed'}
+                logger.error(f"[PUSH] Erro individual: {e}")
+
+        logger.info(f"[PUSH] Enviado para {sent_count} dispositivos.")
+        return {'success': True, 'sent': sent_count}
+
     except Exception as e:
-        logger.error(f'[PUSH] Erro geral ao enviar push notification: {e}', exc_info=True)
+        logger.error(f"[PUSH] Erro crítico: {e}")
         return {'success': False, 'error': str(e)}
 
 def is_store_open_by_hours(tenant):
@@ -343,7 +314,9 @@ def cardapio_publico(request, slug):
         'delivery_fees_json': json.dumps(delivery_fees, default=float),
         # Flag para identificar que não é pedido de mesa
         'is_table_order': False,
-        'table': None
+        'table': None,
+        # VAPID Public Key para notificações push (injetada do settings.py)
+        'vapid_public_key': getattr(settings, 'VAPID_PUBLIC_KEY', '')
     }
     
     return render(request, 'tenants/cardapio.html', context)
@@ -443,7 +416,9 @@ def cardapio_mesa(request, slug, table_number):
         'delivery_fees_json': json.dumps(delivery_fees, default=float),
         # Flag para identificar que é pedido de mesa
         'is_table_order': True,
-        'table': table
+        'table': table,
+        # VAPID Public Key para notificações push (injetada do settings.py)
+        'vapid_public_key': getattr(settings, 'VAPID_PUBLIC_KEY', '')
     }
     
     return render(request, 'tenants/cardapio.html', context)
@@ -494,6 +469,7 @@ def painel_lojista(request, slug):
         'can_access_orders': tenant.can_access_orders,
         'can_access_reports': tenant.can_access_reports,
         'can_access_coupons': tenant.can_access_coupons,
+        'can_access_push': tenant.can_access_push,
     }
     return render(request, 'tenants/painel.html', context)
 
@@ -756,6 +732,22 @@ def create_order(request, slug):
                     order=order,
                     discount_applied=discount_value
                 )
+
+            try:
+                # 1. Recupera o endpoint salvo no cookie do navegador
+                device_endpoint = request.COOKIES.get('push_endpoint')
+                
+                if device_endpoint:
+                    from .models import PushSubscription
+                    # 2. Busca a inscrição por esse endpoint e atualiza o telefone com o do pedido
+                    PushSubscription.objects.filter(
+                        tenant=tenant, 
+                        endpoint=device_endpoint
+                    ).update(customer_phone=phone_clean)
+                    
+                    logger.info(f"[PUSH] Telefone {phone_clean} vinculado ao device via Cookie com sucesso.")
+            except Exception as e:
+                logger.warning(f"[PUSH] Erro ao vincular telefone no pedido: {e}")
             
             return JsonResponse({
                 'status': 'success', 
@@ -869,10 +861,8 @@ def api_get_orders(request, slug):
 
 @login_required
 def api_update_order(request, slug, order_id):
-    # Atualiza o status do pedido (Ex: Pendente -> Em Preparo)
     tenant = get_object_or_404(Tenant, slug=slug)
     
-    # Verificar se o usuário é o dono da loja
     if tenant.owner != request.user and not request.user.is_superuser:
         return JsonResponse({'status': 'error', 'message': 'Acesso negado'}, status=403)
     
@@ -882,11 +872,16 @@ def api_update_order(request, slug, order_id):
             new_status = data.get('status')
             
             order = Order.objects.get(id=order_id, tenant__slug=slug)
+            
+            # Log para debug
+            logger.info(f"Atualizando pedido #{order.id} para status: {new_status}")
+            
             order.status = new_status
             order.save()
             
-            # Enviar notificação push se o pedido saiu para entrega
-            if new_status == 'saiu para entrega':
+            # CORREÇÃO: Usar 'saiu_entrega' (snake_case) ao invés de 'saiu para entrega'
+            if new_status == 'saiu_entrega':
+                logger.info(f"Disparando Push para pedido #{order.id}")
                 send_push_notification(order, tenant)
             
             return JsonResponse({'status': 'success'})
@@ -1522,6 +1517,207 @@ def signup(request):
                 Category.objects.create(tenant=tenant, name="Destaques", order=1)
                 Category.objects.create(tenant=tenant, name="Bebidas", order=2)
 
+                # ===========================================
+                # ENVIAR EMAIL DE BOAS-VINDAS
+                # ===========================================
+                try:
+                    from django.conf import settings
+                    from django.core.mail import EmailMultiAlternatives
+                    
+                    subject = f'🎉 Bem-vindo ao RM Pedidos, {store_name}!'
+                    
+                    # Versão texto simples
+                    text_content = f'''
+Olá!
+
+Parabéns! Sua loja "{store_name}" está pronta para vender online! 🚀
+
+PRIMEIROS PASSOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Acesse seu painel: {request.build_absolute_uri("/").rstrip("/")}/{final_slug}/painel/
+2. Configure o horário de funcionamento
+3. Cadastre seus produtos
+4. Compartilhe seu cardápio digital
+
+O QUE VOCÊ PODE FAZER:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Gerenciar produtos e categorias
+✓ Receber pedidos em tempo real
+✓ Criar cupons de desconto
+✓ Gerar QR Codes para mesas
+✓ Acompanhar vendas e relatórios
+✓ Personalizar cores e logo
+
+PRECISA DE AJUDA?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 WhatsApp: (83) 92000-6113
+📧 Email: suporte@rmpedidos.com.br
+
+Estamos aqui para te ajudar a crescer!
+
+Equipe RM Pedidos
+Tecnologia que vende mais 🚀
+'''
+
+                    # Versão HTML (mais profissional)
+                    html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+        <tr>
+            <td align="center">
+                <!-- Container Principal -->
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header com gradiente -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); padding: 40px 30px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                                🎉 Bem-vindo ao RM Pedidos!
+                            </h1>
+                            <p style="color: #fee2e2; margin: 10px 0 0 0; font-size: 16px;">
+                                Sua loja digital está pronta para vender
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Conteúdo -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            
+                            <!-- Mensagem de Boas-vindas -->
+                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                Olá! 👋
+                            </p>
+                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                                Parabéns! Sua loja <strong style="color: #ea580c;">"{store_name}"</strong> foi criada com sucesso e já está pronta para receber pedidos online! 🚀
+                            </p>
+                            
+                            <!-- CTA Principal -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{request.build_absolute_uri("/").rstrip("/")}/{final_slug}/painel/" 
+                                            style="display: inline-block; background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(234, 88, 12, 0.3);">
+                                            🎯 Acessar Meu Painel
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Primeiros Passos -->
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 6px; margin: 30px 0;">
+                                <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">
+                                    ⚡ Comece Agora em 4 Passos:
+                                </h3>
+                                <ol style="color: #78350f; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                    <li>Configure o horário de funcionamento</li>
+                                    <li>Cadastre seus produtos</li>
+                                    <li>Personalize cores e logo da sua loja</li>
+                                    <li>Compartilhe seu cardápio digital</li>
+                                </ol>
+                            </div>
+                            
+                            <!-- Recursos -->
+                            <h3 style="color: #1f2937; font-size: 20px; margin: 30px 0 20px 0;">
+                                💎 O Que Você Pode Fazer:
+                            </h3>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td width="50%" style="padding: 10px;">
+                                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                            <span style="font-size: 24px;">📱</span>
+                                            <p style="color: #374151; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">
+                                                Pedidos em Tempo Real
+                                            </p>
+                                        </div>
+                                    </td>
+                                    <td width="50%" style="padding: 10px;">
+                                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                            <span style="font-size: 24px;">🎨</span>
+                                            <p style="color: #374151; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">
+                                                Personalização Total
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td width="50%" style="padding: 10px;">
+                                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                            <span style="font-size: 24px;">🎫</span>
+                                            <p style="color: #374151; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">
+                                                Cupons de Desconto
+                                            </p>
+                                        </div>
+                                    </td>
+                                    <td width="50%" style="padding: 10px;">
+                                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                            <span style="font-size: 24px;">📊</span>
+                                            <p style="color: #374151; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">
+                                                Relatórios de Vendas
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Suporte -->
+                            <div style="background-color: #eff6ff; border: 2px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 30px 0;">
+                                <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">
+                                    💬 Precisa de Ajuda?
+                                </h3>
+                                <p style="color: #1e3a8a; margin: 0 0 10px 0; line-height: 1.6;">
+                                    <strong>📱 WhatsApp:</strong> (83) 92000-6113<br>
+                                    <strong>📧 Email:</strong> suporte@rmpedidos.com.br
+                                </p>
+                                <p style="color: #1e3a8a; margin: 10px 0 0 0; font-size: 14px;">
+                                    Estamos aqui para te ajudar a vender mais! 🚀
+                                </p>
+                            </div>
+                            
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+                                Obrigado por escolher o <strong style="color: #ea580c;">RM Pedidos</strong>
+                            </p>
+                            <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                                Tecnologia que vende mais 🚀
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+'''
+                    
+                    # Criar email com versão HTML e texto
+                    email = EmailMultiAlternatives(
+                        subject=subject,
+                        body=text_content,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[email]
+                    )
+                    email.attach_alternative(html_content, "text/html")
+                    email.send(fail_silently=True)
+                    logger.info(f'[EMAIL] Email de boas-vindas enviado para {email}')
+                except Exception as email_error:
+                    # Log do erro mas não impede o cadastro
+                    logger.warning(f'[EMAIL] Erro ao enviar email de boas-vindas: {email_error}')
+
                 login(request, user)
                 return redirect('painel_lojista', slug=tenant.slug)
 
@@ -1761,28 +1957,20 @@ def api_delivery_fees(request, slug):
 # ========================
 
 def api_push_subscribe(request, slug):
-    """
-    Salva a subscription de push notifications do cliente.
-    Não requer login - qualquer visitante pode se inscrever.
-    """
     from .models import PushSubscription
     
     tenant = get_object_or_404(Tenant, slug=slug)
     
     if request.method == 'POST':
         try:
-            # Log do body raw para debug
-            logger.info(f'[PUSH] Recebendo subscription para tenant: {slug}')
-            logger.info(f'[PUSH] Raw body: {request.body[:500]}')
-            
             data = json.loads(request.body)
-            logger.info(f'[PUSH] Data parsed keys: {data.keys()}')
-            
             subscription_data = data.get('subscription')
-            logger.info(f'[PUSH] Subscription data: {subscription_data}')
+            
+            # Captura e limpa o telefone recebido
+            raw_phone = data.get('customer_phone', '')
+            customer_phone = ''.join(filter(str.isdigit, raw_phone)) if raw_phone else None
             
             if not subscription_data:
-                logger.warning('[PUSH] Subscription inválida - dados não encontrados')
                 return JsonResponse({'status': 'error', 'message': 'Subscription inválida'}, status=400)
             
             endpoint = subscription_data.get('endpoint')
@@ -1790,43 +1978,56 @@ def api_push_subscribe(request, slug):
             p256dh = keys.get('p256dh', '')
             auth = keys.get('auth', '')
             
-            logger.info(f'[PUSH] Endpoint: {endpoint}')
-            logger.info(f'[PUSH] Keys p256dh: {p256dh[:50] if p256dh else None}...')
-            logger.info(f'[PUSH] Keys auth: {auth[:50] if auth else None}...')
-            
             if not endpoint:
-                logger.warning('[PUSH] Endpoint obrigatório não encontrado')
                 return JsonResponse({'status': 'error', 'message': 'Endpoint obrigatório'}, status=400)
             
-            # Verificar se já existe
-            existing = PushSubscription.objects.filter(tenant=tenant, endpoint=endpoint).first()
-            if existing:
-                logger.info(f'[PUSH] Subscription já existe, atualizando')
-                existing.is_active = True
-                existing.save()
-                return JsonResponse({'status': 'success', 'message': 'Subscription atualizada'})
+            # LÓGICA BLINDADA: Verificar se já existe antes de salvar
+            subscription = PushSubscription.objects.filter(tenant=tenant, endpoint=endpoint).first()
             
-            # Criar nova subscription
-            subscription = PushSubscription.objects.create(
-                tenant=tenant,
-                endpoint=endpoint,
-                p256dh=p256dh,
-                auth=auth
-            )
-            logger.info(f'[PUSH] Subscription criada com ID: {subscription.id}')
+            if subscription:
+                # Se já existe, atualiza as chaves (caso tenham mudado)
+                subscription.p256dh = p256dh
+                subscription.auth = auth
+                subscription.is_active = True
+                
+                # O PULO DO GATO: Só atualiza o telefone se o request trouxer um número válido.
+                # Se o request vier sem telefone (verificação automática), MANTÉM o que já está no banco.
+                if customer_phone:
+                    subscription.customer_phone = customer_phone
+                
+                subscription.save()
+            else:
+                # Se não existe, cria do zero
+                subscription = PushSubscription.objects.create(
+                    tenant=tenant,
+                    endpoint=endpoint,
+                    p256dh=p256dh,
+                    auth=auth,
+                    is_active=True,
+                    customer_phone=customer_phone
+                )
             
-            return JsonResponse({'status': 'success', 'message': 'Subscription salva'})
-        except json.JSONDecodeError as e:
-            logger.error(f'[PUSH] Erro ao fazer parse do JSON: {e}')
-            logger.error(f'[PUSH] Raw body: {request.body}')
-            return JsonResponse({'status': 'error', 'message': 'JSON inválido'}, status=400)
+            # Log para confirmar o que ficou salvo no final
+            logger.info(f'[PUSH] Subscription salva/atualizada. Telefone no banco: {subscription.customer_phone}')
+            
+            response = JsonResponse({'status': 'success', 'message': 'Subscription salva'})
+            
+            if endpoint:
+                response.set_cookie(
+                    key='push_endpoint', 
+                    value=endpoint, 
+                    max_age=31536000, # 1 ano
+                    httponly=True,
+                    samesite='Lax'
+                )
+            
+            return response
+
         except Exception as e:
-            logger.error(f'[PUSH] Erro ao salvar push subscription: {e}', exc_info=True)
+            logger.error(f'[PUSH] Erro ao salvar subscription: {e}', exc_info=True)
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     
     return JsonResponse({'status': 'error'}, status=400)
-
-@login_required
 
 @login_required
 def api_push_subscriptions_count(request, slug):
@@ -1895,7 +2096,7 @@ def api_push_send(request, slug):
             
             # Configurar web-push com VAPID do settings
             VAPID_PRIVATE_KEY = getattr(settings, 'VAPID_PRIVATE_KEY', None)
-            VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto:contato@rmpedidos.com.br')
+            VAPID_CLAIM_EMAIL = getattr(settings, 'VAPID_CLAIM_EMAIL', 'mailto: <gabriel.mito07@gmail.com>')
             
             if not VAPID_PRIVATE_KEY:
                 return JsonResponse({
@@ -1903,8 +2104,6 @@ def api_push_send(request, slug):
                     'message': 'VAPID private key não configurada no settings.py'
                 }, status=500)
             
-            from django.conf import settings
-            from pywebpush import webpush
             # Nota: A nova API do pywebpush não usa set_vapid_details()
             # Os dados VAPID são passados diretamente para webpush()
             

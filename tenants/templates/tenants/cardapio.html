@@ -13,7 +13,7 @@
         <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon-shortcut">
         <link rel="apple-touch-icon" href="{{ tenant.logo.url }}" id="dynamic-apple-icon">
     {% else %}
-        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍊</text></svg>" id="dynamic-favicon">
+        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" id="dynamic-favicon">
     {% endif %}
     
     <!-- PWA Meta Tags -->
@@ -157,7 +157,7 @@
             <div class="flex flex-wrap justify-center gap-3 mb-6">
                 {% if tenant.show_delivery_time %}
                 <div class="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full">
-                    <i class="fas fa-motorcycle text-orange-300"></i>
+                    <i class="fas fa-motorcycle text-white"></i>
                     <span class="text-xs font-bold text-white">
                         Entrega: {{ tenant.delivery_time }}min
                     </span>
@@ -165,7 +165,7 @@
                 {% endif %}
                 {% if tenant.show_pickup_time %}
                 <div class="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full">
-                    <i class="fas fa-walking text-orange-300"></i>
+                    <i class="fas fa-walking text-white"></i>
                     <span class="text-xs font-bold text-white">
                         Retirada: {{ tenant.pickup_time }}min
                     </span>
@@ -1126,7 +1126,7 @@
         // Função para mostrar o toast de permissão de notificações
         function showPushNotificationToast() {
             // Não mostrar se já foi recusado ou aceito antes
-            const pushStatus = localStorage.getItem('push_notification_status');
+            const pushStatus = localStorage.getItem(`push_notification_status_${window.TENANT_SLUG}`);
             if (pushStatus === 'denied' || pushStatus === 'granted') return;
             
             // Não mostrar se não suporta notificações
@@ -1135,7 +1135,7 @@
             }
             
             // Verificar se já estamos registrados
-            if (localStorage.getItem('push_subscribed') === 'true') return;
+            if (localStorage.getItem(`push_subscribed_${window.TENANT_SLUG}`) === 'true') return;
             
             // Criar o toast
             const toastId = 'push-notification-toast';
@@ -1251,7 +1251,7 @@
                 const permission = await Notification.requestPermission();
                 
                 if (permission === 'granted') {
-                    localStorage.setItem('push_notification_status', 'granted');
+                    localStorage.setItem(`push_notification_status_${window.TENANT_SLUG}`, 'granted');
                     await registerServiceWorkerAndSubscribe();
                     Toastify({
                         text: "Notificações ativadas! Você será avisado sobre o status do seu pedido.",
@@ -1259,7 +1259,7 @@
                         duration: 5000
                     }).showToast();
                 } else if (permission === 'denied') {
-                    localStorage.setItem('push_notification_status', 'denied');
+                    localStorage.setItem(`push_notification_status_${window.TENANT_SLUG}`, 'denied');
                 }
             } catch (error) {
                 console.error('Erro ao solicitar permissão:', error);
@@ -1329,7 +1329,7 @@
                 console.log('[PUSH] 5. Pronto para continuar, registration:', !!readyRegistration);
                 
                 // VAPID Public Key - DEVE ser a mesma do settings.py
-                const vapidPublicKey = 'BIvDGv1d-r5XxJG_6swAxyh700PSA6aJwpNqJ4Pr8tQAASzd_Y1omInNruoc9ob0JRU17guU5xQ_zZDxonSaDiY';
+                const vapidPublicKey = "{{ vapid_public_key }}";
                 console.log('[PUSH] 6. Usando VAPID key configurada');
                 
                 // Verificar se já está inscrito
@@ -1392,8 +1392,8 @@
                     console.log('[PUSH] 14. Response data:', responseData);
                     
                     if (responseData.status === 'success') {
-                        localStorage.setItem('push_subscribed', 'true');
-                        console.log('[PUSH] ✅ Subscription salva com sucesso!');
+                        localStorage.setItem(`push_subscribed_${window.TENANT_SLUG}`, 'true');
+                        console.log('[PUSH] ✅ Subscription salva com sucesso para ' + window.TENANT_SLUG);
                     } else {
                         console.error('[PUSH] ERRO: Backend retornou status de erro:', responseData);
                     }
@@ -1415,7 +1415,7 @@
                     if (response.ok) {
                         const responseData = await response.json();
                         console.log('[PUSH] Subscription verificada/atualizada:', responseData);
-                        localStorage.setItem('push_subscribed', 'true');
+                        localStorage.setItem(`push_subscribed_${window.TENANT_SLUG}`, 'true');
                     }
                 }
             } catch (error) {
@@ -1437,12 +1437,23 @@
     </script>
 
     <!-- Rodapé com Links Legais -->
-    <footer class="text-center py-6 pb-10 text-xs text-gray-400">
-        <p>{{ tenant.name }} © {% now "Y" %} - Todos os direitos reservados</p>
-        <div class="mt-2 space-x-4">
-            <a href="{% url 'termos' %}" target="_blank" class="hover:text-orange-500 transition">Termos de Uso</a>
-            <span class="text-gray-300">|</span>
-            <a href="{% url 'privacidade' %}" target="_blank" class="hover:text-orange-500 transition">Política de Privacidade</a>
+    <footer class="mt-auto py-8 px-4 text-center border-t border-gray-100 bg-white/50 backdrop-blur-sm">
+        <div class="max-w-md mx-auto">
+            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-2">
+                Tecnologia
+            </p>
+            <div class="flex items-center justify-center gap-2 mb-4 opacity-70 grayscale hover:grayscale-0 transition duration-300">
+                <span class="font-bold text-gray-600 text-sm">RM <span class="text-orange-600">Pedidos</span></span>
+            </div>
+
+            <a href="{% url 'custom_login' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-xs font-bold transition duration-200">
+                <i class="fas fa-user-lock"></i>
+                Sou o Lojista (Entrar)
+            </a>
+            
+            <p class="text-[10px] text-gray-300 mt-4">
+                &copy; {% now "Y" %} RM Pedidos - Todos os direitos reservados.
+            </p>
         </div>
     </footer>
 

@@ -1,5 +1,5 @@
 // ============================================
-// SERVICE WORKER UNIFICADO - RM PEDIDOS
+// SERVICE WORKER UNIFICADO - CARDÁPIO DIGITAL
 // Cache PWA + Push Notifications
 // ============================================
 
@@ -102,9 +102,9 @@ self.addEventListener('push', event => {
   
   // Dados padrão
   let pushData = {
-    title: 'RM Pedidos',
+    title: '',
     body: 'Você tem uma nova notificação!',
-    icon: '/static/img/icon-192.png',
+    icon: '/static/img/menu-icon.png',
     badge: '/static/img/badge-72.png',
     url: '/',
     tag: 'saaspedidos-notification'
@@ -149,7 +149,7 @@ self.addEventListener('push', event => {
       url: pushData.url
     },
     actions: [
-      { action: 'open', title: 'Ver Pedido' },
+      { action: 'open', title: 'Conferir' },
       { action: 'close', title: 'Fechar' }
     ],
     vibrate: [100, 50, 100]

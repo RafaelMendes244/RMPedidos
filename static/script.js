@@ -133,6 +133,73 @@ window.finalizeOrder = async () => {
         Toastify({ text: "A loja esta fechada no momento.", style: { background: "#ef4444" } }).showToast();
         return;
     }
+
+    async function subscribeWithPhone() {
+    // 1. Pega o telefone do input do formulário
+    const phoneInput = document.getElementById("client-phone");
+    if (!phoneInput) return;
+    
+    const rawPhone = phoneInput.value;
+    if (rawPhone.length < 10) return; // Só tenta se tiver um número válido
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('Push não suportado');
+        return;
+    }
+
+    try {
+        // 2. Solicita permissão (se ainda não tiver)
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        // 3. Pega a subscription do Service Worker
+        const registration = await navigator.serviceWorker.ready;
+        
+        let subscription = await registration.pushManager.getSubscription();
+        
+        // Se não tiver subscription, tenta criar (requer chave pública VAPID)
+        if (!subscription && window.VAPID_PUBLIC_KEY) {
+                subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY)
+            });
+        }
+
+        if (!subscription) return;
+
+        // 4. Envia para o backend JUNTO COM O TELEFONE
+        const slug = window.TENANT_SLUG || 'sua-loja'; // Garanta que o slug esteja disponível
+        
+        await fetch(`/${slug}/api/push/subscribe/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.CSRF_TOKEN || getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                subscription: subscription,
+                customer_phone: rawPhone // <--- O DADO QUE FALTAVA
+            })
+        });
+        
+        console.log("Push inscrito com sucesso para:", rawPhone);
+
+    } catch (e) {
+        console.error("Erro ao inscrever push:", e);
+    }
+}
+
+// Função utilitária para converter a chave VAPID (caso precise criar nova subscription)
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
     
     if (cart.length === 0) {
         Toastify({ text: "Sua sacola está vazia!", style: { background: "#ef4444" } }).showToast();
@@ -274,8 +341,8 @@ window.finalizeOrder = async () => {
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'Ja Paguei / Enviar',
-            cancelButtonText: 'Voltar / Cancelar',
+            confirmButtonText: '<span style="color: white">Ja Paguei / Enviar</span>',
+            cancelButtonText: '<span style="color: white">Voltar / Cancelar</span>',
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#ef4444',
             allowOutsideClick: false,
@@ -520,8 +587,8 @@ window.showProductModal = (id) => {
                 </div>
             </div>
         `,
-        showCloseButton: true, showConfirmButton: true, confirmButtonText: 'ADICIONAR A SACOLA', confirmButtonColor: getPrimaryColor(),
-        showCancelButton: true, cancelButtonText: 'Voltar',
+        showCloseButton: true, showConfirmButton: true, confirmButtonText: '<span style="color: white">ADICIONAR A SACOLA</span>', confirmButtonColor: getPrimaryColor(),
+        showCancelButton: true, cancelButtonText: '<span style="color: white">Voltar</span>',
         customClass: { popup: 'rounded-3xl overflow-hidden shadow-2xl' },
         preConfirm: () => { 
             const obs = document.getElementById('modal-obs').value;
@@ -726,8 +793,8 @@ window.removeItem = (i) => {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sim, remover',
-        cancelButtonText: 'Cancelar',
+        confirmButtonText: '<span style="color: white">Sim, remover</span>',
+        cancelButtonText: '<span style="color: white">Cancelar</span>',
         width: 300
     }).then((result) => {
         if (result.isConfirmed) {
@@ -1456,8 +1523,8 @@ window.clearCart = () => {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sim, limpar',
-        cancelButtonText: 'Cancelar'
+        confirmButtonText: '<span style="color: white">Sim, limpar</span>',
+        cancelButtonText: '<span style="color: white">Cancelar</span>'
     }).then((result) => {
         if (result.isConfirmed) {
             cart = [];

@@ -72,7 +72,9 @@ ROOT_URLCONF = 'rmpedidos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [
+            BASE_DIR / 'tenants' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -224,6 +226,28 @@ LOGOUT_REDIRECT_URL = 'custom_login'
 
 SITE_ID = 1
 
-VAPID_PUBLIC_KEY = 'BIvDGv1d-r5XxJG_6swAxyh700PSA6aJwpNqJ4Pr8tQAASzd_Y1omInNruoc9ob0JRU17guU5xQ_zZDxonSaDiY'
-VAPID_PRIVATE_KEY = 'EAc3yFgaSEVKo9Y1pW_P7MPoix1cQsdDNwezIZv6RX4'
-VAPID_CLAIM_EMAIL = 'mailto: <gabriel.mito07@gmail.com>'
+# ===========================================
+# CONFIGURAÇÕES DE NOTIFICAÇÕES PUSH (VAPID)
+# ===========================================
+# Chaves movidas para variáveis de ambiente por segurança
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:contato@rmpedidos.com.br')
+
+# ===========================================
+# CONFIGURAÇÃO DE EMAIL (SMTP)
+# ===========================================
+# Configuração para envio de emails transacionais (boas-vindas, notificações, etc.)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+# Email padrão para envio automático
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@rmpedidos.com.br')
+
+# Se não tiver configuração de SMTP, usa console (debug)
+if not EMAIL_HOST_USER:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

@@ -135,10 +135,10 @@ class Tenant(models.Model):
     @property
     def can_access_coupons(self):
         return self.has_active_subscription and (self.is_trial or self.plan_type == 'pro')
-    
-    class Meta:
-        verbose_name = "Loja"
-        verbose_name_plural = "Lojas"
+
+    @property
+    def can_access_push(self):
+        return self.has_active_subscription and (self.is_trial or self.plan_type == 'pro')
 
     def __str__(self):
         return self.name
@@ -481,6 +481,8 @@ class PushSubscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em", null=True, blank=True)
     is_active = models.BooleanField(default=True, verbose_name="Ativo")
+
+    customer_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Telefone do Cliente")
     
     class Meta:
         verbose_name = "Subscription Push"

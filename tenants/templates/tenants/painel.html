@@ -12,7 +12,7 @@
         <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon-shortcut">
         <link rel="apple-touch-icon" href="{{ tenant.logo.url }}" id="dynamic-apple-icon">
     {% else %}
-        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍊</text></svg>" id="dynamic-favicon">
+        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" id="dynamic-favicon">
     {% endif %}
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -150,9 +150,15 @@
             </button>
             {% endif %}
 
+            {% if can_access_push %}
             <button onclick="switchTab('notifications'); toggleMobileMenu();" id="mob-nav-notifications" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-bell text-lg"></i> Notificações Push
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal(); toggleMobileMenu();" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Notificações Push <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <button onclick="switchTab('menu'); toggleMobileMenu();" id="mob-nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
@@ -233,9 +239,15 @@
             </button>
             {% endif %}
 
+            {% if can_access_push %}
             <button onclick="switchTab('notifications')" id="nav-notifications" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-bell text-lg"></i> Notificações Push
             </button>
+            {% else %}
+            <button onclick="showUpgradeModal()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-50 rounded-xl font-bold text-sm transition opacity-60">
+                <i class="fas fa-lock text-lg"></i> Notificações Push <span class="bg-gray-200 text-gray-600 text-[9px] px-1 rounded ml-auto">PRO</span>
+            </button>
+            {% endif %}
 
             <button onclick="switchTab('menu')" id="nav-menu" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-orange-50 rounded-xl font-bold text-sm transition">
                 <i class="fas fa-utensils text-lg"></i> Cardápio
@@ -3636,26 +3648,42 @@ function applyPushTemplate() {
     const titleInput = document.getElementById('push-title');
     const bodyInput = document.getElementById('push-body');
     
+    // Captura o nome da loja direto do Django de forma segura
+    const storeName = "{{ tenant.name|escapejs }}";
+    
     const templates = {
         'store_open': {
-            title: '🗺️ Loja Aberta!',
-            body: 'Já estamos funcionando. Faça já o seu pedido!'
+            // TÍTULO: Nome da Loja (Para identificação imediata)
+            // CORPO: Mensagem direta e formal
+            title: storeName, 
+            body: 'Estamos abertos e aceitando pedidos. Acesse nosso cardápio digital.'
         },
         'promo': {
-            title: '🔥 Promoção do Dia',
-            body: 'Confira nossas ofertas especiais de hoje!'
+            // TÍTULO: Nome da Loja - Oferta
+            title: `${storeName} - Ofertas`,
+            body: 'Confira as condições especiais que preparamos para hoje.'
         },
         'coupon': {
-            title: '🎁 Novo Cupom Disponível',
-            body: 'Use o cupom e ganhe desconto no seu próximo pedido!'
+            // TÍTULO: Foco no benefício
+            title: 'Você ganhou um desconto',
+            // CORPO: Cita a loja para reforçar a marca
+            body: `Utilize seu novo cupom em seu próximo pedido na ${storeName}.`
+        },
+        // Caso queira adicionar um genérico para teste
+        'custom': {
+            title: storeName,
+            body: ''
         }
     };
     
     if (templates[template]) {
         titleInput.value = templates[template].title;
         bodyInput.value = templates[template].body;
-        // Update character count
-        document.getElementById('push-body-count').textContent = bodyInput.value.length;
+        
+        // Atualiza o contador de caracteres visualmente
+        if(document.getElementById('push-body-count')) {
+            document.getElementById('push-body-count').textContent = bodyInput.value.length;
+        }
     }
 }
 

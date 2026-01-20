@@ -58,9 +58,14 @@
                 </button>
             </form>
             
-            <p class="text-center text-xs text-gray-400 mt-8">
-                Esqueceu a senha? Contate o suporte.
-            </p>
+            <div class="flex items-center justify-between mb-6 mt-2">
+                <a href="{% url 'trocar_senha' %}" class="text-sm font-bold text-gray-500 hover:text-orange-600 transition flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-xs">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    Esqueceu a senha?
+                </a>
+            </div>
         </div>
     </div>
 
