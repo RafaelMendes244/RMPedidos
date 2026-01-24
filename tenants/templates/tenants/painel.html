@@ -3691,7 +3691,6 @@ async function sendPushNotification() {
     const title = document.getElementById('push-title').value.trim();
     const body = document.getElementById('push-body').value.trim();
     const template = document.getElementById('push-template').value;
-    const storeUrl = `${window.location.origin}/{{ tenant.slug }}/`;
     
     if (!title || !body) {
         Toastify({
@@ -3707,7 +3706,7 @@ async function sendPushNotification() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
     
     try {
-        const response = await fetch(`/{{ tenant.slug }}/api/push/send/`, {
+        const response = await fetch(API_PUSH_SEND, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3716,8 +3715,7 @@ async function sendPushNotification() {
             body: JSON.stringify({
                 title: title,
                 body: body,
-                template: template,
-                url: storeUrl
+                template: template
             })
         });
         

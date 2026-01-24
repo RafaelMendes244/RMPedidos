@@ -33,11 +33,14 @@ if not SECRET_KEY:
     SECRET_KEY = secrets.token_urlsafe(50)
     print("⚠️  AVISO: SECRET_KEY não definida. Usando chave temporária. Configure em produção!")
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# Converte string 'False' para o Booleano False
 DEBUG = os.environ.get('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 # ALLOWED HOSTS PARA SUBDOMINIOS E DOMINIOS
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+
+# Adicione esta variável para usar nos seus links de Push e E-mail
+BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000')
 
 
 # Application definition
