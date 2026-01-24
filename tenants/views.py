@@ -2758,14 +2758,20 @@ def politica_privacidade(request):
 # PWA - MANIFEST.JSON DINÂMICO
 # ========================
 def pwa_manifest(request, slug):
-    """Retorna manifest.json customizado para cada loja (PWA)"""
+    """Retorna manifest.json customizado para cada loja (PWA) com ícones dinâmicos"""
     tenant = get_object_or_404(Tenant, slug=slug)
     
     # Determinar a cor primária
     primary_color = tenant.primary_color if tenant.primary_color else '#ea580c'
+    color_hex = primary_color.replace('#', '')
     
-    # URL da logo se existir
-    logo_url = tenant.logo.url if tenant.logo else '/static/images/icon-192x192.png'
+    # Lógica de ícone: Logo da empresa OU UI Avatar baseado no nome
+    if tenant.logo:
+        logo_url = tenant.logo.url
+    else:
+        # Gera um ícone com a inicial da loja e a cor primária dela
+        inicial = tenant.name[0].upper() if tenant.name else "C"
+        logo_url = f"https://ui-avatars.com/api/?name={inicial}&background={color_hex}&color=fff&size=512&font-size=0.5"
     
     manifest = {
         'name': tenant.name,
@@ -2780,33 +2786,9 @@ def pwa_manifest(request, slug):
         'icons': [
             {
                 'src': logo_url,
-                'sizes': '72x72',
-                'type': 'image/png',
-                'purpose': 'any'
-            },
-            {
-                'src': logo_url,
-                'sizes': '96x96',
-                'type': 'image/png',
-                'purpose': 'any'
-            },
-            {
-                'src': logo_url,
-                'sizes': '128x128',
-                'type': 'image/png',
-                'purpose': 'any'
-            },
-            {
-                'src': logo_url,
                 'sizes': '192x192',
                 'type': 'image/png',
-                'purpose': 'any'
-            },
-            {
-                'src': logo_url,
-                'sizes': '384x384',
-                'type': 'image/png',
-                'purpose': 'any'
+                'purpose': 'any maskable' # Permite que o Android ajuste o formato
             },
             {
                 'src': logo_url,

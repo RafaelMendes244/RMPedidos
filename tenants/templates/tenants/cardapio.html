@@ -9,11 +9,10 @@
     <title>{{ tenant.name }} | Cardápio Digital</title>
 
     {% if tenant.logo %}
-        <link rel="icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon">
-        <link rel="shortcut icon" type="image/png" href="{{ tenant.logo.url }}" id="dynamic-favicon-shortcut">
-        <link rel="apple-touch-icon" href="{{ tenant.logo.url }}" id="dynamic-apple-icon">
+    <link rel="icon" type="image/png" href="{{ tenant.logo.url }}">
+    <link rel="apple-touch-icon" href="{{ tenant.logo.url }}">
     {% else %}
-        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" id="dynamic-favicon">
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
     {% endif %}
     
     <!-- PWA Meta Tags -->
@@ -21,7 +20,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ tenant.name }}">
-    <link rel="manifest" href="{% url 'pwa_manifest' tenant.slug %}">
+
+    <link rel="manifest" href="{% url 'pwa_manifest' tenant.slug %}?v={{ tenant.updated_at|date:'U' }}">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
