@@ -463,6 +463,8 @@ def painel_lojista(request, slug):
         'total_tables': total_tables,
         'schedule_json': json.dumps(schedule_data),
 
+        'allow_scheduling': tenant.allow_scheduling,
+
         # FLAGS PARA O FRONTEND
         'is_trial': tenant.is_trial,
         'trial_days': tenant.remaining_trial_days,
@@ -498,6 +500,36 @@ def create_order(request, slug):
                 return JsonResponse({'status': 'error', 'message': f'Fora do horário! {message}'}, status=400)
             
             data = json.loads(request.body)
+
+            # --- AGENDAMENTO DE PEDIDO ---
+            is_scheduled = data.get('is_scheduled', False)
+            scheduled_date = data.get('scheduled_date')
+            scheduled_time = data.get('scheduled_time')
+
+            if not tenant.allow_scheduling or data.get('table_number'):
+                is_scheduled = False
+
+            if is_scheduled:
+                # 1. Validação de Preenchimento
+                if not scheduled_date or not scheduled_time:
+                    return JsonResponse({'status': 'error', 'message': 'Data e hora são obrigatórias para agendamento.'}, status=400)
+                
+                # 2. Validação de Data Futura
+                try:
+                    from datetime import datetime
+                    # Combina data e hora strings em um objeto datetime
+                    agendamento_dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
+                    agendamento_dt = timezone.make_aware(agendamento_dt) # Torna consciente do fuso horário
+                    
+                    if agendamento_dt < timezone.now():
+                         return JsonResponse({'status': 'error', 'message': 'O agendamento não pode ser no passado.'}, status=400)
+                         
+                except ValueError:
+                    return JsonResponse({'status': 'error', 'message': 'Formato de data/hora inválido.'}, status=400)
+            else:
+                # Se não for agendado, garante que os campos fiquem vazios no banco
+                scheduled_date = None
+                scheduled_time = None
             
             # Validação básica de dados
             if not data:
@@ -711,7 +743,12 @@ def create_order(request, slug):
                 
                 # NOVOS CAMPOS (NOVO)
                 order_type=order_type,
-                table=table
+                table=table,
+
+                # NOVOS CAMPOS PARA AGENDAMENTO
+                is_scheduled=is_scheduled,
+                scheduled_date=scheduled_date if is_scheduled else None,
+                scheduled_time=scheduled_time if is_scheduled else None
             )
             
             # Cria os Itens (usando os dados validados)
@@ -855,6 +892,10 @@ def api_get_orders(request, slug):
             'order_type': order.order_type,
             'table': table_info,
             'table_number': order.table.number if order.table else None,
+            # ADICIONE ESTES CAMPOS:
+            'is_scheduled': order.is_scheduled,
+            'scheduled_date': order.scheduled_date.strftime('%Y-%m-%d') if order.scheduled_date else None,
+            'scheduled_time': order.scheduled_time.strftime('%H:%M') if order.scheduled_time else None,
         })
         
     return JsonResponse({'orders': data})
@@ -919,7 +960,12 @@ def api_update_settings(request, slug):
     if request.method == 'POST':
         try:
             # Agora usamos request.POST e request.FILES (FormData)
-            data = request.POST
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                # Se for FormData (veio com imagens)
+                data = request.POST
+
             files = request.FILES
             
             # Configurações de Tempo de Entrega
@@ -964,6 +1010,11 @@ def api_update_settings(request, slug):
             # Capa / Background
             if 'background_image' in files:
                 tenant.background_image = files['background_image']
+
+            if 'allow_scheduling' in data:
+                val = data.get('allow_scheduling')
+                # Aceita 'true', 'on', True ou 1 como verdadeiro
+                tenant.allow_scheduling = val in ['true', 'on', True, 'True', 1, '1']
                 
             tenant.save()
             return JsonResponse({'status': 'success', 'message': 'Configurações salvas com sucesso'})

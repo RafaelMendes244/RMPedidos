@@ -134,6 +134,32 @@ window.finalizeOrder = async () => {
         return;
     }
 
+    // NOVA VALIDAÇÃO DE AGENDAMENTO
+    const isScheduled = document.getElementById("is_scheduled").checked;
+    const scheduledDate = document.getElementById("scheduled_date").value;
+    const scheduledTime = document.getElementById("scheduled_time").value;
+
+    if (isScheduled) {
+        if (!scheduledDate || !scheduledTime) {
+            Toastify({
+                text: "Por favor, selecione a Data e a Hora para o agendamento.",
+                style: { background: "#ef4444" }
+            }).showToast();
+            return;
+        }
+
+        // Validação simples para não agendar no passado
+        const agendamento = new Date(scheduledDate + "T" + scheduledTime);
+        const agora = new Date();
+        if (agendamento < agora) {
+            Toastify({
+                text: "O agendamento deve ser para uma data/hora futura.",
+                style: { background: "#ef4444" }
+            }).showToast();
+            return;
+        }
+    }
+
     async function subscribeWithPhone() {
     // 1. Pega o telefone do input do formulário
     const phoneInput = document.getElementById("client-phone");
@@ -209,8 +235,23 @@ function urlBase64ToUint8Array(base64String) {
     const nome = document.getElementById("client-name").value.trim();
     if (!nome || nome.length < 2) { Toastify({text: "Digite seu nome completo", style: {background: "#ef4444"}}).showToast(); return; }
 
-    const phone = document.getElementById("client-phone").value.trim();
-    if (!phone || phone.replace(/\D/g, "").length < 10) { Toastify({text: "Telefone inválido", style: {background: "#ef4444"}}).showToast(); return; }
+    const phoneEl = document.getElementById("phone");
+    let phone = phoneEl ? phoneEl.value : "";
+
+    // SÓ VALIDA SE NÃO FOR MESA
+    // Se window.TABLE_NUMBER for nulo/false, ele entra no IF e cobra o telefone
+    if (!window.TABLE_NUMBER) {
+        if (!phone || phone.replace(/\D/g, "").length < 10) {
+            Toastify({
+                text: "Por favor, informe seu WhatsApp para contato.",
+                style: { background: "#ef4444" }
+            }).showToast();
+            return;
+        }
+    } else {
+        // SE FOR MESA: Define um número padrão para não quebrar o banco de dados
+        if(!phone) phone = "83999999999"; 
+    }
     const btnFinalize = document.getElementById("btn-finalize");
     const textoOriginal = btnFinalize.innerText;
     
@@ -236,7 +277,7 @@ function urlBase64ToUint8Array(base64String) {
     let obs = document.getElementById("order-notes").value;
 
     // Validar endereço para entregas ANTES de criar pedido
-    if (isDelivery) {
+    if (isDelivery && !window.TABLE_NUMBER) {
         const cepVal = document.getElementById("cep").value.replace(/\D/g, "");
         const addressVal = document.getElementById("address").value.trim();
         const numberVal = document.getElementById("number").value.trim();
@@ -299,13 +340,17 @@ function urlBase64ToUint8Array(base64String) {
         obs: obs, // Aqui já vai com o texto do troco
         items: cart,
         order_type: window.TABLE_NUMBER ? 'table' : (isDelivery ? 'delivery' : 'pickup'),
-        address: isDelivery ? {
+        address: (isDelivery && !window.TABLE_NUMBER) ? {
             cep: document.getElementById("cep").value,
             street: document.getElementById("address").value,
             number: document.getElementById("number").value,
             neighborhood: document.getElementById("neighborhood").value
         } : {},
-        table_number: window.TABLE_NUMBER
+        table_number: window.TABLE_NUMBER,
+
+        is_scheduled: document.getElementById("is_scheduled").checked,
+        scheduled_date: document.getElementById("scheduled_date").value || null,
+        scheduled_time: document.getElementById("scheduled_time").value || null
     };
 
     // --- DECISAO DE FLUXO ---
@@ -463,6 +508,13 @@ function sendToWhatsApp(order) {
         }
         if(i.obs) msg += `   Obs: ${i.obs}\n`;
     });
+
+    if (order.is_scheduled && order.scheduled_date) {
+        const [year, month, day] = order.scheduled_date.split('-');
+        msg += `\n📅 *ENCOMENDA AGENDADA*`;
+        msg += `\nData: ${day}/${month}/${year}`;
+        msg += `\nHora: ${order.scheduled_time}\n`;
+    }
     
     // VERIFICA SE É MESA PRIMEIRO
     if (order.table_number) {
@@ -822,6 +874,23 @@ window.openCart = () => {
     document.getElementById("step-2-address").classList.add("hidden"); 
     document.getElementById("btn-finalize").classList.add("hidden"); 
     document.getElementById("btn-next-step").classList.remove("hidden"); 
+
+    // --- ATUALIZAÇÃO: Esconder agendamento se for MESA ---
+    const agendamentoContainer = document.getElementById("agendamento-container");
+    if (agendamentoContainer) {
+        // Se window.TABLE_NUMBER existir (modo mesa), esconde. Senão, mostra.
+        if (window.TABLE_NUMBER) {
+            agendamentoContainer.classList.add("hidden");
+            // Garante que o checkbox seja desmarcado para não enviar dados errados
+            const chk = document.getElementById("is_scheduled");
+            if(chk) {
+                chk.checked = false;
+                document.getElementById('scheduling-fields').classList.add('hidden');
+            }
+        } else {
+            agendamentoContainer.classList.remove("hidden");
+        }
+    }
     
     // Atualiza estado dos botoes de entrega/retirada ao abrir carrinho
     updateDeliveryButtons();
@@ -1657,3 +1726,12 @@ window.toggleTroco = (show) => {
         document.getElementById("troco-valor").value = ""; // Limpa se mudar de ideia
     }
 };
+
+// Impede seleção de dias passados no input date
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('scheduled_date');
+    if(dateInput) {
+        const hoje = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', hoje);
+    }
+});

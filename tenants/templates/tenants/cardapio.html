@@ -359,6 +359,26 @@
                             <button id="btn-pickup" onclick="toggleDelivery(false)" class="flex-1 py-2 text-xs font-bold rounded-lg text-gray-500">RETIRADA</button>
                         </div>
 
+                        {% if tenant.allow_scheduling %}
+                        <div id="agendamento-container" class="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="is_scheduled" class="w-4 h-4 text-orange-600 rounded" onchange="document.getElementById('scheduling-fields').classList.toggle('hidden', !this.checked)">
+                                <span class="text-sm font-bold text-orange-800">Agendar para outro dia?</span>
+                            </label>
+
+                            <div id="scheduling-fields" class="hidden mt-3 grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase">Data</label>
+                                    <input type="date" id="scheduled_date" class="w-full p-2 text-sm border rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase">Hora</label>
+                                    <input type="time" id="scheduled_time" class="w-full p-2 text-sm border rounded-md">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                         <div id="address-container" class="space-y-2">
                             <button type="button" onclick="usarLocalizacao()" id="btn-geo" class="w-full py-2 mb-2 flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold uppercase hover:bg-blue-100 transition">
                                 <i class="fas fa-location-arrow"></i> Usar minha localização atual
@@ -711,6 +731,19 @@
             document.getElementById("step-2-address").classList.add("hidden"); 
             document.getElementById("btn-finalize").classList.add("hidden"); 
             document.getElementById("btn-next-step").classList.remove("hidden"); 
+
+            // Reaplicar contraste
+            const isTable = window.TABLE_MODE !== null;
+            const allowScheduling = {{ tenant.allow_scheduling|yesno:"true,false" }};
+            const schedulingContainer = document.querySelector('#is_scheduled').closest('.bg-orange-50');
+
+            if (isTable || !allowScheduling) {
+                schedulingContainer.classList.add('hidden');
+                document.getElementById('is_scheduled').checked = false;
+                document.getElementById('scheduling-fields').classList.add('hidden');
+            } else {
+                schedulingContainer.classList.remove('hidden');
+            }
             
             // Atualiza estado dos botões de entrega/retirada ao abrir carrinho
             updateDeliveryButtons();

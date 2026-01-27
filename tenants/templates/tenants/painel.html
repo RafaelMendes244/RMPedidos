@@ -718,6 +718,13 @@
                             </label>
                         </div>
                     </div>
+
+                    <div class="flex flex-col gap-2 pt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="conf-allow-scheduling" {% if tenant.allow_scheduling %}checked{% endif %} class="w-4 h-4 accent-orange-600">
+                            <span class="text-xs font-bold text-gray-600">Ativar Agendamentos de Pedidos</span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- PIX -->
@@ -1726,6 +1733,27 @@
 
                 const safeName = escapeHtml(order.customer_name);
                 const safeObs = escapeHtml(order.observation || '');
+                // NOVA LÓGICA DE EXIBIÇÃO DE AGENDAMENTO
+                let dateDisplay = order.created_at; 
+                let scheduleBadge = '';
+
+                // Verificamos se é agendado E SE TEM DATA válida
+                if (order.is_scheduled && order.scheduled_date) {
+                    try {
+                        // Previne erro se a data vier vazia ou mal formatada
+                        const parts = order.scheduled_date.split('-');
+                        if (parts.length === 3) {
+                            const [ano, mes, dia] = parts;
+                            const hora = order.scheduled_time ? order.scheduled_time.substring(0, 5) : '00:00';
+                            
+                            dateDisplay = `${dia}/${mes} às ${hora}`;
+                            scheduleBadge = `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold border border-purple-200 block w-fit mb-1">📅 AGENDADO</span>`;
+                        }
+                    } catch (e) {
+                        console.warn("Erro ao formatar data do pedido " + order.id, e);
+                        // Se der erro, mantém a data de criação padrão
+                    }
+                }
                 const safeAddress = escapeHtml(order.address);
                 let paymentRaw = order.payment_method || '';
 
@@ -1794,6 +1822,7 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <h3 class="font-bold text-base md:text-lg">#${order.id} - ${safeName}</h3>
                                 ${tableBadge}
+                                ${scheduleBadge}
                             </div>
                             <p class="text-xs text-gray-500">${order.created_at}</p>
                         </div>
@@ -1955,14 +1984,18 @@
             order.discount_amount || 0,
             order.coupon_code || null,
             order.customer_phone || order.phone || '',
-            "{{ tenant.name }}",
+            "{{ tenant.name|escapejs }}",
             order.table_number,
-            order.order_type // <--- IMPORTANTE: Passando o tipo aqui
+            order.order_type,
+
+            order.is_scheduled,
+            order.scheduled_date,
+            order.scheduled_time
         );
     }
 
-async function printOrder(id, name, itemsStr, total, obs, address, payment, orderItems = [], deliveryFee = 0, discountAmount = 0, couponCode = null, customerPhone = '', storeName = '', tableNumber = null, orderType = 'delivery') {
-        
+    async function printOrder(id, name, itemsStr, total, obs, address, payment, orderItems = [], deliveryFee = 0, discountAmount = 0, couponCode = null, customerPhone = '', storeName = '', tableNumber = null, orderType = 'delivery', isScheduled = false, schedDate = null, schedTime = null) {
+            
         // 1. Marca como impresso na API
         try {
             await fetch(`/${TENANT_SLUG}/api/orders/${id}/printed/`, { 
@@ -1983,7 +2016,6 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
         
         // --- LÓGICA DE TIPO ---
         const isTable = orderType === 'table' || !!tableNumber;
-        // É retirada se o tipo for pickup OU se o endereço for explicitamente "Retirada" (para compatibilidade antiga)
         const isPickup = orderType === 'pickup' || (!isTable && address === 'Retirada'); 
         
         // Tratamento do Pagamento
@@ -1992,14 +2024,14 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
         else if (paymentDisplay.toLowerCase().includes('cartao')) paymentDisplay = 'CARTÃO';
         else if (paymentDisplay.toLowerCase().includes('dinheiro')) paymentDisplay = 'DINHEIRO';
 
-        // 3. Constrói o HTML dos Itens
+        // 3. Constrói o HTML dos Itens (MANTENHA O CÓDIGO DO itemsHtml IGUAL AO SEU...)
         let itemsHtml = '';
         if (orderItems && orderItems.length > 0) {
             itemsHtml = orderItems.map(item => {
                 const totalItem = item.price * item.quantity;
                 let optionsHtml = '';
                 if (item.options) {
-                    // Agrupar opcionais por nome e contar (ex: "Bacon (2x)")
+                    // ... (seu código de agrupamento de opções continua aqui) ...
                     const optionsCount = {};
                     item.options.split(',').forEach(opt => {
                         const cleanOpt = opt.trim();
@@ -2029,9 +2061,24 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
             itemsHtml = `<div style="font-size:12px;">${itemsStr.replace(/\|/g, '<br>')}</div>`;
         }
 
-        // 4. Lógica de Cabeçalho (Mesa vs Delivery vs Retirada)
+        // 4. CORREÇÃO DO AGENDAMENTO AQUI
         let headerHtml = '';
         let addressHtml = '';
+
+        // Verifica se há agendamento USANDO AS VARIÁVEIS NOVAS
+        let schedulingHtml = '';
+        
+        // O erro estava aqui: usava 'order.is_scheduled', mas 'order' não existe. 
+        // Agora usamos 'isScheduled', 'schedDate', etc.
+        if (isScheduled || schedDate) {
+            schedulingHtml = `
+                <div class="divider"></div>
+                <div style="text-align:center; background:#f3e8ff; padding:5px; border:1px solid #7e22ce; margin-bottom: 10px;">
+                    <div style="font-size:10px; font-weight:bold; color:#7e22ce;">ENTREGA AGENDADA PARA:</div>
+                    <div style="font-size:16px; font-weight:bold;">${schedDate || ''} às ${schedTime || ''}</div>
+                </div>
+            `;
+        }
         
         if (isTable) {
             headerHtml = `
@@ -2125,6 +2172,7 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                 <div class="meta-info">${date}</div>
                 
                 ${headerHtml}
+                ${schedulingHtml}
             </div>
 
             <div class="divider-bold"></div>
@@ -2383,6 +2431,8 @@ async function printOrder(id, name, itemsStr, total, obs, address, payment, orde
                 formData.append('show_delivery_time', document.getElementById('conf-show-delivery-time').checked);
                 formData.append('show_pickup_time', document.getElementById('conf-show-pickup-time').checked);
                 
+                formData.append('allow_scheduling', document.getElementById('conf-allow-scheduling').checked);
+
                 formData.append('pix_key', document.getElementById('conf-pix-key').value);
                 formData.append('pix_name', document.getElementById('conf-pix-name').value);
                 formData.append('pix_city', document.getElementById('conf-pix-city').value);

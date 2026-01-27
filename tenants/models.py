@@ -40,6 +40,9 @@ class Tenant(models.Model):
     # Kill Switch (Cancelamento manual)
     subscription_active = models.BooleanField(default=True, verbose_name="Assinatura Ativa?")
 
+    # Novo campo: Permitir Agendamento
+    allow_scheduling = models.BooleanField(default=True, verbose_name="Permitir Agendamento?") #
+
     def __str__(self):
         return self.name
 
@@ -254,6 +257,11 @@ class Order(models.Model):
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data do Pedido")
+
+    # NOVOS CAMPOS PARA AGENDAMENTO
+    is_scheduled = models.BooleanField(default=False, verbose_name="É agendamento?")
+    scheduled_date = models.DateField(null=True, blank=True, verbose_name="Data Agendada")
+    scheduled_time = models.TimeField(null=True, blank=True, verbose_name="Hora Agendada")
 
     class Meta:
         verbose_name = "Pedido"

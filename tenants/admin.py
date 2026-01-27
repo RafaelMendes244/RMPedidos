@@ -7,7 +7,7 @@ from datetime import timedelta
 
 # --- AÇÕES RÁPIDAS (ACTIONS) ---
 
-@admin.action(description="💰 Renovar Assinatura (+30 Dias)")
+@admin.action(description="Renovar Assinatura (+30 Dias)")
 def renew_30_days(modeladmin, request, queryset):
     for tenant in queryset:
         # Se já tem data futura, adiciona +30 nela. Se não, começa de hoje +30.
@@ -106,7 +106,7 @@ class TenantAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Status da Loja', {
-            'fields': ('is_open', 'manual_override'),
+            'fields': ('is_open', 'manual_override', 'allow_scheduling'),
             'description': 'Controle se a loja está aberta ou fechada. O fechamento manual impede abertura automática.'
         }),
         ('Status da Assinatura', {
@@ -178,10 +178,10 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     # Colunas que aparecem na lista
-    list_display = ('id', 'tenant', 'customer_name', 'total_value', 'discount_value', 'coupon', 'status', 'is_printed', 'created_at')
+    list_display = ('id', 'tenant', 'customer_name', 'is_scheduled', 'scheduled_date', 'scheduled_time', 'total_value', 'discount_value', 'coupon', 'status', 'is_printed', 'created_at')
 
     # Filtros laterais
-    list_filter = ('tenant', 'status', 'created_at', 'payment_method', 'is_printed')
+    list_filter = ('is_scheduled', 'tenant', 'status', 'created_at', 'payment_method', 'is_printed')
 
     # Campo de busca
     search_fields = ('customer_name', 'id', 'customer_phone')
