@@ -644,8 +644,11 @@ def create_order(request, slug):
                     
                     # Busca complexa: OpçãoItem -> ProductOption -> Product
                     # Primeiro tenta encontrar o item exato (para validar preço)
+                    clean_name = opt_name.split(' (')[0].strip()
+
+                    # 2. Busca EXATA (iexact): Garante que "Bacon" só pegue "Bacon", e não "Bacon Extra"
                     db_option_item = OptionItem.objects.filter(
-                        name__icontains=opt_name.split(' (')[0],  # Remove "(3x)" se existir
+                        name__iexact=clean_name, 
                         option__product=product
                     ).first()
                     
@@ -894,7 +897,7 @@ def api_get_orders(request, slug):
             'table_number': order.table.number if order.table else None,
             # ADICIONE ESTES CAMPOS:
             'is_scheduled': order.is_scheduled,
-            'scheduled_date': order.scheduled_date.strftime('%Y-%m-%d') if order.scheduled_date else None,
+            'scheduled_date': order.scheduled_date.strftime('%d/%m/%Y') if order.scheduled_date else None,
             'scheduled_time': order.scheduled_time.strftime('%H:%M') if order.scheduled_time else None,
         })
         

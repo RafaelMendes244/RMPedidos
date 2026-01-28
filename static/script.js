@@ -235,7 +235,7 @@ function urlBase64ToUint8Array(base64String) {
     const nome = document.getElementById("client-name").value.trim();
     if (!nome || nome.length < 2) { Toastify({text: "Digite seu nome completo", style: {background: "#ef4444"}}).showToast(); return; }
 
-    const phoneEl = document.getElementById("phone");
+    const phoneEl = document.getElementById("client-phone");
     let phone = phoneEl ? phoneEl.value : "";
 
     // SÓ VALIDA SE NÃO FOR MESA
@@ -275,6 +275,13 @@ function urlBase64ToUint8Array(base64String) {
     const methodEl = document.querySelector('input[name="payment-method"]:checked');
     const method = methodEl ? methodEl.value : "Não Informado";
     let obs = document.getElementById("order-notes").value;
+
+    // --- CAPTURAR NOME DO GARÇOM ---
+    const waiterInput = document.getElementById("waiter-name");
+    // Só adiciona se estiver no modo mesa e o garçom tiver digitado o nome
+    if (window.TABLE_NUMBER && waiterInput && waiterInput.value.trim()) {
+        obs += `\n --- \n 🤵 ATENDIDO POR: ${waiterInput.value.trim()}`;
+    }
 
     // Validar endereço para entregas ANTES de criar pedido
     if (isDelivery && !window.TABLE_NUMBER) {
@@ -631,7 +638,7 @@ window.showProductModal = (id) => {
                 <div class="max-h-[30vh] overflow-y-auto mb-4">${optionsHtml}</div>
                 <div class="mt-4">
                     <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Observacoes</label>
-                    <textarea id="modal-obs" class="w-full bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm resize-none" rows="2" placeholder="Ex: Sem cebola..."></textarea>
+                    <textarea id="modal-obs" class="w-full bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm resize-none" rows="2" placeholder="Observações para este item..."></textarea>
                 </div>
                 <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
                     <span class="text-xs font-bold uppercase text-gray-400">Total</span>
@@ -646,6 +653,35 @@ window.showProductModal = (id) => {
             const obs = document.getElementById('modal-obs').value;
             const selectedOptions = [];
             let extraPrice = 0;
+
+            // --- NOVA VALIDAÇÃO DE OBRIGATÓRIOS ---
+            // Percorre os grupos de opções do produto original
+            for (let idx = 0; idx < product.opcoes.length; idx++) {
+                const optGroup = product.opcoes[idx];
+                
+                // Se o grupo for obrigatório
+                if (optGroup.required) {
+                    let countSelected = 0;
+                    
+                    // Conta quantos itens desse grupo estão com qtd > 0 no HTML
+                    // Buscamos todos os inputs/contadores referentes a este grupo (idx)
+                    const itemsInGroup = document.querySelectorAll(`[data-opt-idx="${idx}"]`);
+                    
+                    itemsInGroup.forEach(container => {
+                        const itemIdx = parseInt(container.dataset.itemIdx);
+                        // Pega o valor do contador visual
+                        const qtySpan = document.getElementById(`opt-qty-${idx}-${itemIdx}`);
+                        const qty = parseInt(qtySpan.innerText) || 0;
+                        countSelected += qty;
+                    });
+
+                    // Se não selecionou nada, BLOQUEIA e avisa
+                    if (countSelected === 0) {
+                        Swal.showValidationMessage(`Por favor, selecione uma opção em "${optGroup.title}"`);
+                        return false; // Impede o fechamento do modal
+                    }
+                }
+            }
             
             // Coletar opções com quantidade > 0 (mantém repetidos para contar no total)
             const optionContainers = document.querySelectorAll('[data-opt-idx]');
@@ -874,6 +910,17 @@ window.openCart = () => {
     document.getElementById("step-2-address").classList.add("hidden"); 
     document.getElementById("btn-finalize").classList.add("hidden"); 
     document.getElementById("btn-next-step").classList.remove("hidden"); 
+
+    // --- ATUALIZAÇÃO: Mostrar/Esconder Garçom ---
+    const waiterField = document.getElementById("waiter-field");
+    if (waiterField) {
+        if (window.TABLE_NUMBER) {
+            waiterField.classList.remove("hidden"); // Mostra se for mesa
+        } else {
+            waiterField.classList.add("hidden");    // Esconde se for delivery
+            document.getElementById("waiter-name").value = ""; // Limpa o campo
+        }
+    }
 
     // --- ATUALIZAÇÃO: Esconder agendamento se for MESA ---
     const agendamentoContainer = document.getElementById("agendamento-container");

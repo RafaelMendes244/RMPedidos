@@ -352,6 +352,12 @@
                     
                     <div class="space-y-3">
                         <input type="text" id="client-name" placeholder="Seu Nome" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
+
+                        <div id="waiter-field" class="hidden">
+                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">Nome do Garçom</label>
+                            <input type="text" id="waiter-name" class="w-full p-3 border rounded-xl bg-yellow-50 border-yellow-200 text-yellow-800 placeholder-yellow-400 font-medium" placeholder="Quem está atendendo?">
+                        </div>
+
                         <input type="tel" id="client-phone" placeholder="Seu WhatsApp" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white">
                         
                         <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
@@ -453,7 +459,7 @@
                             </div>
                         </div>
                         
-                        <textarea style="resize: none;" id="order-notes" placeholder="Observações..." class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>
+                        <textarea style="resize: none;" id="order-notes" placeholder="Observações gerais (Ex: Ponto de referência, Campainha quebrada...)" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white"></textarea>
                     </div>
                 </div>
             </div>
@@ -533,24 +539,50 @@
             
             <div class="space-y-4">
                 <div>
-                    <p class="text-xs font-bold text-orange-600 uppercase">Endereço</p>
+                    <p class="text-xs font-bold text-orange-600 uppercase mb-1">Endereço</p>
+
                     {% if tenant.address %}
-                    <a href="https://www.google.com/maps/search/?api=1&query={{ tenant.address|urlencode }}" target="_blank" class="text-sm text-gray-700 dark:text-gray-300 hover:text-orange-600 transition flex items-center gap-2">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span class="underline">{{ tenant.address }}</span>
-                        <i class="fas fa-external-link-alt text-xs opacity-60"></i>
+                    <a 
+                        href="https://www.google.com/maps/search/?api=1&query={{ tenant.address|urlencode }}" 
+                        target="_blank"
+                        class="flex items-center justify-between gap-3 p-3 rounded-xl border border-orange-100 hover:border-orange-400 hover:bg-orange-50 transition group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 flex items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    {{ tenant.address }}
+                                </span>
+                                <span class="text-[10px] text-gray-400 uppercase">
+                                    Toque para abrir no mapa
+                                </span>
+                            </div>
+                        </div>
+
+                        <i class="fas fa-arrow-up-right-from-square text-gray-400 group-hover:text-orange-600 transition"></i>
                     </a>
                     {% else %}
-                    <p class="text-sm text-gray-400 italic">Endereço não cadastrado</p>
+                        <p class="text-sm text-gray-400 italic">Endereço não cadastrado</p>
                     {% endif %}
                 </div>
+
                 
                 <div class="mt-4">
                     <p class="text-xs font-bold text-orange-600 uppercase mb-2">Horários de Funcionamento</p>
                     <div id="info-horario" class="text-sm text-gray-700 dark:text-gray-300 space-y-1">
                         {% for day in operating_days %}
-                            <div class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1 last:border-0">
-                                <span class="font-medium">{{ day.get_day_display }}</span>
+                            <div 
+                                class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1 last:border-0 horario-dia"
+                                data-day="{{ day.day }}"
+                            >
+                                <span class="font-medium">
+                                    {{ day.get_day_display }}
+                                    <span class="badge-hoje hidden ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-700">
+                                        HOJE
+                                    </span>
+                                </span>
                                 <span>
                                     {% if day.is_closed %}
                                         <span class="text-red-500 font-bold text-xs">Fechado</span>
@@ -559,8 +591,6 @@
                                     {% endif %}
                                 </span>
                             </div>
-                        {% empty %}
-                            <p class="italic text-gray-400 text-xs">Horários não configurados pelo estabelecimento.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -1467,6 +1497,32 @@
         
         // Mostrar toast após 3 segundos
         setTimeout(showPushNotificationToast, 3000);
+
+        // ============================================
+        // DESTAQUE DO DIA ATUAL NO HORÁRIO DE FUNCIONAMENTO
+        document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date().getDay(); 
+        // JS: 0=Domingo ... 6=Sábado
+        // Ajuste se no backend for diferente
+        const djangoDayMap = {
+            0: 7, // Domingo
+            1: 1, // Segunda
+            2: 2,
+            3: 3,
+            4: 4,
+            5: 5,
+            6: 6  // Sábado
+        };
+
+        const todayDjango = djangoDayMap[today];
+
+        document.querySelectorAll(".horario-dia").forEach(el => {
+            if (parseInt(el.dataset.day) === todayDjango) {
+                el.classList.add("bg-green-50", "rounded-lg", "px-2");
+                el.querySelector(".badge-hoje")?.classList.remove("hidden");
+            }
+        });
+    });
     </script>
 
     <!-- Rodapé com Links Legais -->
@@ -1476,7 +1532,7 @@
                 Tecnologia
             </p>
             <div class="flex items-center justify-center gap-2 mb-4 opacity-70 grayscale hover:grayscale-0 transition duration-300">
-                <span class="font-bold text-gray-600 text-sm">RM <span class="text-orange-600"><a href="https://www.rmpedidos.online/" target="_blank">Pedidos</a></span></span>
+                <span class="font-bold text-gray-600 text-sm"><a href="https://www.rmpedidos.online/" target="_blank">RM <span class="text-orange-600">Pedidos</a></span></span>
             </div>
 
             <a href="{% url 'custom_login' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-xs font-bold transition duration-200">
