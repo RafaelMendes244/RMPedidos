@@ -422,40 +422,61 @@
                             </div>
                         </div>
 
-                        <div class="space-y-2">
-                            <p class="text-xs font-bold uppercase text-gray-400">Forma de Pagamento</p>
-                            
-                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(false)">
-                                <input type="radio" name="payment-method" value="pix" class="accent-orange-600" checked>
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-qrcode text-orange-500"></i>
-                                    <span class="text-sm font-bold dark:text-white">PIX (Automático)</span>
-                                </div>
-                            </label>
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-gray-800 text-sm uppercase border-b pb-1 mb-3">Forma de Pagamento</h3>
 
-                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(false)">
-                                <input type="radio" name="payment-method" value="cartao" class="accent-orange-600">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-credit-card text-blue-500"></i>
-                                    <span class="text-sm font-bold dark:text-white">Cartão (Maquininha)</span>
-                                </div>
-                            </label>
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <h4 class="text-xs font-bold text-blue-700 mb-2 flex items-center">
+                                    <i class="fas fa-bolt mr-1"></i> Pagar Agora (Online)
+                                </h4>
+                                
+                                {% if tenant.payment_config %} 
+                                <label class="flex items-center p-3 border border-blue-200 bg-white rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                                    <input type="radio" name="payment-method" value="pix" class="form-radio text-blue-600 h-4 w-4" onchange="toggleTroco(false)">
+                                    <div class="ml-3 flex-1">
+                                        <span class="block text-sm font-bold text-gray-800">PIX (Aprovação Imediata)</span>
+                                        <span class="block text-[10px] text-gray-500">Gera QR Code e libera o pedido na hora.</span>
+                                    </div>
+                                    <i class="fas fa-qrcode text-2xl text-blue-500"></i>
+                                </label>
+                                {% else %}
+                                <p class="text-[10px] text-gray-400 italic">Esta loja ainda não aceita pagamentos online.</p>
+                                {% endif %}
+                            </div>
 
-                            <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer bg-white dark:bg-gray-800 hover:bg-orange-50 transition" onclick="toggleTroco(true)">
-                                <input type="radio" name="payment-method" value="dinheiro" class="accent-orange-600">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-money-bill-wave text-green-500"></i>
-                                    <span class="text-sm font-bold dark:text-white">Dinheiro</span>
-                                </div>
-                            </label>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <h4 class="text-xs font-bold text-gray-600 mb-2 flex items-center">
+                                    <i class="fas fa-motorcycle mr-1"></i> Pagar na Entrega/Retirada
+                                </h4>
+                                
+                                <div class="space-y-2">
+                                    <label class="flex items-center p-3 border border-gray-200 bg-white rounded-lg cursor-pointer hover:bg-gray-50">
+                                        <input type="radio" name="payment-method" value="cartao" class="form-radio text-orange-600 h-4 w-4" onchange="toggleTroco(false)">
+                                        <div class="ml-3 flex-1">
+                                            <span class="block text-sm font-medium text-gray-700">Cartão (Maquininha)</span>
+                                            <span class="block text-[10px] text-gray-400">Levamos a máquina até você</span>
+                                        </div>
+                                        <i class="fas fa-credit-card text-gray-400"></i>
+                                    </label>
 
-                            <div id="troco-container" class="hidden animate-fadeIn ml-2 border-l-2 border-orange-200 pl-4 mt-2">
-                                <label class="text-xs font-bold text-gray-500 block mb-1">Precisa de troco para quanto?</label>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-gray-500 font-bold">R$</span>
-                                    <input type="number" id="troco-valor" placeholder="Ex: 50.00" class="w-full p-2 border rounded-lg bg-white outline-none focus:border-orange-500">
+                                    <label class="flex items-center p-3 border border-gray-200 bg-white rounded-lg cursor-pointer hover:bg-gray-50">
+                                        <input type="radio" name="payment-method" value="dinheiro" class="form-radio text-green-600 h-4 w-4" onchange="toggleTroco(true)">
+                                        <div class="ml-3 flex-1">
+                                            <span class="block text-sm font-medium text-gray-700">Dinheiro</span>
+                                            <span class="block text-[10px] text-gray-400">Pagamento em espécie</span>
+                                        </div>
+                                        <i class="fas fa-money-bill-wave text-green-500"></i>
+                                    </label>
                                 </div>
-                                <p class="text-[10px] text-gray-400 mt-1">Deixe em branco se tiver o valor trocado.</p>
+                            </div>
+
+                            <div id="troco-container" class="hidden animate-fade-in mt-2">
+                                <label class="text-xs font-bold text-gray-600 mb-1 block">Precisa de troco para quanto?</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-gray-500 text-sm">R$</span>
+                                    <input type="text" id="troco-valor" class="w-full pl-10 p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Ex: 50,00" oninput="formatMoeda(this)">
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1">* Se tiver o valor trocado, deixe em branco.</p>
                             </div>
                         </div>
                         
@@ -508,6 +529,7 @@
         </div>
     </div>
 
+    <!-- Order History Modal -->
     <div id="history-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity" onclick="closeHistory()"></div>
         
@@ -532,6 +554,7 @@
         </div>
     </div>
 
+    <!-- Store Info Modal -->
     <div id="store-info-modal" onclick="if(event.target === this) window.closeStoreInfo()" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 relative">
             <button onclick="closeStoreInfo()" class="absolute top-4 right-4 text-gray-400"><i class="fas fa-times"></i></button>
@@ -595,6 +618,63 @@
                     </div>
                 </div>
                 </div>
+        </div>
+    </div>
+
+    <!-- Modal PIX -->
+    <div id="modal-pix" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"></div>
+        
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-bounce-in">
+                
+                <div class="bg-green-600 p-4 text-center">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/20 mb-2">
+                        <i class="fas fa-qrcode text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-white font-bold text-lg">Pagamento via PIX</h3>
+                    <p class="text-green-100 text-xs">Pague para liberar seu pedido instantaneamente</p>
+                </div>
+
+                <div class="p-6 text-center space-y-4">
+                    
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase font-bold">Valor Total</p>
+                        <p class="text-2xl font-black text-gray-800" id="pix-valor">R$ 0,00</p>
+                    </div>
+
+                    <div class="flex justify-center">
+                        <div class="p-2 border-2 border-gray-100 rounded-lg shadow-inner bg-white">
+                            <img id="pix-qrcode-img" src="" alt="QR Code PIX" class="w-48 h-48 object-contain">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="text-gray-500 text-xs">Ou copie o código abaixo:</p>
+                        <div class="relative">
+                            <textarea id="pix-copia-cola" readonly class="w-full h-20 p-3 text-[10px] bg-gray-50 border border-gray-200 rounded-lg text-gray-600 font-mono resize-none focus:outline-none focus:ring-1 focus:ring-green-500"></textarea>
+                            
+                            <button onclick="copiarCodigoPix()" class="absolute bottom-2 right-2 bg-green-100 hover:bg-green-200 text-green-700 text-xs px-3 py-1 rounded-md font-bold transition-colors">
+                                <i class="far fa-copy mr-1"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-3 rounded-lg flex items-start text-left gap-3">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5 text-sm"></i>
+                        <p class="text-[10px] text-blue-700 leading-tight">
+                            Após o pagamento, seu pedido será confirmado automaticamente. Não precisa enviar comprovante!
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                    <button onclick="fecharModalPix()" class="text-gray-500 text-sm hover:text-gray-700 font-medium underline">
+                        Fechar e Acompanhar Pedido
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

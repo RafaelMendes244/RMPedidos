@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
 from django.core.files.storage import default_storage
@@ -21,6 +22,9 @@ from io import BytesIO
 from django.conf import settings
 from pywebpush import webpush
 
+import requests
+import mercadopago
+
 from django_ratelimit.decorators import ratelimit
 from django.views.decorators.cache import never_cache
 
@@ -39,6 +43,7 @@ from .models import (
     Coupon,
     CouponUsage,
     Table,
+    TenantPaymentConfig,
 )
 
 from .validators import validate_cep, validate_phone, validate_order_data
@@ -522,8 +527,8 @@ def create_order(request, slug):
                     agendamento_dt = timezone.make_aware(agendamento_dt) # Torna consciente do fuso horário
                     
                     if agendamento_dt < timezone.now():
-                         return JsonResponse({'status': 'error', 'message': 'O agendamento não pode ser no passado.'}, status=400)
-                         
+                        return JsonResponse({'status': 'error', 'message': 'O agendamento não pode ser no passado.'}, status=400)
+                        
                 except ValueError:
                     return JsonResponse({'status': 'error', 'message': 'Formato de data/hora inválido.'}, status=400)
             else:
@@ -773,6 +778,65 @@ def create_order(request, slug):
                     discount_applied=discount_value
                 )
 
+                # ============================================================
+            # INTEGRAÇÃO MERCADO PAGO: GERAÇÃO DO PIX
+            # ============================================================
+            mp_response_data = None
+            
+            # Só gera PIX se o método for 'pix' E a loja tiver a conta conectada
+            if data.get('method') == 'pix' and hasattr(tenant, 'payment_config'):
+                try:
+                    # 1. Inicializa SDK com o Token DO LOJISTA
+                    sdk = mercadopago.SDK(tenant.payment_config.access_token)
+                    
+                    # 2. Prepara os dados do pagamento
+                    # Email é obrigatório na API, usamos um fictício caso não tenha
+                    payer_email = "cliente@rmpedidos.online" 
+                    
+                    payment_data = {
+                        "transaction_amount": float(final_total),
+                        "description": f"Pedido #{order.id} - {tenant.name}",
+                        "payment_method_id": "pix",
+                        "payer": {
+                            "email": payer_email,
+                            "first_name": nome.split()[0],
+                            "last_name": nome.split()[-1] if len(nome.split()) > 1 else "Cliente",
+                        },
+                        # A URL onde o MP vai avisar que o pagamento foi aprovado
+                        # IMPORTANTE: Deve ser HTTPS em produção
+                        "notification_url": "https://rmpedidos.online/api/mp/webhook/",
+                        "external_reference": str(order.id)
+                    }
+
+                    # 3. Cria o pagamento
+                    mp_response = sdk.payment().create(payment_data)
+                    mp_result = mp_response["response"]
+                    
+                    # 4. Salva os dados do PIX no pedido
+                    if mp_response["status"] == 201: # Sucesso
+                        poi = mp_result.get("point_of_interaction", {}).get("transaction_data", {})
+                        
+                        order.mercadopago_id = str(mp_result.get("id"))
+                        order.mercadopago_status = mp_result.get("status")
+                        order.pix_qr_code = poi.get("qr_code") # Copia e Cola
+                        order.pix_qr_code_base64 = poi.get("qr_code_base64") # Imagem
+                        order.pix_ticket_url = poi.get("ticket_url")
+                        order.save()
+                        
+                        # Dados para retornar ao Frontend
+                        mp_response_data = {
+                            'qr_code': poi.get("qr_code"),
+                            'qr_code_base64': poi.get("qr_code_base64"),
+                            'ticket_url': poi.get("ticket_url")
+                        }
+                    else:
+                        logger.error(f"Erro MP: {mp_result}")
+                        
+                except Exception as e:
+                    # Se der erro no MP, não cancelamos o pedido, mas avisamos no log
+                    # O cliente poderá ver o PIX chave manual como fallback se quiser
+                    logger.error(f"Erro ao gerar PIX MP: {e}")
+
             try:
                 # 1. Recupera o endpoint salvo no cookie do navegador
                 device_endpoint = request.COOKIES.get('push_endpoint')
@@ -793,7 +857,8 @@ def create_order(request, slug):
                 'status': 'success', 
                 'order_id': order.id, 
                 'real_total': float(final_total),
-                'order_type': order_type
+                'order_type': order_type,
+                'pix_data': mp_response_data
             })
 
         except ValidationError as e:
@@ -2872,3 +2937,151 @@ def pwa_manifest(request, slug):
     }
     
     return JsonResponse(manifest)
+
+# ========================
+# INTEGRAÇÃO MERCADO PAGO (OAuth)
+# ========================
+
+@login_required
+def mp_connect(request, slug):
+    """
+    Passo 1 do OAuth: Redireciona o lojista para o site do Mercado Pago
+    para ele autorizar nossa aplicação.
+    """
+    tenant = get_object_or_404(Tenant, slug=slug)
+    
+    # Segurança: Apenas o dono pode conectar
+    if tenant.owner != request.user and not request.user.is_superuser:
+        return redirect('painel_lojista', slug=slug)
+
+    # Montamos a URL de autorização do MP
+    # O parâmetro 'state' é o pulo do gato: enviamos o SLUG da loja aqui
+    # para saber quem é quem quando o MP devolver o usuário.
+    base_url = "https://auth.mercadopago.com.br/authorization"
+    params = f"?client_id={settings.MP_APP_ID}&response_type=code&platform_id=mp&state={tenant.slug}&redirect_uri={settings.MP_REDIRECT_URI}"
+    
+    return redirect(base_url + params)
+
+def mp_callback(request):
+    """
+    Passo 2 do OAuth: O MP devolve o usuário para cá com um 'code'.
+    Trocamos esse 'code' pelas credenciais definitivas (Access Token).
+    """
+    code = request.GET.get('code')
+    state_slug = request.GET.get('state') # Aqui recuperamos o slug da loja
+    
+    if not code or not state_slug:
+        return render(request, 'tenants/error.html', {'message': 'Retorno inválido do Mercado Pago.'})
+    
+    try:
+        tenant = Tenant.objects.get(slug=state_slug)
+        
+        # Faz a requisição POST para trocar o code pelo token
+        url = "https://api.mercadopago.com/oauth/token"
+        payload = {
+            'client_secret': settings.MP_CLIENT_SECRET,
+            'client_id': settings.MP_APP_ID,
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': settings.MP_REDIRECT_URI
+        }
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        
+        if response.status_code == 200:
+            # SUCESSO! Vamos salvar as chaves do lojista no banco.
+            
+            # update_or_create: se já existir, atualiza. Se não, cria.
+            TenantPaymentConfig.objects.update_or_create(
+                tenant=tenant,
+                defaults={
+                    'access_token': data.get('access_token'),
+                    'refresh_token': data.get('refresh_token'),
+                    'public_key': data.get('public_key'),
+                    'account_id': data.get('user_id'), # ID da conta do lojista
+                    'expires_in': data.get('expires_in'),
+                }
+            )
+            
+            # Redireciona de volta para o painel com sucesso
+            return redirect('painel_lojista', slug=tenant.slug)
+            
+        else:
+            # Erro na troca do token
+            logger.error(f"Erro MP OAuth: {data}")
+            return render(request, 'tenants/error.html', {'message': 'Erro ao conectar com Mercado Pago. Tente novamente.'})
+
+    except Tenant.DoesNotExist:
+        return render(request, 'tenants/error.html', {'message': 'Loja não encontrada no retorno do pagamento.'})
+    except Exception as e:
+        logger.error(f"Erro Crítico MP Callback: {e}")
+        return render(request, 'tenants/error.html', {'message': f'Erro interno: {str(e)}'})
+
+
+# ==========================================
+# WEBHOOK (O MERCADO PAGO AVISA AQUI)
+# ==========================================
+@csrf_exempt
+def mp_webhook(request):
+    if request.method == 'POST':
+        try:
+            topic = request.GET.get('topic') or request.GET.get('type')
+            payment_id = request.GET.get('id') or request.GET.get('data.id')
+
+            # O MP manda notificações de vários tipos, só queremos 'payment'
+            if topic == 'payment' and payment_id:
+                
+                # Precisamos descobrir de qual LOJA é esse pagamento para usar o Token certo.
+                # Como o webhook vem "seco", vamos tentar achar o pedido pelo ID da transação
+                # Se o pedido ainda não tem ID do MP salvo (fase inicial), isso pode ser complexo.
+                # ESTRATÉGIA SEGURA: Tentar buscar o pagamento usando o Token da Loja se soubermos qual é.
+                # Mas aqui, o MP avisa de forma genérica.
+                
+                # Solução: O MP manda no corpo (body) da notificação alguns dados.
+                # Vamos simplificar: Vamos verificar se temos esse ID salvo em algum pedido nosso.
+                
+                # 1. Tenta achar o pedido que tem esse ID de transação (se já salvamos antes)
+                order = Order.objects.filter(mercadopago_id=payment_id).first()
+                
+                if order:
+                    # Achamos o pedido! Agora consultamos o status atualizado no MP
+                    tenant = order.tenant
+                    if hasattr(tenant, 'payment_config'):
+                        sdk = mercadopago.SDK(tenant.payment_config.access_token)
+                        payment_info = sdk.payment().get(payment_id)
+                        response = payment_info["response"]
+                        
+                        status = response.get("status")
+                        
+                        if status == 'approved':
+                            # PAGAMENTO CONFIRMADO!
+                            # Muda status do pedido e salva
+                            if order.status == 'pendente':
+                                order.status = 'em_preparo' # Ou 'confirmado'
+                                order.mercadopago_status = status
+                                order.save()
+                                logger.info(f"Webhook: Pedido #{order.id} APROVADO via Pix!")
+                                
+                        elif status == 'rejected' or status == 'cancelled':
+                            order.mercadopago_status = status
+                            order.status = 'cancelado'
+                            order.save()
+                
+                else:
+                    # Se não achamos o pedido pelo ID direto (as vezes o MP avisa antes da gente salvar),
+                    # podemos tentar pegar pelo external_reference se vier no body, mas por hora
+                    # vamos confiar que o ID já foi salvo na criação do pedido.
+                    logger.warning(f"Webhook: Pedido não encontrado para ID MP {payment_id}")
+
+            return JsonResponse({'status': 'ok'}, status=200)
+            
+        except Exception as e:
+            logger.error(f"Erro Webhook MP: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'method_not_allowed'}, status=405)

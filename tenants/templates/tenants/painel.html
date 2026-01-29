@@ -14,6 +14,14 @@
     {% else %}
         <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" id="dynamic-favicon">
     {% endif %}
+
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="{{ tenant.name }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ tenant.name }}">
+
+    <link rel="manifest" href="{% url 'pwa_manifest' tenant.slug %}?v={{ tenant.updated_at|date:'U' }}">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -728,26 +736,48 @@
                 </div>
 
                 <!-- PIX -->
-                <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                    <h4 class="text-xs font-bold text-orange-600 uppercase mb-3 border-b border-orange-200 pb-2">
-                        <i class="fas fa-qrcode mr-1"></i> PIX para Pagamentos
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-100 pb-2">
+                        <i class="fas fa-bolt mr-1"></i> Pagamento Online (Automático)
                     </h4>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Chave PIX</label>
-                            <input type="text" id="conf-pix-key" value="{{ tenant.pix_key|default:'' }}" class="w-full p-2 border rounded-lg text-sm" placeholder="CPF, CNPJ, Email, Telefone ou Aleatória">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Titular</label>
-                                <input type="text" id="conf-pix-name" value="{{ tenant.pix_name|default:'' }}" class="w-full p-2 border rounded-lg text-sm">
+
+                    {% if tenant.payment_config %}
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                            <div class="text-green-600 text-3xl mb-2">
+                                <i class="fas fa-check-circle"></i>
                             </div>
+                            <h3 class="text-green-800 font-bold text-sm">Conta Conectada!</h3>
+                            <p class="text-green-600 text-xs mb-3">
+                                Seus clientes já podem pagar via PIX Transparente e o dinheiro cai direto na sua conta MP.
+                            </p>
+                            <div class="bg-white rounded p-2 border border-green-200 inline-block mb-3">
+                                <span class="text-[10px] text-gray-500 font-mono uppercase">ID da Conta: {{ tenant.payment_config.account_id }}</span>
+                            </div>
+                            
                             <div>
-                                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cidade</label>
-                                <input type="text" id="conf-pix-city" value="{{ tenant.pix_city|default:'' }}" class="w-full p-2 border rounded-lg text-sm">
+                                <a href="{% url 'mp_connect' tenant.slug %}" class="text-xs text-blue-500 hover:text-blue-700 underline">
+                                    Trocar conta / Reconectar
+                                </a>
                             </div>
                         </div>
-                    </div>
+
+                    {% else %}
+                        <div class="text-center py-2">
+                            <p class="text-gray-600 text-xs mb-4">
+                                Receba <strong>PIX Automático</strong>. O cliente paga, o sistema confirma na hora e libera o pedido. O dinheiro vai direto para você.
+                            </p>
+                            
+                            <a href="{% url 'mp_connect' tenant.slug %}" 
+                            class="flex items-center justify-center w-full bg-[#009EE3] hover:bg-[#0082ba] text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md group">
+                                <i class="fas fa-handshake mr-2 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span>Conectar Mercado Pago</span>
+                            </a>
+                            
+                            <p class="text-[10px] text-gray-400 mt-2">
+                                * Você será redirecionado para autorizar o aplicativo.
+                            </p>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Endereço e Contato -->
@@ -3669,6 +3699,7 @@ function showUpgradeModal() {
                     <li>Pedidos em Tempo Real</li>
                     <li>Relatórios Financeiros</li>
                     <li>Cupons de Desconto</li>
+                    <li>Notificações Push</li>
                 </ul>
                 <p>Faça o upgrade para desbloquear!</p>
             </div>
@@ -3806,17 +3837,153 @@ async function sendPushNotification() {
                 style: { background: "#ef4444" }
             }).showToast();
         }
-    } catch (error) {
-        console.error('Erro ao enviar notificação:', error);
-        Toastify({
-            text: "Erro de conexão",
-            style: { background: "#ef4444" }
-        }).showToast();
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalContent;
+        } catch (error) {
+            console.error('Erro ao enviar notificação:', error);
+            Toastify({
+                text: "Erro de conexão",
+                style: { background: "#ef4444" }
+            }).showToast();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
     }
-}
+
+        // ============================================
+        // TOAST DE INSTALAÇÃO DO PWA
+        // ============================================
+        let deferredPrompt;
+        let pwaToastShown = false;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostra o toast apenas se ainda não foi mostrado
+            if (!pwaToastShown) {
+                showInstallToast();
+                pwaToastShown = true;
+            }
+        });
+        
+        function showInstallToast() {
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#ea580c';
+            
+            // Criar o elemento do toast se não existir
+            if (!document.getElementById('pwa-install-toast')) {
+                const toastContainer = document.createElement('div');
+                toastContainer.id = 'pwa-install-toast';
+                toastContainer.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        bottom: 80px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+                        color: white;
+                        padding: 16px 20px;
+                        border-radius: 16px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        gap: 16px;
+                        z-index: 9999;
+                        max-width: 90%;
+                        width: 380px;
+                        animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                        font-family: 'Inter', sans-serif;
+                    " onmouseover="this.style.transform='translateX(-50%) scale(1.02)'" onmouseout="this.style.transform='translateX(-50%) scale(1)'">
+                        <div style="
+                            width: 48px;
+                            height: 48px;
+                            background: ${primaryColor};
+                            border-radius: 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                        ">
+                            <i class="fas fa-mobile-alt" style="font-size: 24px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-weight: 600; font-size: 14px; line-height: 1.4;">Baixe o aplicativo</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">para gerenciar mais rápido e prático!</p>
+                        </div>
+                        <button onclick="installPWA()" style="
+                            background: ${primaryColor};
+                            border: none;
+                            color: white;
+                            padding: 10px 20px;
+                            border-radius: 10px;
+                            font-weight: 600;
+                            font-size: 12px;
+                            cursor: pointer;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='brightness(1)'">
+                            INSTALAR
+                        </button>
+                        <button onclick="closeInstallToast()" style="
+                            background: transparent;
+                            border: none;
+                            color: rgba(255,255,255,0.6);
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.6)'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <style>
+                        @keyframes slideUpFade {
+                            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        }
+                        @keyframes fadeOut {
+                            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                        }
+                    </style>
+                `;
+                document.body.appendChild(toastContainer);
+            }
+        }
+        
+        function closeInstallToast() {
+            const toast = document.getElementById('pwa-install-toast');
+            if (toast) {
+                toast.querySelector('div').style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+        
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Resultado da instalação:', outcome);
+                
+                if (outcome === 'accepted') {
+                    closeInstallToast();
+                }
+                
+                deferredPrompt = null;
+            }
+        };
+        
+        // Detectar quando a aplicação é instalada
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA foi instalada com sucesso');
+            closeInstallToast();
+            deferredPrompt = null;
+        });
     </script>
 </body>
 </html>

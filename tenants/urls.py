@@ -97,6 +97,20 @@ urlpatterns = [
     path('<slug:slug>/api/push/subscribe/', views.api_push_subscribe, name='api_push_subscribe'),
     path('<slug:slug>/api/push/subscriptions/count/', views.api_push_subscriptions_count, name='api_push_subscriptions_count'),
     path('<slug:slug>/api/push/send/', views.api_push_send, name='api_push_send'),
+
+    # ========================
+    # INTEGRAÇÃO MERCADO PAGO (OAuth)
+    # ========================
+    # ROTA DE CONEXÃO OAUTH (MP)
+    path('<slug:slug>/mp/connect/', views.mp_connect, name='mp_connect'),
+
+    # ROTA DE WEBHOOK (MERCADO PAGO)
+    path('api/mp/webhook/', views.mp_webhook, name='mp_webhook'),
+    
+    # ROTA DE RETORNO (CALLBACK)
+    # Importante: Essa rota não tem slug no começo, pois o MP chama ela direto
+    path('mp/callback/', views.mp_callback, name='mp_callback'),
+
 ]
 
 # Configuração para servir arquivos de mídia (imagens, logos, etc.)

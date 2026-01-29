@@ -254,3 +254,11 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no
 # Se não tiver configuração de SMTP, usa console (debug)
 if not EMAIL_HOST_USER:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ==========================================
+# CONFIGURAÇÃO MERCADO PAGO (OAUTH)
+# ==========================================
+MP_APP_ID = os.environ.get('MP_APP_ID')
+MP_CLIENT_SECRET = os.environ.get('MP_CLIENT_SECRET')
+# Fallback para localhost caso não esteja no .env (opcional)
+MP_REDIRECT_URI = os.environ.get('MP_REDIRECT_URI', 'http://rmpedidos.online/mp/callback/')

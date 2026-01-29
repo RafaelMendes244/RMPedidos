@@ -1,41 +1,3 @@
-// --- CLASSE GERADORA DE PIX ---
-class PixPayload {
-    constructor(chave, nome, cidade, txid, valor) {
-        this.chave = chave;
-        this.nome = nome.substring(0, 25).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        this.cidade = cidade.substring(0, 15).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        this.txid = (txid || '***').toString();
-        this.valor = valor.toFixed(2);
-    }
-    format(id, val) { return id + val.length.toString().padStart(2, '0') + val; }
-    getPayload() {
-        const payload = [
-            this.format('00', '01'),
-            this.format('26', this.format('00', 'BR.GOV.BCB.PIX') + this.format('01', this.chave)),
-            this.format('52', '0000'),
-            this.format('53', '986'),
-            this.format('54', this.valor),
-            this.format('58', 'BR'),
-            this.format('59', this.nome),
-            this.format('60', this.cidade),
-            this.format('62', this.format('05', this.txid)),
-            '6304'
-        ].join('');
-        return payload + this.crc16(payload);
-    }
-    crc16(buffer) {
-        let crc = 0xFFFF;
-        for (let i = 0; i < buffer.length; i++) {
-            crc ^= buffer.charCodeAt(i) << 8;
-            for (let j = 0; j < 8; j++) {
-                if ((crc & 0x8000) !== 0) crc = crc << 1 ^ 0x1021;
-                else crc = crc << 1;
-            }
-        }
-        return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
-    }
-}
-
 // --- VARIÁVEIS GLOBAIS ---
 const CART_KEY = `carrinho_${window.TENANT_SLUG || 'padrao'}`;
 const HISTORY_KEY = `historico_${window.TENANT_SLUG || 'padrao'}`;
@@ -141,201 +103,94 @@ window.finalizeOrder = async () => {
 
     if (isScheduled) {
         if (!scheduledDate || !scheduledTime) {
-            Toastify({
-                text: "Por favor, selecione a Data e a Hora para o agendamento.",
-                style: { background: "#ef4444" }
-            }).showToast();
+            Toastify({ text: "Por favor, selecione a Data e a Hora para o agendamento.", style: { background: "#ef4444" } }).showToast();
             return;
         }
-
-        // Validação simples para não agendar no passado
         const agendamento = new Date(scheduledDate + "T" + scheduledTime);
         const agora = new Date();
         if (agendamento < agora) {
-            Toastify({
-                text: "O agendamento deve ser para uma data/hora futura.",
-                style: { background: "#ef4444" }
-            }).showToast();
+            Toastify({ text: "O agendamento deve ser para uma data/hora futura.", style: { background: "#ef4444" } }).showToast();
             return;
         }
     }
 
-    async function subscribeWithPhone() {
-    // 1. Pega o telefone do input do formulário
-    const phoneInput = document.getElementById("client-phone");
-    if (!phoneInput) return;
-    
-    const rawPhone = phoneInput.value;
-    if (rawPhone.length < 10) return; // Só tenta se tiver um número válido
-
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('Push não suportado');
-        return;
-    }
-
-    try {
-        // 2. Solicita permissão (se ainda não tiver)
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-
-        // 3. Pega a subscription do Service Worker
-        const registration = await navigator.serviceWorker.ready;
-        
-        let subscription = await registration.pushManager.getSubscription();
-        
-        // Se não tiver subscription, tenta criar (requer chave pública VAPID)
-        if (!subscription && window.VAPID_PUBLIC_KEY) {
-                subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY)
-            });
-        }
-
-        if (!subscription) return;
-
-        // 4. Envia para o backend JUNTO COM O TELEFONE
-        const slug = window.TENANT_SLUG || 'sua-loja'; // Garanta que o slug esteja disponível
-        
-        await fetch(`/${slug}/api/push/subscribe/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': window.CSRF_TOKEN || getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                subscription: subscription,
-                customer_phone: rawPhone // <--- O DADO QUE FALTAVA
-            })
-        });
-        
-        console.log("Push inscrito com sucesso para:", rawPhone);
-
-    } catch (e) {
-        console.error("Erro ao inscrever push:", e);
-    }
-}
-
-// Função utilitária para converter a chave VAPID (caso precise criar nova subscription)
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-    
+    // Validação do Carrinho
     if (cart.length === 0) {
         Toastify({ text: "Sua sacola está vazia!", style: { background: "#ef4444" } }).showToast();
         return;
     }
 
+    // Validação do Nome
     const nome = document.getElementById("client-name").value.trim();
-    if (!nome || nome.length < 2) { Toastify({text: "Digite seu nome completo", style: {background: "#ef4444"}}).showToast(); return; }
+    if (!nome || nome.length < 2) { 
+        Toastify({text: "Digite seu nome completo", style: {background: "#ef4444"}}).showToast(); 
+        return; 
+    }
 
+    // Validação do Telefone
     const phoneEl = document.getElementById("client-phone");
     let phone = phoneEl ? phoneEl.value : "";
 
-    // SÓ VALIDA SE NÃO FOR MESA
-    // Se window.TABLE_NUMBER for nulo/false, ele entra no IF e cobra o telefone
     if (!window.TABLE_NUMBER) {
         if (!phone || phone.replace(/\D/g, "").length < 10) {
-            Toastify({
-                text: "Por favor, informe seu WhatsApp para contato.",
-                style: { background: "#ef4444" }
-            }).showToast();
+            Toastify({ text: "Por favor, informe seu WhatsApp para contato.", style: { background: "#ef4444" } }).showToast();
             return;
         }
     } else {
-        // SE FOR MESA: Define um número padrão para não quebrar o banco de dados
         if(!phone) phone = "83999999999"; 
     }
-    const btnFinalize = document.getElementById("btn-finalize");
-    const textoOriginal = btnFinalize.innerText;
-    
-    // Calcula totais
+
+    // Cálculos
     let totalProdutos = cart.reduce((a, b) => a + (b.price * b.qtd), 0);
     let totalComFrete = totalProdutos + (isDelivery ? valorFreteAtual : 0);
-    
-    // Aplica desconto do cupom se existir
     let discountAmount = 0;
     let totalFinal = totalComFrete;
     
     if (appliedCoupon && appliedCoupon.discount_amount) {
         discountAmount = appliedCoupon.discount_amount;
         totalFinal = totalComFrete - discountAmount;
-        
-        // Garante que nao fique negativo
         if (totalFinal < 0) totalFinal = 0;
     }
     
-    // --- LÓGICA DE PAGAMENTO E TROCO (ATUALIZADA) ---
+    // Dados de Pagamento
     const methodEl = document.querySelector('input[name="payment-method"]:checked');
     const method = methodEl ? methodEl.value : "Não Informado";
     let obs = document.getElementById("order-notes").value;
 
-    // --- CAPTURAR NOME DO GARÇOM ---
     const waiterInput = document.getElementById("waiter-name");
-    // Só adiciona se estiver no modo mesa e o garçom tiver digitado o nome
     if (window.TABLE_NUMBER && waiterInput && waiterInput.value.trim()) {
         obs += `\n --- \n 🤵 ATENDIDO POR: ${waiterInput.value.trim()}`;
     }
 
-    // Validar endereço para entregas ANTES de criar pedido
+    // Validação de Endereço (Delivery)
     if (isDelivery && !window.TABLE_NUMBER) {
-        const cepVal = document.getElementById("cep").value.replace(/\D/g, "");
         const addressVal = document.getElementById("address").value.trim();
         const numberVal = document.getElementById("number").value.trim();
         const neighborhoodVal = document.getElementById("neighborhood").value.trim();
         
-        if (!cepVal || cepVal.length !== 8) {
-            Toastify({text: "CEP inválido ou incompleto", style: {background: "#ef4444"}}).showToast();
-            return;
-        }
-        if (!addressVal) {
-            Toastify({text: "Rua é obrigatória", style: {background: "#ef4444"}}).showToast();
-            return;
-        }
-        if (!numberVal) {
-            Toastify({text: "Número é obrigatório", style: {background: "#ef4444"}}).showToast();
-            return;
-        }
-        if (!neighborhoodVal) {
-            Toastify({text: "Bairro é obrigatório", style: {background: "#ef4444"}}).showToast();
+        if (!addressVal || !numberVal || !neighborhoodVal) {
+            Toastify({text: "Preencha o endereço completo.", style: {background: "#ef4444"}}).showToast();
             return;
         }
     }
     
-    // Se for dinheiro, processa o troco ANTES de criar o pedido
+    // Troco
     if (method === 'dinheiro') {
         const trocoInput = document.getElementById("troco-valor");
         const trocoVal = trocoInput ? trocoInput.value : "";
-        
         if (trocoVal) {
-            // Converte virgula para ponto para garantir calculo certo
             const valorTroco = parseFloat(trocoVal.replace(',', '.'));
-            
-            // VALIDAÇÃO: O troco não pode ser menor que o total do pedido
             if (isNaN(valorTroco) || valorTroco < totalFinal) {
-                Toastify({
-                    text: `O valor do troco (R$ ${valorTroco.toFixed(2)}) é menor que o total do pedido!`, 
-                    duration: 4000,
-                    style: {background: "#ef4444"}
-                }).showToast();
-                document.getElementById("troco-valor").focus();
+                Toastify({ text: `Troco inválido!`, style: {background: "#ef4444"} }).showToast();
                 return;
             }
-            
-            // Adiciona na observação para salvar no banco sem mexer no backend
             obs += `\n --- \n LEVAR TROCO PARA: R$ ${valorTroco.toFixed(2)}`;
         } else {
-            obs += `\n --- \n NÃO PRECISA DE TROCO (Cliente tem o valor trocado)`;
+            obs += `\n --- \n NÃO PRECISA DE TROCO`;
         }
     }
-    // ------------------------------------------------
 
+    // Monta o objeto
     const orderData = {
         nome: nome,
         phone: phone,
@@ -344,7 +199,7 @@ function urlBase64ToUint8Array(base64String) {
         discount_amount: discountAmount,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         method: method,
-        obs: obs, // Aqui já vai com o texto do troco
+        obs: obs,
         items: cart,
         order_type: window.TABLE_NUMBER ? 'table' : (isDelivery ? 'delivery' : 'pickup'),
         address: (isDelivery && !window.TABLE_NUMBER) ? {
@@ -354,130 +209,91 @@ function urlBase64ToUint8Array(base64String) {
             neighborhood: document.getElementById("neighborhood").value
         } : {},
         table_number: window.TABLE_NUMBER,
-
-        is_scheduled: document.getElementById("is_scheduled").checked,
-        scheduled_date: document.getElementById("scheduled_date").value || null,
-        scheduled_time: document.getElementById("scheduled_time").value || null
+        is_scheduled: isScheduled,
+        scheduled_date: scheduledDate || null,
+        scheduled_time: scheduledTime || null
     };
 
-    // --- DECISAO DE FLUXO ---
-    if (method === 'pix' && window.STORE_CONFIG.pixKey) {
-        // FLUXO PIX: Mostrar Modal PRIMEIRO, Salvar DEPOIS
-        const tempTxid = "PED" + Date.now().toString().slice(-6);
-        
-        const pix = new PixPayload(
-            window.STORE_CONFIG.pixKey,
-            window.STORE_CONFIG.pixName, 
-            window.STORE_CONFIG.pixCity,
-            tempTxid,
-            totalFinal
-        );
-        const payload = pix.getPayload();
+    // --- CORREÇÃO AQUI: SEM IF/ELSE DO PIX MANUAL ---
+    // Apenas muda o botão e manda pro backend decidir
+    const btnFinalize = document.getElementById("btn-finalize");
+    const textoOriginal = btnFinalize.innerText;
+    
+    btnFinalize.innerText = "Processando...";
+    btnFinalize.disabled = true;
 
-        // Abre o Modal
-        const modalResult = await Swal.fire({
-            title: `<span class="text-primary">Pagamento PIX</span>`,
-            html: `
-                <p class="text-sm text-gray-600 mb-4">Escaneie o QR Code ou copie a chave:</p>
-                <div class="flex justify-center mb-4 p-2 bg-white rounded-lg border border-gray-200">
-                    <div id="qrcode-container"></div>
-                </div>
-                <div class="relative mb-4">
-                    <textarea id="pix-copia-cola" readonly class="w-full h-12 bg-gray-100 p-2 text-[10px] rounded-lg border border-gray-300 resize-none outline-none">${payload}</textarea>
-                    <button onclick="copiarPix()" class="absolute top-1 right-1 bg-blue-100 text-blue-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-200 transition">COPIAR</button>
-                </div>
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 font-bold uppercase mb-1">Valor Total</p>
-                    <p class="text-2xl font-serif font-bold text-gray-800">R$ ${totalFinal.toFixed(2)}</p>
-                    ${discountAmount > 0 ? `<p class="text-xs text-green-600 font-bold">Desconto: -R$ ${discountAmount.toFixed(2)}</p>` : ''}
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: '<span style="color: white">Ja Paguei / Enviar</span>',
-            cancelButtonText: '<span style="color: white">Voltar / Cancelar</span>',
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#ef4444',
-            allowOutsideClick: false,
-            didOpen: () => {
-                new QRCode(document.getElementById("qrcode-container"), {
-                    text: payload, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L
-                });
-            }
-        });
-
-        if (modalResult.isConfirmed) {
-            btnFinalize.innerText = "Enviando...";
-            btnFinalize.disabled = true;
-            processarSalvamento(orderData, btnFinalize, textoOriginal);
-        } else {
-            Toastify({ text: "Pagamento pendente. Escolha outra forma.", style: { background: getPrimaryColor() } }).showToast();
-        }
-
-    } else {
-        // FLUXO CARTAO/DINHEIRO: Salvar e Enviar direto
-        btnFinalize.innerText = "Processando...";
-        btnFinalize.disabled = true;
-        processarSalvamento(orderData, btnFinalize, textoOriginal);
-    }
+    processarSalvamento(orderData, btnFinalize, textoOriginal);
 };
 
 // --- FUNÇÃO AUXILIAR PARA SALVAR NO DJANGO ---
 async function processarSalvamento(orderData, btn, txtOriginal) {
+    const slug = window.TENANT_SLUG || 'sua-loja';
+    
     try {
-        const response = await fetch(window.API_URL, {
+        const response = await fetch(`/${slug}/api/create_order/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN },
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-CSRFToken': window.CSRF_TOKEN || getCookie('csrftoken') 
+            },
             body: JSON.stringify(orderData)
         });
 
         const result = await response.json();
 
         if (result.status === 'success') {
+            
+            // 1. INJETA O ID DO PEDIDO NOS DADOS (Importante para a msg do Whats)
             orderData.order_id = result.order_id;
 
-            let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+            // 2. SALVA NO HISTÓRICO
+            const key = (typeof HISTORY_KEY !== 'undefined') ? HISTORY_KEY : 'rm_pedidos_history';
+            let history = JSON.parse(localStorage.getItem(key)) || [];
             if (!history.includes(result.order_id)) {
                 history.push(result.order_id);
-                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                localStorage.setItem(key, JSON.stringify(history));
             }
+
+            // 3. LIMPA CARRINHO
+            cart = []; 
+            if (typeof saveCart === 'function') saveCart();
+            else localStorage.removeItem('carrinho_loja');
             
-            // Prepara dados do cupom para o WhatsApp
-            if (orderData.coupon_code && orderData.discount_amount > 0) {
-                orderData.appliedCoupon = {
-                    code: orderData.coupon_code,
-                    discount_amount: orderData.discount_amount
-                };
-            } else {
-                orderData.appliedCoupon = null;
+            // 4. ATUALIZA UI (Fecha modal lateral se estiver aberto)
+            if (typeof closeCart === 'function') closeCart(); 
+
+            // =========================================================
+            // A. SE FOR PIX AUTOMÁTICO (MERCADO PAGO) -> ABRE MODAL
+            // =========================================================
+            if (result.pix_data) {
+                if (typeof mostrarModalPix === 'function') {
+                    mostrarModalPix(result.pix_data, result.real_total);
+                }
+                btn.innerText = txtOriginal;
+                btn.disabled = false;
+                return; // PARA AQUI
             }
-            
-            cart = [];
-            saveCart();
-            closeCart();
+
+            // =========================================================
+            // B. SE NÃO FOR PIX MP -> CHAMA SUA FUNÇÃO DO WHATSAPP
+            // =========================================================
             Toastify({ text: "Pedido Enviado!", style: { background: "#10b981" } }).showToast();
+            
+            // Chama a função que você mandou (ela abre nova aba e recarrega esta)
             sendToWhatsApp(orderData);
+
         } else {
             throw new Error(result.message || "Erro no servidor");
         }
     } catch (error) {
         console.error(error);
-        Toastify({ text: "Erro ao enviar: " + error.message, style: { background: "#ef4444" } }).showToast();
-    } finally {
+        Toastify({ text: "Erro: " + error.message, style: { background: "#ef4444" } }).showToast();
         btn.innerText = txtOriginal;
         btn.disabled = false;
     }
 }
 
 // --- RESTANTE DAS FUNÇÕES (UTITILITARIOS) ---
-
-window.copiarPix = () => {
-    const copyText = document.getElementById("pix-copia-cola");
-    copyText.select();
-    copyText.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(copyText.value).then(() => {
-        Toastify({ text: "Chave Copiada!", style: { background: "#3b82f6" } }).showToast();
-    });
-};
 
 // Return tenant primary color from CSS var or fallback
 function getPrimaryColor(){
@@ -1782,3 +1598,52 @@ document.addEventListener('DOMContentLoaded', () => {
         dateInput.setAttribute('min', hoje);
     }
 });
+
+// --- FUNÇÕES DO PIX (MERCADO PAGO) ---
+
+function mostrarModalPix(pixData, valorTotal) {
+    const modal = document.getElementById('modal-pix');
+    const imgQr = document.getElementById('pix-qrcode-img');
+    const textCopiaCola = document.getElementById('pix-copia-cola');
+    const valorTxt = document.getElementById('pix-valor');
+
+    // Preenche os dados
+    // O MP manda o base64 puro, precisamos adicionar o cabeçalho data:image...
+    imgQr.src = `data:image/png;base64,${pixData.qr_code_base64}`;
+    textCopiaCola.value = pixData.qr_code;
+    valorTxt.innerText = valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    // Mostra o modal
+    modal.classList.remove('hidden');
+}
+
+function fecharModalPix() {
+    const modal = document.getElementById('modal-pix');
+    modal.classList.add('hidden');
+    
+    // Opcional: Redirecionar para a tela de "Meus Pedidos" ou recarregar
+    // window.location.reload(); 
+}
+
+function copiarCodigoPix() {
+    const copyText = document.getElementById("pix-copia-cola");
+    
+    if (!copyText) return;
+
+    // Seleciona o texto
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // Para mobile
+
+    // Copia usando a API moderna
+    navigator.clipboard.writeText(copyText.value).then(() => {
+        // Feedback Profissional com Toastify
+        Toastify({ 
+            text: "Chave PIX copiada com sucesso!", 
+            duration: 3000,
+            style: { background: "#10b981" } // Verde sucesso
+        }).showToast();
+    }).catch(err => {
+        console.error('Erro ao copiar: ', err);
+        Toastify({ text: "Erro ao copiar. Tente manualmente.", style: { background: "#ef4444" } }).showToast();
+    });
+}

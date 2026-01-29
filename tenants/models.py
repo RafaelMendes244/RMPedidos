@@ -222,6 +222,15 @@ class Order(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
     customer_name = models.CharField(max_length=100, verbose_name="Nome do Cliente")
     customer_phone = models.CharField(max_length=20, verbose_name="Telefone")
+
+    # --- CAMPOS DE PAGAMENTO ONLINE (MERCADO PAGO) ---
+    mercadopago_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Transação MP")
+    mercadopago_status = models.CharField(max_length=50, blank=True, null=True, verbose_name="Status MP") # approved, pending, failure
+    
+    # Dados para exibir o PIX no frontend (sem precisar chamar API de novo)
+    pix_qr_code = models.TextField(blank=True, null=True, verbose_name="QR Code (Base64)")
+    pix_qr_code_base64 = models.TextField(blank=True, null=True, verbose_name="Imagem QR (Base64)") # Opcional, as vezes o MP manda link
+    pix_ticket_url = models.URLField(blank=True, null=True, verbose_name="Link do Ticket")
     
     # Tipo de pedido (delivery, pickup, ou mesa)
     order_type = models.CharField(
@@ -509,3 +518,23 @@ class PushSubscription(models.Model):
                 'auth': self.auth
             }
         }
+
+# ==========================================
+# CONFIGURAÇÃO DE PAGAMENTO (MP CONNECT)
+# ==========================================
+class TenantPaymentConfig(models.Model):
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name='payment_config', verbose_name="Loja")
+    
+    # Credenciais que recebemos do Mercado Pago via OAuth
+    access_token = models.CharField(max_length=255, verbose_name="Access Token")
+    refresh_token = models.CharField(max_length=255, verbose_name="Refresh Token") # Para renovar quando expirar
+    public_key = models.CharField(max_length=255, verbose_name="Public Key")
+    account_id = models.CharField(max_length=100, verbose_name="ID da Conta MP") # ID numérico do dono da conta
+    
+    # Controle de expiração
+    expires_in = models.IntegerField(verbose_name="Expira em (segundos)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Config MP - {self.tenant.name}"
